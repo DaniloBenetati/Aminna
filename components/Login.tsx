@@ -89,7 +89,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
           <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
             {error && (
-              <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900 p-4 rounded-2xl flex items-center gap-3 animate-shake">
+              <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-900 p-4 rounded-sm flex items-center gap-3 animate-shake">
                 <AlertCircle className="text-rose-600 dark:text-rose-400 shrink-0" size={20} />
                 <p className="text-xs font-black text-rose-800 dark:text-rose-300 uppercase tracking-tight">{error}</p>
               </div>
@@ -106,7 +106,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="seu@email.com"
-                  className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl py-4 pl-12 pr-4 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-indigo-600 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                  className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-100 dark:border-zinc-700 rounded-sm py-4 pl-12 pr-4 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-indigo-600 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                 />
               </div>
             </div>
@@ -122,7 +122,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder={isSignUp ? "Mínimo 6 caracteres" : "Sua senha"}
-                  className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl py-4 pl-12 pr-12 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-indigo-600 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
+                  className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-100 dark:border-zinc-700 rounded-sm py-4 pl-12 pr-12 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-indigo-600 dark:focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 transition-all placeholder:text-slate-300 dark:placeholder:text-slate-600"
                 />
                 <button
                   type="button"
@@ -137,7 +137,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-xl hover:bg-black dark:hover:bg-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
+              className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[11px] tracking-[0.2em] shadow-xl hover:bg-black dark:hover:bg-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2 mt-2"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />

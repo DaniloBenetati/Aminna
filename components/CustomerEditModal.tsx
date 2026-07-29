@@ -145,7 +145,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border-2 border-slate-900 dark:border-zinc-800 scale-in-center">
+            <div className="bg-white dark:bg-zinc-950 rounded-sm shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border-2 border-slate-900 dark:border-zinc-800 scale-in-center">
 
                 {/* Header Profile Area */}
                 <div className="relative px-8 pt-10 pb-6 bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row items-center gap-6">
@@ -170,11 +170,11 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                 <h2 className="text-3xl font-black text-slate-950 dark:text-white uppercase tracking-tight">{localName}</h2>
                             )}
                             <div className="flex items-center gap-2 justify-center md:justify-start">
-                                <span className="px-2.5 py-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg text-[9px] font-black text-slate-500 uppercase tracking-widest">
+                                <span className="px-2.5 py-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm text-[9px] font-black text-slate-500 uppercase tracking-widest">
                                     {customer.status === 'Novo' && (Number(customer.totalSpent || 0) > 0 || (customer.history || []).length > 0) ? 'CLIENTE' : (customer.status === 'Novo' ? 'NOVO' : 'CLIENTE')}
                                 </span>
                                 {customer.acquisitionChannel === 'Via Importação Excel' && (
-                                    <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">VIA IMPORTAÇÃO EXCEL</span>
+                                    <span className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-sm text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">VIA IMPORTAÇÃO EXCEL</span>
                                 )}
                             </div>
                         </div>
@@ -183,13 +183,13 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                     <div className="flex gap-3">
                         {editMode ? (
                             <>
-                                <button onClick={() => setEditMode(false)} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all">Cancelar</button>
-                                <button onClick={handleSave} disabled={isSaving} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-[11px] font-black uppercase shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2">
+                                <button onClick={() => setEditMode(false)} className="px-6 py-3 rounded-sm text-[11px] font-black uppercase text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all">Cancelar</button>
+                                <button onClick={handleSave} disabled={isSaving} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm text-[11px] font-black uppercase shadow-lg shadow-indigo-600/20 active:scale-95 transition-all flex items-center gap-2">
                                     <Save size={16} /> Salvar
                                 </button>
                             </>
                         ) : (
-                            <button onClick={() => setEditMode(true)} className="px-10 py-3 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-2xl text-[11px] font-black uppercase shadow-xl hover:scale-105 active:scale-95 transition-all">Editar</button>
+                            <button onClick={() => setEditMode(true)} className="px-10 py-3 bg-slate-950 dark:bg-white text-white dark:text-slate-950 rounded-sm text-[11px] font-black uppercase shadow-xl hover:scale-105 active:scale-95 transition-all">Editar</button>
                         )}
                     </div>
                 </div>
@@ -218,9 +218,9 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                     {activeTab === 'DADOS' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
                             {/* Personal Data Selection */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                 <div className="flex items-center gap-3 text-indigo-600 mb-2">
-                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl"><Smartphone size={20} /></div>
+                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-sm"><Smartphone size={20} /></div>
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Dados Pessoais</h4>
                                 </div>
 
@@ -228,7 +228,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Data de Nascimento</label>
                                         {editMode ? (
-                                            <input type="date" value={localBirthday} onChange={e => setLocalBirthday(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" />
+                                            <input type="date" value={localBirthday} onChange={e => setLocalBirthday(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" />
                                         ) : (
                                             <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localBirthday ? new Date(localBirthday + 'T12:00:00').toLocaleDateString('pt-BR') : 'Não informado'}</p>
                                         )}
@@ -236,7 +236,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">CPF</label>
                                         {editMode ? (
-                                            <input value={localCpf} onChange={e => setLocalCpf(e.target.value)} placeholder="000.000.000-00" className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-blue-900 dark:text-blue-400 outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300" />
+                                            <input value={localCpf} onChange={e => setLocalCpf(e.target.value)} placeholder="000.000.000-00" className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-blue-900 dark:text-blue-400 outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300" />
                                         ) : (
                                             <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localCpf || 'Não informado'}</p>
                                         )}
@@ -244,7 +244,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Profissão</label>
                                         {editMode ? (
-                                            <input value={localProfession} onChange={e => setLocalProfession(e.target.value)} placeholder="Ex: Médica, Advogada..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300" />
+                                            <input value={localProfession} onChange={e => setLocalProfession(e.target.value)} placeholder="Ex: Médica, Advogada..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all placeholder:text-slate-300" />
                                         ) : (
                                             <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localProfession || 'Não informado'}</p>
                                         )}
@@ -252,7 +252,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Canal de Entrada</label>
                                         {editMode ? (
-                                            <select value={localAcquisitionChannel} onChange={e => setLocalAcquisitionChannel(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all">
+                                            <select value={localAcquisitionChannel} onChange={e => setLocalAcquisitionChannel(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all">
                                                 <option value="">Selecione...</option>
                                                 <option value="WhatsApp">WhatsApp</option>
                                                 <option value="Instagram">Instagram</option>
@@ -276,7 +276,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                                     step="0.01"
                                                     value={localCreditBalance}
                                                     onChange={e => setLocalCreditBalance(parseFloat(e.target.value) || 0)}
-                                                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 pl-12 font-black text-purple-600 dark:text-purple-400 outline-none focus:border-purple-500 transition-all"
+                                                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 pl-12 font-black text-purple-600 dark:text-purple-400 outline-none focus:border-purple-500 transition-all"
                                                 />
                                             </div>
                                         ) : (
@@ -287,9 +287,9 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {/* Contact Info */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                 <div className="flex items-center gap-3 text-indigo-600 mb-2">
-                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl"><Smartphone size={20} /></div>
+                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-sm"><Smartphone size={20} /></div>
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Contatos</h4>
                                 </div>
 
@@ -297,7 +297,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">WhatsApp / Celular</label>
                                         {editMode ? (
-                                            <input value={localPhone} onChange={e => setLocalPhone(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" />
+                                            <input value={localPhone} onChange={e => setLocalPhone(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" />
                                         ) : (
                                             <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localPhone}</p>
                                         )}
@@ -305,7 +305,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     <div className="space-y-1">
                                         <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Email</label>
                                         {editMode ? (
-                                            <input type="email" value={localEmail} onChange={e => setLocalEmail(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" />
+                                            <input type="email" value={localEmail} onChange={e => setLocalEmail(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all" />
                                         ) : (
                                             <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localEmail || 'Não informado'}</p>
                                         )}
@@ -314,15 +314,15 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {/* Location */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                 <div className="flex items-center gap-3 text-indigo-600 mb-2">
-                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl"><MapPin size={20} /></div>
+                                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 rounded-sm"><MapPin size={20} /></div>
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Localização</h4>
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Endereço Residencial</label>
                                     {editMode ? (
-                                        <textarea value={localAddress} onChange={e => setLocalAddress(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all min-h-[100px] resize-none" placeholder="Rua, número, bairro..." />
+                                        <textarea value={localAddress} onChange={e => setLocalAddress(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all min-h-[100px] resize-none" placeholder="Rua, número, bairro..." />
                                     ) : (
                                         <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localAddress || 'Sem endereço cadastrado'}</p>
                                     )}
@@ -330,14 +330,14 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {/* Block Status */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-3 text-slate-500">
-                                        <div className="p-2 bg-slate-50 dark:bg-zinc-800 rounded-xl"><Ban size={20} /></div>
+                                        <div className="p-2 bg-slate-50 dark:bg-zinc-800 rounded-sm"><Ban size={20} /></div>
                                         <h4 className="text-[11px] font-black uppercase tracking-widest">Bloqueio de Cliente</h4>
                                     </div>
                                     {editMode && (
-                                        <button onClick={handleToggleBlock} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${localIsBlocked ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'}`}>
+                                        <button onClick={handleToggleBlock} className={`px-4 py-2 rounded-sm text-[9px] font-black uppercase transition-all ${localIsBlocked ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'}`}>
                                             {localIsBlocked ? 'DESBLOQUEAR' : 'BLOQUEAR'}
                                         </button>
                                     )}
@@ -345,7 +345,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                 <div className="space-y-1">
                                     <p className="text-sm font-black text-slate-900 dark:text-white uppercase">STATUS: <span className={localIsBlocked ? 'text-rose-600' : 'text-emerald-500'}>{localIsBlocked ? 'BLOQUEADA' : localStatus.toUpperCase()}</span></p>
                                     {localIsBlocked && (
-                                        <div className="mt-4 p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 rounded-2xl">
+                                        <div className="mt-4 p-4 bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900 rounded-sm">
                                             <label className="text-[8px] font-black text-rose-400 uppercase mb-1 block">Motivo do bloqueio</label>
                                             <p className="text-xs font-black text-rose-900 dark:text-rose-200">{localBlockReason}</p>
                                         </div>
@@ -354,16 +354,16 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {/* observations */}
-                            <div className="md:col-span-2 bg-black dark:bg-white p-6 rounded-3xl shadow-2xl space-y-6">
+                            <div className="md:col-span-2 bg-black dark:bg-white p-6 rounded-sm shadow-2xl space-y-6">
                                 <div className="flex items-center gap-3 text-white dark:text-black">
                                     <FileText size={20} />
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Prontuário Estratégico</h4>
                                 </div>
                                 <div className="space-y-1">
                                     {editMode ? (
-                                        <textarea value={localObservations} onChange={e => setLocalObservations(e.target.value)} className="w-full bg-zinc-900 dark:bg-slate-50 border-2 border-zinc-800 dark:border-slate-200 rounded-[1.5rem] p-6 font-black text-white dark:text-black outline-none focus:border-indigo-500 transition-all min-h-[150px] resize-none text-sm placeholder:italic placeholder:font-normal placeholder:opacity-50" placeholder="Digite notas privadas, restrições médicas ou observações importantes..." />
+                                        <textarea value={localObservations} onChange={e => setLocalObservations(e.target.value)} className="w-full bg-zinc-900 dark:bg-slate-50 border-2 border-zinc-800 dark:border-slate-200 rounded-sm p-6 font-black text-white dark:text-black outline-none focus:border-indigo-500 transition-all min-h-[150px] resize-none text-sm placeholder:italic placeholder:font-normal placeholder:opacity-50" placeholder="Digite notas privadas, restrições médicas ou observações importantes..." />
                                     ) : (
-                                        <div className="bg-zinc-900 dark:bg-slate-50 rounded-[1.5rem] p-6 text-sm italic font-black text-white dark:text-black leading-relaxed whitespace-pre-wrap">
+                                        <div className="bg-zinc-900 dark:bg-slate-50 rounded-sm p-6 text-sm italic font-black text-white dark:text-black leading-relaxed whitespace-pre-wrap">
                                             {localObservations ? `"${localObservations}"` : '"Nenhuma nota privada."'}
                                         </div>
                                     )}
@@ -375,9 +375,9 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                     {activeTab === 'PREFERENCIAS' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-400">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                     <div className="flex items-center gap-3 text-amber-600 mb-2">
-                                        <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-xl"><Sparkles size={20} /></div>
+                                        <div className="p-2 bg-amber-50 dark:bg-amber-900/30 rounded-sm"><Sparkles size={20} /></div>
                                         <h4 className="text-[11px] font-black uppercase tracking-widest">Favoritos & Restrições</h4>
                                     </div>
 
@@ -385,11 +385,11 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                         <div className="space-y-1">
                                             <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block mb-2">Serviços Favoritos</label>
                                             {editMode ? (
-                                                <input value={localFavServices} onChange={e => setLocalFavServices(e.target.value)} placeholder="Ex: Corte, Design de Sobrancelha..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
+                                                <input value={localFavServices} onChange={e => setLocalFavServices(e.target.value)} placeholder="Ex: Corte, Design de Sobrancelha..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
                                             ) : (
                                                 <div className="flex flex-wrap gap-2">
                                                     {localFavServices ? localFavServices.split(',').map((s, i) => (
-                                                        <span key={i} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">{s.trim()}</span>
+                                                        <span key={i} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-sm text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">{s.trim()}</span>
                                                     )) : <p className="text-xs text-slate-300 font-bold uppercase italic p-1">Nenhum serviço favorito</p>}
                                                 </div>
                                             )}
@@ -398,10 +398,10 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                         <div className="space-y-1">
                                             <label className="text-[9px] font-black text-rose-500 uppercase ml-1 block mb-2">Restrições de Alergia/Saúde</label>
                                             {editMode ? (
-                                                <textarea value={localRestrictions} onChange={e => setLocalRestrictions(e.target.value)} className="w-full bg-rose-50/30 dark:bg-rose-900/10 border-2 border-rose-100 dark:border-rose-900 rounded-xl p-4 font-black text-rose-900 dark:text-rose-200 outline-none focus:border-rose-500 min-h-[100px] resize-none" placeholder="Ex: Alergia a amônia, pele sensível..." />
+                                                <textarea value={localRestrictions} onChange={e => setLocalRestrictions(e.target.value)} className="w-full bg-rose-50/30 dark:bg-rose-900/10 border-2 border-rose-100 dark:border-rose-900 rounded-sm p-4 font-black text-rose-900 dark:text-rose-200 outline-none focus:border-rose-500 min-h-[100px] resize-none" placeholder="Ex: Alergia a amônia, pele sensível..." />
                                             ) : (
                                                 localRestrictions ? (
-                                                    <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border-2 border-rose-100 dark:border-rose-800 rounded-2xl">
+                                                    <div className="p-4 bg-rose-50 dark:bg-rose-950/30 border-2 border-rose-100 dark:border-rose-800 rounded-sm">
                                                         <p className="text-xs font-black text-rose-900 dark:text-rose-200 leading-relaxed uppercase">{localRestrictions}</p>
                                                     </div>
                                                 ) : <p className="text-xs text-slate-300 font-bold uppercase italic p-1">Nenhuma restrição registrada</p>
@@ -410,9 +410,9 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
                                     <div className="flex items-center gap-3 text-emerald-600 mb-2">
-                                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-xl"><Clock size={20} /></div>
+                                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 rounded-sm"><Clock size={20} /></div>
                                         <h4 className="text-[11px] font-black uppercase tracking-widest">Agenda & Notas</h4>
                                     </div>
 
@@ -420,11 +420,11 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                         <div className="space-y-1">
                                             <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block mb-2">Dias Preferenciais</label>
                                             {editMode ? (
-                                                <input value={localPrefDays} onChange={e => setLocalPrefDays(e.target.value)} placeholder="Ex: Terças, Quintas..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
+                                                <input value={localPrefDays} onChange={e => setLocalPrefDays(e.target.value)} placeholder="Ex: Terças, Quintas..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
                                             ) : (
                                                 <div className="flex flex-wrap gap-2">
                                                     {localPrefDays ? localPrefDays.split(',').map((d, i) => (
-                                                        <span key={i} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 rounded-lg text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">{d.trim()}</span>
+                                                        <span key={i} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 rounded-sm text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">{d.trim()}</span>
                                                     )) : <p className="text-xs text-slate-300 font-bold uppercase italic p-1">Nenhum dia preferencial</p>}
                                                 </div>
                                             )}
@@ -434,11 +434,11 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                             <div className="space-y-1">
                                                 <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block mb-2">Dias Preferenciais</label>
                                                 {editMode ? (
-                                                    <input value={localPrefDays} onChange={e => setLocalPrefDays(e.target.value)} placeholder="Ex: Terças, Quintas..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
+                                                    <input value={localPrefDays} onChange={e => setLocalPrefDays(e.target.value)} placeholder="Ex: Terças, Quintas..." className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
                                                 ) : (
                                                     <div className="flex flex-wrap gap-2">
                                                         {localPrefDays ? localPrefDays.split(',').map((d, i) => (
-                                                            <span key={i} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 rounded-lg text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">{d.trim()}</span>
+                                                            <span key={i} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-100 dark:border-emerald-800 rounded-sm text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">{d.trim()}</span>
                                                         )) : <p className="text-xs text-slate-300 font-bold uppercase italic p-1">Nenhum dia preferencial</p>}
                                                     </div>
                                                 )}
@@ -447,7 +447,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                             <div className="space-y-1">
                                                 <label className="text-[9px] font-black text-slate-400 uppercase ml-1 block mb-2">Notas de Preferência</label>
                                                 {editMode ? (
-                                                    <textarea value={localPrefNotes} onChange={e => setLocalPrefNotes(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 min-h-[100px] resize-none" placeholder="Ex: Prefere café com pouco açúcar, gosta de silêncio..." />
+                                                    <textarea value={localPrefNotes} onChange={e => setLocalPrefNotes(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-4 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 min-h-[100px] resize-none" placeholder="Ex: Prefere café com pouco açúcar, gosta de silêncio..." />
                                                 ) : (
                                                     <p className="text-sm font-black text-slate-900 dark:text-white p-1">{localPrefNotes || 'Nenhuma nota de preferência'}</p>
                                                 )}
@@ -457,7 +457,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                 </div>
 
                                 {/* PROFISSIONAIS PREFERIDOS */}
-                                <div className="mt-6 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 shadow-sm space-y-4">
+                                <div className="mt-6 bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm space-y-4">
                                     <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">Profissionais Preferidos</h4>
                                     {editMode ? (
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -473,7 +473,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                                                     : [...prev, provider.id]
                                                             );
                                                         }}
-                                                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex items-center gap-2 ${isSelected
+                                                        className={`p-3 rounded-sm border-2 cursor-pointer transition-all flex items-center gap-2 ${isSelected
                                                             ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
                                                             : 'border-slate-100 dark:border-zinc-800 hover:border-slate-300'}`}
                                                     >
@@ -487,7 +487,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                         <div className="flex flex-wrap gap-3">
                                             {customer.assignedProviderIds && customer.assignedProviderIds.length > 0 ? (
                                                 providers.filter(p => customer.assignedProviderIds?.includes(p.id)).map(p => (
-                                                    <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-zinc-800 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                                    <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-zinc-800 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                         <Avatar name={p.name} src={p.avatar} size="w-6 h-6" />
                                                         <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{p.name}</span>
                                                     </div>
@@ -509,8 +509,8 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {customer.history.length === 0 ? (
-                                <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-slate-100 dark:border-zinc-800">
-                                    <div className="bg-slate-50 dark:bg-zinc-800 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-sm border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800 w-16 h-16 rounded-sm flex items-center justify-center mx-auto mb-4 text-slate-300">
                                         <Calendar size={32} />
                                     </div>
                                     <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Nenhum histórico disponível</p>
@@ -527,13 +527,13 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                                 <div className="w-0.5 h-full min-h-[40px] bg-slate-100 dark:bg-zinc-800 mt-2 rounded-full" />
                                             </div>
 
-                                            <div className="flex-1 bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600 transition-all hover:shadow-md">
+                                            <div className="flex-1 bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-600 transition-all hover:shadow-md">
                                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-zinc-800 px-3 py-1 rounded-lg">
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-zinc-800 px-3 py-1 rounded-sm">
                                                             {new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')}
                                                         </span>
-                                                        <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${item.type === 'VISIT' ? 'bg-indigo-50 text-indigo-700' :
+                                                        <span className={`px-2.5 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest ${item.type === 'VISIT' ? 'bg-indigo-50 text-indigo-700' :
                                                             item.type === 'PURCHASE' ? 'bg-emerald-50 text-emerald-700' :
                                                                 'bg-rose-50 text-rose-700'
                                                             }`}>
@@ -565,7 +565,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                                     <div className="mt-4 pt-4 border-t border-slate-50 dark:border-zinc-800">
                                                         <div className="flex flex-wrap gap-1.5">
                                                             {item.productsUsed.map((p, i) => (
-                                                                <span key={i} className="px-2 py-1 bg-slate-50 dark:bg-zinc-800 text-[8px] font-black text-slate-400 uppercase rounded-lg border border-slate-100 dark:border-zinc-700">{p}</span>
+                                                                <span key={i} className="px-2 py-1 bg-slate-50 dark:bg-zinc-800 text-[8px] font-black text-slate-400 uppercase rounded-sm border border-slate-100 dark:border-zinc-700">{p}</span>
                                                             ))}
                                                         </div>
                                                     </div>

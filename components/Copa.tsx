@@ -272,11 +272,11 @@ export const Copa: React.FC<CopaProps> = ({
 
     const StockTab = () => (
         <div className="space-y-4 animate-in fade-in">
-            <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800">
+            <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-200 dark:border-zinc-800">
                 <h3 className="font-black uppercase text-sm tracking-widest text-slate-800 dark:text-white">Estoque de Insumos</h3>
                 <button
                     onClick={() => { setEditingItem(null); setIsItemModalOpen(true); setIsCustomCategory(false); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                 >
                     <Plus size={14} /> Novo Item
                 </button>
@@ -284,14 +284,14 @@ export const Copa: React.FC<CopaProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredItems.map(item => (
-                    <div key={item.id} className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-3">
+                    <div key={item.id} className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-3">
                         <div className="flex justify-between items-start">
                             <div>
                                 <span className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wider">{item.category}</span>
                                 <h4 className="text-sm font-black text-slate-900 dark:text-white uppercase">{item.name}</h4>
                                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Custo: R$ {item.costPrice.toFixed(2)} / {item.unit}</p>
                             </div>
-                            <div className={`px-2 py-1 rounded-lg text-[10px] font-black ${item.quantity <= item.minQuantity ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                            <div className={`px-2 py-1 rounded-sm text-[10px] font-black ${item.quantity <= item.minQuantity ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'}`}>
                                 {item.quantity} {item.unit}
                             </div>
                         </div>
@@ -311,12 +311,12 @@ export const Copa: React.FC<CopaProps> = ({
 
     const ServiceTab = () => (
         <div className="space-y-6 animate-in fade-in">
-            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-3xl border border-indigo-100 dark:border-indigo-800 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-sm border border-indigo-100 dark:border-indigo-800 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div>
                     <h3 className="font-black text-indigo-900 dark:text-indigo-400 text-lg uppercase tracking-tight">Atendimentos em Andamento</h3>
                     <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 mt-1">Registre o consumo da copa apenas para clientes que já fizeram check-in.</p>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-xl border border-indigo-100 dark:border-indigo-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 px-4 py-2 rounded-sm border border-indigo-100 dark:border-indigo-800 shadow-sm">
                     <span className="text-2xl font-black text-indigo-600 dark:text-indigo-400">{activeAppointments.length}</span>
                     <span className="text-[10px] font-black text-indigo-400 dark:text-indigo-500 uppercase ml-2">Clientes Ativos</span>
                 </div>
@@ -328,7 +328,7 @@ export const Copa: React.FC<CopaProps> = ({
                     const provider = providers.find(p => p.id === app.providerId);
 
                     return (
-                        <div key={app.id} className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
+                        <div key={app.id} className="bg-white dark:bg-zinc-900 p-5 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm relative overflow-hidden group hover:border-indigo-300 transition-colors">
                             <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity"><Coffee size={64} className="text-indigo-600" /></div>
 
                             <div className="relative z-10">
@@ -341,7 +341,7 @@ export const Copa: React.FC<CopaProps> = ({
                                 <div className="mt-6">
                                     <button
                                         onClick={() => { setSelectedAppointment(app); setConsumptionSelection([]); setIsConsumptionModalOpen(true); }}
-                                        className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
                                     >
                                         <Plus size={14} /> Registrar Consumo
                                     </button>
@@ -464,7 +464,7 @@ export const Copa: React.FC<CopaProps> = ({
         const ChartTooltip = ({ active, payload, label }: any) => {
             if (active && payload && payload.length) {
                 return (
-                    <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                    <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm">
                         <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-2">{label}</p>
                         <div className="space-y-1">
                             <p className="text-emerald-700 dark:text-emerald-400 font-bold text-xs">
@@ -484,14 +484,14 @@ export const Copa: React.FC<CopaProps> = ({
             <div className="space-y-6 animate-in fade-in">
 
                 {/* FILTERS BAR */}
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col xl:flex-row items-center justify-between gap-4 sticky top-0 z-20">
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col xl:flex-row items-center justify-between gap-4 sticky top-0 z-20">
                     <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
-                        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
+                        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
                             {(['day', 'month', 'year', 'custom'] as const).map(v => (
                                 <button
                                     key={v}
                                     onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
-                                    className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                    className={`flex-1 md:flex-none px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
                                     {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
                                 </button>
@@ -499,19 +499,19 @@ export const Copa: React.FC<CopaProps> = ({
                         </div>
 
                         {timeView === 'custom' ? (
-                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl w-full md:w-auto">
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-sm w-full md:w-auto">
                                 <CalendarRange size={16} className="text-slate-400" />
                                 <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
                                 <span className="text-slate-300">-</span>
                                 <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
-                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-sm w-full md:w-auto justify-between md:justify-start">
+                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
                                 <div className="flex flex-col items-center min-w-[120px]">
                                     <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight">{getDateLabel()}</span>
                                 </div>
-                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
+                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
                             </div>
                         )}
                     </div>
@@ -520,7 +520,7 @@ export const Copa: React.FC<CopaProps> = ({
                         <div className="relative flex-1 xl:min-w-[250px]">
                             <button
                                 onClick={() => setIsCustomerFilterOpen(!isCustomerFilterOpen)}
-                                className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase flex items-center justify-between transition-all hover:border-indigo-300"
+                                className="w-full pl-9 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase flex items-center justify-between transition-all hover:border-indigo-300"
                             >
                                 <div className="flex items-center gap-2 overflow-hidden">
                                     <User size={16} className="absolute left-3 text-slate-400" />
@@ -539,7 +539,7 @@ export const Copa: React.FC<CopaProps> = ({
                                         className="fixed inset-0 z-40"
                                         onClick={() => setIsCustomerFilterOpen(false)}
                                     />
-                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
+                                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col">
                                         <div className="p-2 border-b border-slate-50 dark:border-zinc-700 bg-slate-50/50 dark:bg-zinc-900/50">
                                             <div className="relative">
                                                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -547,7 +547,7 @@ export const Copa: React.FC<CopaProps> = ({
                                                     type="text"
                                                     autoFocus
                                                     placeholder="Buscar cliente..."
-                                                    className="w-full pl-8 pr-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase placeholder:text-slate-400"
+                                                    className="w-full pl-8 pr-3 py-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase placeholder:text-slate-400"
                                                     value={customerSearchTerm}
                                                     onChange={e => setCustomerSearchTerm(e.target.value)}
                                                     onClick={e => e.stopPropagation()}
@@ -557,7 +557,7 @@ export const Copa: React.FC<CopaProps> = ({
                                         <div className="max-h-60 overflow-y-auto p-1 space-y-1 scrollbar-hide bg-white dark:bg-zinc-800">
                                             <button
                                                 onClick={() => { setFilterCustomerId('all'); setIsCustomerFilterOpen(false); setCustomerSearchTerm(''); }}
-                                                className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase flex items-center justify-between transition-colors ${filterCustomerId === 'all' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400'}`}
+                                                className={`w-full text-left px-3 py-2 rounded-sm text-[10px] font-black uppercase flex items-center justify-between transition-colors ${filterCustomerId === 'all' ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400'}`}
                                             >
                                                 <span>Todas Clientes</span>
                                                 {filterCustomerId === 'all' && <CircleCheck size={14} />}
@@ -568,7 +568,7 @@ export const Copa: React.FC<CopaProps> = ({
                                                     <button
                                                         key={c.id}
                                                         onClick={() => { setFilterCustomerId(c.id); setIsCustomerFilterOpen(false); setCustomerSearchTerm(''); }}
-                                                        className={`w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase flex items-center justify-between transition-colors ${filterCustomerId === c.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400'}`}
+                                                        className={`w-full text-left px-3 py-2 rounded-sm text-[10px] font-black uppercase flex items-center justify-between transition-colors ${filterCustomerId === c.id ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400' : 'hover:bg-slate-50 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400'}`}
                                                     >
                                                         <span className="truncate">{c.name}</span>
                                                         {filterCustomerId === c.id && <CircleCheck size={14} />}
@@ -589,18 +589,18 @@ export const Copa: React.FC<CopaProps> = ({
 
                 {/* KPIs */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-slate-900 text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
+                    <div className="bg-slate-900 text-white p-5 rounded-sm shadow-lg relative overflow-hidden">
                         <div className="relative z-10">
                             <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Custo Total (Copa)</p>
                             <p className="text-2xl font-black mt-1">R$ {totalCost.toFixed(2)}</p>
                         </div>
                         <DollarSign className="absolute right-[-10px] bottom-[-10px] w-24 h-24 text-white opacity-5" />
                     </div>
-                    <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="bg-white dark:bg-zinc-900 p-5 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Média por Cliente</p>
                         <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mt-1">R$ {avgCostPerClient.toFixed(2)}</p>
                     </div>
-                    <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="bg-white dark:bg-zinc-900 p-5 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Valor Referência (Teórico)</p>
                         <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">R$ {totalReferenceValue.toFixed(2)}</p>
                         <p className="text-[8px] text-slate-400 font-bold mt-1">Comparativo de valor percebido</p>
@@ -609,7 +609,7 @@ export const Copa: React.FC<CopaProps> = ({
 
                 {/* TOP ITEMS & RECENT LIST */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 shadow-sm">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 shadow-sm">
                         <h4 className="text-xs font-black uppercase tracking-widest mb-4 text-slate-800 dark:text-white flex items-center gap-2"><TrendingUp size={14} /> Itens Mais Consumidos (Custo)</h4>
                         <div className="space-y-3">
                             {topItems.map((item, idx) => (
@@ -628,14 +628,14 @@ export const Copa: React.FC<CopaProps> = ({
                         </div>
                     </div>
 
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 shadow-sm flex flex-col">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 shadow-sm flex flex-col">
                         <h4 className="text-xs font-black uppercase tracking-widest mb-4 text-slate-800 dark:text-white flex items-center gap-2"><History size={14} /> Últimos Consumos</h4>
                         <div className="flex-1 overflow-y-auto max-h-[300px] scrollbar-hide space-y-2">
                             {filteredLogs.slice().reverse().slice(0, 10).map(log => {
                                 const item = pantryItems.find(i => i.id === log.itemId);
                                 const customer = customers.find(c => c.id === log.customerId);
                                 return (
-                                    <div key={log.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                    <div key={log.id} className="flex justify-between items-center p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <div>
                                             <p className="text-[10px] font-black uppercase text-slate-900 dark:text-white">{item?.name} <span className="text-slate-400">x{log.quantity}</span></p>
                                             <p className="text-[9px] font-bold text-slate-500 uppercase">{customer?.name.split(' ')[0] || 'Anônimo'}</p>
@@ -653,19 +653,19 @@ export const Copa: React.FC<CopaProps> = ({
                 </div>
 
                 {/* DETALHAMENTO DE COMANDAS */}
-                <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 shadow-sm">
                     <h4 className="text-xs font-black uppercase tracking-widest mb-4 text-slate-800 dark:text-white flex items-center gap-2">
                         <ClipboardList size={14} /> Detalhamento de Comandas
                     </h4>
                     <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-hide pr-2">
                         {groupedLogs.map(group => (
-                            <div key={group.id} className="border border-slate-100 dark:border-zinc-800 rounded-2xl overflow-hidden transition-all">
+                            <div key={group.id} className="border border-slate-100 dark:border-zinc-800 rounded-sm overflow-hidden transition-all">
                                 <button
                                     onClick={() => setExpandedCommandId(expandedCommandId === group.id ? null : group.id)}
                                     className={`w-full flex justify-between items-center p-4 transition-colors ${expandedCommandId === group.id ? 'bg-slate-50 dark:bg-zinc-800' : 'bg-white dark:bg-zinc-900 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
                                 >
                                     <div className="text-left flex items-center gap-3">
-                                        <div className={`p-2 rounded-xl ${expandedCommandId === group.id ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-slate-100 dark:bg-zinc-800 text-slate-400'}`}>
+                                        <div className={`p-2 rounded-sm ${expandedCommandId === group.id ? 'bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400' : 'bg-slate-100 dark:bg-zinc-800 text-slate-400'}`}>
                                             <Coffee size={20} />
                                         </div>
                                         <div>
@@ -687,7 +687,7 @@ export const Copa: React.FC<CopaProps> = ({
                                         {group.items.map(log => {
                                             const item = pantryItems.find(i => i.id === log.itemId);
                                             return (
-                                                <div key={log.id} className="flex justify-between items-center text-xs p-2 bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-700 shadow-sm">
+                                                <div key={log.id} className="flex justify-between items-center text-xs p-2 bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-700 shadow-sm">
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-slate-700 dark:text-slate-300 uppercase">{item?.name}</span>
                                                         <span className="bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded text-[9px] font-black text-slate-500">x{log.quantity}</span>
@@ -712,7 +712,7 @@ export const Copa: React.FC<CopaProps> = ({
                 </div>
 
                 {/* NEW CHART SECTION */}
-                <div className="bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 p-6 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 shadow-sm">
                     <h4 className="text-xs font-black uppercase tracking-widest mb-6 text-slate-800 dark:text-white flex items-center gap-2">
                         <TrendingUp size={14} /> Evolução de Consumo
                     </h4>
@@ -747,7 +747,7 @@ export const Copa: React.FC<CopaProps> = ({
 
     const PricesTab = () => (
         <div className="space-y-4 animate-in fade-in">
-            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 flex items-start gap-3">
+            <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-sm border border-amber-200 dark:border-amber-800 flex items-start gap-3">
                 <AlertTriangle className="text-amber-600 dark:text-amber-400 shrink-0" size={20} />
                 <div>
                     <h4 className="text-sm font-black text-amber-900 dark:text-amber-300 uppercase tracking-tight">Regras de Valores</h4>
@@ -758,7 +758,7 @@ export const Copa: React.FC<CopaProps> = ({
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-black tracking-wider border-b border-slate-200 dark:border-zinc-700">
@@ -774,10 +774,10 @@ export const Copa: React.FC<CopaProps> = ({
                             {pantryItems.map(item => (
                                 <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
                                     <td className="px-6 py-4 font-black text-slate-900 dark:text-white uppercase">{item.name}</td>
-                                    <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded-lg text-[9px] font-bold uppercase text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-700">{item.category}</span></td>
+                                    <td className="px-6 py-4"><span className="px-2 py-1 bg-slate-100 dark:bg-zinc-800 rounded-sm text-[9px] font-bold uppercase text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-700">{item.category}</span></td>
                                     <td className="px-6 py-4 text-right font-mono text-slate-500 dark:text-slate-400">R$ {item.costPrice.toFixed(2)}</td>
                                     <td className="px-6 py-4 text-right">
-                                        <span className="font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg">R$ {item.referencePrice.toFixed(2)}</span>
+                                        <span className="font-black text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-sm">R$ {item.referencePrice.toFixed(2)}</span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <button onClick={() => { setEditingItem(item); setIsItemModalOpen(true); setIsCustomCategory(false); }} className="text-slate-400 hover:text-indigo-600 transition-colors p-2"><Edit2 size={16} /></button>
@@ -800,7 +800,7 @@ export const Copa: React.FC<CopaProps> = ({
                     <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de amenidades e custos</p>
                 </div>
                 {/* TABS */}
-                <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto overflow-x-auto scrollbar-hide">
+                <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700 w-full md:w-auto overflow-x-auto scrollbar-hide">
                     {[
                         { id: 'SERVICE', label: 'Atendimentos', icon: Clock },
                         { id: 'STOCK', label: 'Estoque', icon: Package },
@@ -810,7 +810,7 @@ export const Copa: React.FC<CopaProps> = ({
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                            className={`flex-1 md:flex-none px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                         >
                             <tab.icon size={14} /> {tab.label}
                         </button>
@@ -829,7 +829,7 @@ export const Copa: React.FC<CopaProps> = ({
             {/* MODAL: EDIT ITEM (For Stock & Prices) */}
             {isItemModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col">
                         <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
                             <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2"><Package size={18} /> {editingItem ? 'Editar Item' : 'Novo Insumo'}</h3>
                             <button onClick={() => setIsItemModalOpen(false)}><X size={20} /></button>
@@ -837,12 +837,12 @@ export const Copa: React.FC<CopaProps> = ({
                         <form onSubmit={handleSaveItem} className="p-6 space-y-4">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-1">Nome do Item</label>
-                                <input name="name" required defaultValue={editingItem?.name} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500" placeholder="Ex: Café Expresso" />
+                                <input name="name" required defaultValue={editingItem?.name} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500" placeholder="Ex: Café Expresso" />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-1">Unidade</label>
-                                    <input name="unit" required defaultValue={editingItem?.unit} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500" placeholder="un, ml, kg" />
+                                    <input name="unit" required defaultValue={editingItem?.unit} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500" placeholder="un, ml, kg" />
                                 </div>
                                 <div>
                                     <div className="flex justify-between items-center mb-1">
@@ -860,11 +860,11 @@ export const Copa: React.FC<CopaProps> = ({
                                             name="category"
                                             required
                                             defaultValue={editingItem?.category}
-                                            className="w-full bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            className="w-full bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-sm p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
                                             placeholder="Nova Categoria"
                                         />
                                     ) : (
-                                        <select name="category" defaultValue={editingItem?.category || 'Bebida'} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500">
+                                        <select name="category" defaultValue={editingItem?.category || 'Bebida'} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500">
                                             {categories.map(c => <option key={c} value={c}>{c}</option>)}
                                         </select>
                                     )}
@@ -872,20 +872,20 @@ export const Copa: React.FC<CopaProps> = ({
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase mb-1">Estoque Mínimo (Alerta)</label>
-                                <input name="minQuantity" type="number" defaultValue={editingItem?.minQuantity || 10} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
+                                <input name="minQuantity" type="number" defaultValue={editingItem?.minQuantity || 10} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500" />
                             </div>
                             <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-100 dark:border-zinc-800">
                                 <div>
                                     <label className="block text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase mb-1">Custo de Compra (R$)</label>
-                                    <input name="costPrice" type="number" step="0.01" defaultValue={editingItem?.costPrice || 0} className="w-full bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-200 dark:border-rose-800 rounded-xl p-3 text-sm font-bold text-rose-900 dark:text-rose-100 outline-none focus:border-rose-500" />
+                                    <input name="costPrice" type="number" step="0.01" defaultValue={editingItem?.costPrice || 0} className="w-full bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-200 dark:border-rose-800 rounded-sm p-3 text-sm font-bold text-rose-900 dark:text-rose-100 outline-none focus:border-rose-500" />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase mb-1">Valor Referência (R$)</label>
-                                    <input name="referencePrice" type="number" step="0.01" defaultValue={editingItem?.referencePrice || 0} className="w-full bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl p-3 text-sm font-bold text-indigo-900 dark:text-indigo-100 outline-none focus:border-indigo-500" />
+                                    <input name="referencePrice" type="number" step="0.01" defaultValue={editingItem?.referencePrice || 0} className="w-full bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-sm p-3 text-sm font-bold text-indigo-900 dark:text-indigo-100 outline-none focus:border-indigo-500" />
                                 </div>
                             </div>
                             <div className="pt-2">
-                                <button type="submit" className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Salvar Item</button>
+                                <button type="submit" className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">Salvar Item</button>
                             </div>
                         </form>
                     </div>
@@ -895,7 +895,7 @@ export const Copa: React.FC<CopaProps> = ({
             {/* MODAL: CONSUMPTION REGISTER */}
             {isConsumptionModalOpen && selectedAppointment && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                             <div>
                                 <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2"><Coffee size={18} /> Registrar Consumo</h3>
@@ -908,7 +908,7 @@ export const Copa: React.FC<CopaProps> = ({
 
                             {/* HISTÓRICO DESTA SESSÃO (NOVO) */}
                             {currentAppointmentLogs.length > 0 && (
-                                <div className="bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                                <div className="bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-200 dark:border-zinc-700">
                                     <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                         <History size={12} /> Histórico desta sessão
                                     </h4>
@@ -916,7 +916,7 @@ export const Copa: React.FC<CopaProps> = ({
                                         {currentAppointmentLogs.map(log => {
                                             const item = pantryItems.find(i => i.id === log.itemId);
                                             return (
-                                                <div key={log.id} className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-400 bg-white dark:bg-zinc-800 p-2 rounded-lg border border-slate-100 dark:border-zinc-700">
+                                                <div key={log.id} className="flex justify-between items-center text-xs text-slate-600 dark:text-slate-400 bg-white dark:bg-zinc-800 p-2 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                     <span className="font-bold flex items-center gap-2">
                                                         <CircleCheck size={12} className="text-emerald-500" />
                                                         {item?.name} <span className="opacity-50 text-[10px] bg-slate-100 dark:bg-zinc-700 px-1.5 rounded">x{log.quantity}</span>
@@ -931,7 +931,7 @@ export const Copa: React.FC<CopaProps> = ({
 
                             {/* Selected List */}
                             {consumptionSelection.length > 0 && (
-                                <div className="bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-slate-200 dark:border-zinc-700 shadow-sm mb-2">
+                                <div className="bg-white dark:bg-zinc-800 p-3 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm mb-2">
                                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Novos Itens Selecionados</h4>
                                     <div className="space-y-2">
                                         {consumptionSelection.map(sel => {
@@ -956,7 +956,7 @@ export const Copa: React.FC<CopaProps> = ({
                                     <button
                                         key={item.id}
                                         onClick={() => handleAddConsumptionItem(item.id)}
-                                        className="bg-white dark:bg-zinc-800 p-3 rounded-xl border border-slate-200 dark:border-zinc-700 hover:border-indigo-500 hover:shadow-md transition-all text-left group"
+                                        className="bg-white dark:bg-zinc-800 p-3 rounded-sm border border-slate-200 dark:border-zinc-700 hover:border-indigo-500 hover:shadow-md transition-all text-left group"
                                     >
                                         <p className="text-[10px] font-black text-slate-400 uppercase">{item.category}</p>
                                         <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{item.name}</p>
@@ -970,7 +970,7 @@ export const Copa: React.FC<CopaProps> = ({
                             <button
                                 onClick={confirmConsumption}
                                 disabled={consumptionSelection.length === 0}
-                                className="w-full py-4 bg-emerald-600 text-white rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-emerald-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
                                 <Save size={16} /> Confirmar Consumo
                             </button>

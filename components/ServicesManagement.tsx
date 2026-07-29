@@ -130,7 +130,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
 
                 <button
                     onClick={handleAddNew}
-                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-sm text-sm font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
                 >
                     <Plus size={18} /> Novo Serviço
                 </button>
@@ -142,14 +142,14 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                 <input
                     type="text"
                     placeholder="Pesquisar serviço..."
-                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all shadow-sm"
+                    className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs md:text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all shadow-sm"
                     value={searchTerm}
                     onChange={e => setSearchTerm(e.target.value)}
                 />
             </div>
 
             {/* Services List Table */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border-2 border-slate-200 dark:border-zinc-800 overflow-hidden shadow-sm">
+            <div className="bg-white dark:bg-zinc-900 rounded-sm border-2 border-slate-200 dark:border-zinc-800 overflow-hidden shadow-sm">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -180,7 +180,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                         </td>
                                         <td className="p-5 text-center">
                                             {service.category ? (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-lg border border-slate-200 dark:border-zinc-700">
+                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-sm border border-slate-200 dark:border-zinc-700">
                                                     <Tag size={10} /> {service.category}
                                                 </span>
                                             ) : (
@@ -201,14 +201,14 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                             <div className="flex items-center justify-end gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                                                 <button
                                                     onClick={() => handleEdit(service)}
-                                                    className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all"
+                                                    className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-sm transition-all"
                                                     title="Editar Serviço"
                                                 >
                                                     <Edit2 size={16} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(service.id)}
-                                                    className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-xl transition-all"
+                                                    className="p-2 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/30 rounded-sm transition-all"
                                                     title="Excluir Serviço"
                                                 >
                                                     <Trash2 size={16} />
@@ -237,7 +237,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
             {/* ADD/EDIT MODAL */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 border-2 border-black dark:border-zinc-700 max-h-[90vh] flex flex-col">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-sm shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 border-2 border-black dark:border-zinc-700 max-h-[90vh] flex flex-col">
                         <div className="px-6 py-5 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-950 dark:bg-black text-white flex-shrink-0">
                             <h3 className="font-black text-base md:text-lg uppercase tracking-tight flex items-center gap-2">
                                 {editingService ? <Edit2 size={20} className="text-indigo-400" /> : <Plus size={20} className="text-indigo-400" />}
@@ -254,7 +254,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                     required autoFocus
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-400"
+                                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-4 text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-400"
                                     placeholder="Ex: Manicure Completa"
                                 />
                             </div>
@@ -271,7 +271,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                                 autoFocus
                                                 value={formData.category || ''}
                                                 onChange={e => setFormData({ ...formData, category: e.target.value })}
-                                                className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-400"
+                                                className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all placeholder:text-slate-400"
                                                 placeholder="Digite o nome da nova categoria..."
                                             />
                                             <button
@@ -280,7 +280,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                                     setIsCustomCategory(false);
                                                     setFormData({ ...formData, category: '' });
                                                 }}
-                                                className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl border-2 border-slate-200 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"
+                                                className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-sm border-2 border-slate-200 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-700 transition-colors"
                                                 title="Voltar para lista"
                                             >
                                                 <X size={20} />
@@ -298,7 +298,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                                         setFormData({ ...formData, category: e.target.value });
                                                     }
                                                 }}
-                                                className="w-full pl-10 pr-10 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all appearance-none cursor-pointer"
+                                                className="w-full pl-10 pr-10 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all appearance-none cursor-pointer"
                                             >
                                                 <option value="">Selecione ou Crie...</option>
                                                 {Array.from(new Set(services.map(s => s.category).filter(Boolean))).sort().map(cat => (
@@ -325,7 +325,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                             required
                                             value={formData.price}
                                             onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                                            className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-lg font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all"
+                                            className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-lg font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all"
                                         />
                                     </div>
                                 </div>
@@ -339,7 +339,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                             required
                                             value={formData.durationMinutes}
                                             onChange={e => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })}
-                                            className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-lg font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all"
+                                            className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-lg font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white outline-none transition-all"
                                         />
                                     </div>
                                 </div>
@@ -347,13 +347,13 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
 
                             {/* HISTORY SECTION - ONLY VISIBLE IF HISTORY EXISTS */}
                             {editingService && editingService.priceHistory && editingService.priceHistory.length > 0 && (
-                                <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[1.5rem] border-2 border-slate-100 dark:border-zinc-700">
+                                <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-sm border-2 border-slate-100 dark:border-zinc-700">
                                     <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 mb-3">
                                         <History size={14} className="text-indigo-500" /> Histórico de Preços Anteriores
                                     </h4>
                                     <div className="space-y-2 max-h-32 overflow-y-auto pr-2 scrollbar-hide">
                                         {editingService.priceHistory.slice().reverse().map((h, idx) => (
-                                            <div key={idx} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-900 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700 shadow-sm">
+                                            <div key={idx} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-900 p-2.5 rounded-sm border border-slate-100 dark:border-zinc-700 shadow-sm">
                                                 <div>
                                                     <p className="font-black text-slate-950 dark:text-white flex items-center gap-1.5">
                                                         <TrendingUp size={12} className="text-rose-500" />
@@ -361,7 +361,7 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                                     </p>
                                                     <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{h.note || 'Alteração de preço'}</p>
                                                 </div>
-                                                <span className="font-bold text-slate-500 text-[10px] bg-slate-50 dark:bg-zinc-800 px-2 py-1 rounded-lg border border-slate-100 dark:border-zinc-700">
+                                                <span className="font-bold text-slate-500 text-[10px] bg-slate-50 dark:bg-zinc-800 px-2 py-1 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                     {new Date(h.date).toLocaleDateString('pt-BR')}
                                                 </span>
                                             </div>
@@ -374,13 +374,13 @@ export const ServicesManagement: React.FC<ServicesManagementProps> = ({ services
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 py-4 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors"
+                                    className="flex-1 py-4 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
                                     <Check size={18} /> Salvar
                                 </button>

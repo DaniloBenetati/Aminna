@@ -976,7 +976,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                 <div className="flex flex-col md:flex-row items-center gap-4">
                     <button
                         onClick={handleAddNew}
-                        className="flex items-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-sm font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
+                        className="flex items-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-sm text-sm font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all"
                     >
                         <Plus size={18} /> Nova Profissional
                     </button>
@@ -988,46 +988,46 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
             {/* Indicators / Performance Grid */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl w-fit mb-3"><Briefcase size={20} /></div>
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-sm w-fit mb-3"><Briefcase size={20} /></div>
                     <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Total Equipe</p>
                     <p className="text-xl md:text-2xl font-black text-slate-950 dark:text-white">{stats.total}</p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl w-fit mb-3"><TrendingUp size={20} /></div>
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-sm w-fit mb-3"><TrendingUp size={20} /></div>
                     <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Taxa Atividade</p>
                     <p className="text-xl md:text-2xl font-black text-emerald-800 dark:text-emerald-400">{((stats.active / stats.total) * 100).toFixed(0)}%</p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <div className="p-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl w-fit mb-3"><Award size={20} /></div>
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="p-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-sm w-fit mb-3"><Award size={20} /></div>
                     <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Destaque Produção</p>
                     <p className="text-sm md:text-base font-black text-slate-950 dark:text-white truncate leading-tight mt-1">{stats.topPro}</p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
-                    <div className="p-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-xl w-fit mb-3"><Star size={20} /></div>
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
+                    <div className="p-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-sm w-fit mb-3"><Star size={20} /></div>
                     <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Atendimentos Mês</p>
                     <p className="text-xl md:text-2xl font-black text-purple-900 dark:text-purple-400">{stats.totalCompleted}</p>
                 </div>
             </div>
 
             {/* Filter & Search Bar */}
-            <div className="bg-white dark:bg-zinc-900 p-3 rounded-3xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row gap-4">
+            <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row gap-4">
                 <div className="flex-1 relative group">
                     <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400" />
                     <input
                         type="text"
                         placeholder="Buscar por nome ou especialidade..."
-                        className="w-full pl-11 pr-4 py-3 outline-none text-sm font-black text-slate-950 dark:text-white placeholder-slate-500 bg-slate-50/50 dark:bg-zinc-800 rounded-2xl border-2 border-transparent focus:border-zinc-950 dark:focus:border-white transition-all"
+                        className="w-full pl-11 pr-4 py-3 outline-none text-sm font-black text-slate-950 dark:text-white placeholder-slate-500 bg-slate-50/50 dark:bg-zinc-800 rounded-sm border-2 border-transparent focus:border-zinc-950 dark:focus:border-white transition-all"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                <div className="flex p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700">
                     {(['all', 'active', 'inactive'] as const).map(f => (
                         <button
                             key={f}
                             onClick={() => setStatusFilter(f)}
-                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${statusFilter === f ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-sm transition-all ${statusFilter === f ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                         >
                             {f === 'all' ? 'Todas' : f === 'active' ? 'Ativas' : 'Inativas'}
                         </button>
@@ -1036,7 +1036,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             </div>
 
             {/* Desktop Table Layout (Hidden on Mobile) */}
-            <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-3xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
+            <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left border-collapse">
                         <thead className="text-[10px] text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50/80 dark:bg-zinc-800/80 border-b border-slate-100 dark:border-zinc-700">
@@ -1081,7 +1081,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         <td className="px-6 py-4">
                                             <div className="flex flex-wrap gap-1 max-w-[250px]">
                                                 {(provider.specialties || [provider.specialty]).slice(0, 3).map((spec, i) => (
-                                                    <span key={i} className="bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-slate-200 px-2 py-1 rounded-lg text-[9px] font-black uppercase border border-slate-300 dark:border-zinc-600">
+                                                    <span key={i} className="bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-slate-200 px-2 py-1 rounded-sm text-[9px] font-black uppercase border border-slate-300 dark:border-zinc-600">
                                                         {spec}
                                                     </span>
                                                 ))}
@@ -1110,7 +1110,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <div className="flex items-center justify-center">
-                                                <div className="flex bg-slate-100 dark:bg-zinc-800 rounded-xl overflow-hidden mr-2">
+                                                <div className="flex bg-slate-100 dark:bg-zinc-800 rounded-sm overflow-hidden mr-2">
                                                     <button
                                                         onClick={(e) => handleMoveUp(filteredProviders.indexOf(provider), e)}
                                                         disabled={filteredProviders.indexOf(provider) === 0}
@@ -1131,14 +1131,14 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                         setSelectedDocProviderId(provider.id);
                                                         setActiveTab('regulamento');
                                                     }}
-                                                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all active:scale-90"
+                                                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-sm transition-all active:scale-90"
                                                     title="Ver Regulamento"
                                                 >
                                                     <FileText size={18} />
                                                 </button>
                                                 <button
                                                     onClick={() => handleEdit(provider)}
-                                                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-xl transition-all active:scale-90"
+                                                    className="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-900 dark:hover:text-white hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-sm transition-all active:scale-90"
                                                 >
                                                     <Edit2 size={18} />
                                                 </button>
@@ -1160,7 +1160,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                         <div
                             key={provider.id}
                             onClick={() => handleEdit(provider)}
-                            className={`bg-white dark:bg-zinc-900 p-4 rounded-3xl border shadow-sm transition-all active:scale-[0.98] flex flex-col gap-4 ${provider.active ? 'border-slate-200 dark:border-zinc-800' : 'border-slate-100 dark:border-zinc-800 opacity-70 bg-slate-50/50 dark:bg-zinc-800/50'}`}
+                            className={`bg-white dark:bg-zinc-900 p-4 rounded-sm border shadow-sm transition-all active:scale-[0.98] flex flex-col gap-4 ${provider.active ? 'border-slate-200 dark:border-zinc-800' : 'border-slate-100 dark:border-zinc-800 opacity-70 bg-slate-50/50 dark:bg-zinc-800/50'}`}
                         >
                             <div className="flex justify-between items-start">
                                 <div className="flex items-center gap-3">
@@ -1168,7 +1168,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         src={provider.avatar}
                                         name={provider.name}
                                         size="w-14 h-14"
-                                        className={`rounded-2xl border-2 ${provider.active ? 'border-indigo-100 dark:border-indigo-900 shadow-md' : 'border-slate-200 dark:border-zinc-700 grayscale'}`}
+                                        className={`rounded-sm border-2 ${provider.active ? 'border-indigo-100 dark:border-indigo-900 shadow-md' : 'border-slate-200 dark:border-zinc-700 grayscale'}`}
                                     />
                                     <div className="min-w-0">
                                         <h4 className={`font-black text-base truncate ${!provider.active ? 'text-slate-600 dark:text-slate-500 line-through' : 'text-slate-950 dark:text-white'}`}>{provider.name}</h4>
@@ -1186,24 +1186,24 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                             </div>
 
                             <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-50 dark:border-zinc-800">
-                                <div className="bg-slate-50 dark:bg-zinc-800 p-2 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                <div className="bg-slate-50 dark:bg-zinc-800 p-2 rounded-sm border border-slate-100 dark:border-zinc-700">
                                     <p className="text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase leading-none">Produção Total</p>
                                     <p className="text-xs font-black text-slate-950 dark:text-white mt-1">{proStats} Atendimentos</p>
                                 </div>
-                                <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-2 rounded-2xl border border-indigo-100 dark:border-indigo-800 flex items-center justify-center relative">
+                                <div className="bg-indigo-50/50 dark:bg-indigo-900/20 p-2 rounded-sm border border-indigo-100 dark:border-indigo-800 flex items-center justify-center relative">
                                     {provider.vacationStart && provider.vacationEnd && (
                                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-amber-400 text-amber-950 text-[7px] font-black uppercase rounded-full shadow-sm border border-amber-200 z-10 flex items-center gap-1">
                                             <Calendar size={8} /> Férias
                                         </div>
                                     )}
-                                    <div className="flex gap-1 bg-white dark:bg-zinc-900 rounded-lg">
+                                    <div className="flex gap-1 bg-white dark:bg-zinc-900 rounded-sm">
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
                                                 setSelectedDocProviderId(provider.id);
                                                 setActiveTab('regulamento');
                                             }}
-                                            className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-500 rounded-lg"
+                                            className="p-1.5 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-indigo-500 rounded-sm"
                                         >
                                             <FileText size={14} />
                                         </button>
@@ -1234,7 +1234,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                     );
                 })}
                 {filteredProviders.length === 0 && (
-                    <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                    <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-sm border-2 border-dashed border-slate-100 dark:border-zinc-800">
                         <Briefcase size={48} className="mx-auto text-slate-200 dark:text-zinc-700 mb-2" />
                         <p className="text-sm font-black text-slate-400 dark:text-zinc-600 uppercase">Nenhum talento encontrado</p>
                     </div>
@@ -1243,11 +1243,11 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                 </>
             ) : (
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 no-print bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-xl">
+                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-8 no-print bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-xl">
                         <div className="flex items-center gap-4">
                             <button
                                 onClick={() => setActiveTab('equipe')}
-                                className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-xl hover:bg-slate-200 transition-colors"
+                                className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm hover:bg-slate-200 transition-colors"
                             >
                                 <ArrowUp size={20} className="-rotate-90" />
                             </button>
@@ -1263,7 +1263,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 <select
                                     value={selectedDocProviderId}
                                     onChange={(e) => setSelectedDocProviderId(e.target.value)}
-                                    className="bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl py-2 pl-9 pr-8 text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none focus:border-indigo-500 appearance-none"
+                                    className="bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm py-2 pl-9 pr-8 text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none focus:border-indigo-500 appearance-none"
                                 >
                                     <option value="">Documento Geral</option>
                                     {providers.map(p => (
@@ -1274,7 +1274,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
                             <button
                                 onClick={handlePrintRegulation}
-                                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all active:scale-95"
+                                className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg transition-all active:scale-95"
                             >
                                 <Printer size={16} /> Imprimir (Nova Guia)
                             </button>
@@ -1361,7 +1361,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
                                 {/* Conteúdo do Documento */}
                                 <div className="p-8 md:p-16 space-y-10 text-slate-800 dark:text-slate-200 font-medium leading-relaxed bg-white dark:bg-zinc-900 shadow-sm print:shadow-none">
-                                    <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 border-l-4 border-slate-900 dark:border-white rounded-xl text-[10px]">
+                                    <div className="p-4 bg-slate-50 dark:bg-zinc-800/50 border-l-4 border-slate-900 dark:border-white rounded-sm text-[10px]">
                                         <p className="font-bold text-slate-900 dark:text-slate-200 italic">
                                             <span className="uppercase font-black not-italic inline-block mr-1">Importante:</span>
                                             Este Regulamento Interno complementa o Contrato de Parceria Profissional homologado junto ao sindicato. Em caso de divergência, prevalecerão as cláusulas do contrato sindical assinado entre as partes.
@@ -1577,7 +1577,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             {/* Edit/Add Modal - Adapted for Mobile as Bottom Sheet */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[95vh]">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[95vh]">
                         <div className="px-6 py-4 md:py-5 border-b border-zinc-100 dark:border-zinc-800 flex justify-between items-center bg-zinc-950 dark:bg-black text-white flex-shrink-0">
                             <h3 className="font-black text-base md:text-lg uppercase tracking-tight flex items-center gap-2">
                                 <User size={20} className="text-indigo-400" />
@@ -1589,9 +1589,9 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                         </div>
 
                         <form onSubmit={handleSave} className="p-6 md:p-8 space-y-6 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900">
-                            <div className={`p-4 rounded-3xl border-2 transition-all flex items-center justify-between ${formData.active ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-60'}`}>
+                            <div className={`p-4 rounded-sm border-2 transition-all flex items-center justify-between ${formData.active ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 opacity-60'}`}>
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-xl ${formData.active ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white'}`}>
+                                    <div className={`p-2 rounded-sm ${formData.active ? 'bg-emerald-500 text-white' : 'bg-slate-500 text-white'}`}>
                                         {formData.active ? <CircleCheck size={24} /> : <CircleX size={24} />}
                                     </div>
                                     <div>
@@ -1609,7 +1609,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                             </div>
 
                             {/* VACATION PERIOD SECTION */}
-                            <div className="bg-amber-50/50 dark:bg-amber-900/10 p-5 rounded-[2rem] border-2 border-amber-100 dark:border-amber-900/30 space-y-4">
+                            <div className="bg-amber-50/50 dark:bg-amber-900/10 p-5 rounded-sm border-2 border-amber-100 dark:border-amber-900/30 space-y-4">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-[10px] font-black text-amber-900 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
                                         <Calendar size={14} /> Período de Férias
@@ -1631,7 +1631,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             type="date"
                                             value={formData.vacationStart || ''}
                                             onChange={e => setFormData({ ...formData, vacationStart: e.target.value })}
-                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-100 dark:border-amber-900/30 rounded-xl px-4 py-2.5 text-xs font-black text-amber-950 dark:text-white outline-none focus:border-amber-400 transition-all font-sans"
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-100 dark:border-amber-900/30 rounded-sm px-4 py-2.5 text-xs font-black text-amber-950 dark:text-white outline-none focus:border-amber-400 transition-all font-sans"
                                         />
                                     </div>
                                     <div className="space-y-1.5">
@@ -1640,7 +1640,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             type="date"
                                             value={formData.vacationEnd || ''}
                                             onChange={e => setFormData({ ...formData, vacationEnd: e.target.value })}
-                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-100 dark:border-amber-900/30 rounded-xl px-4 py-2.5 text-xs font-black text-amber-950 dark:text-white outline-none focus:border-amber-400 transition-all font-sans"
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-100 dark:border-amber-900/30 rounded-sm px-4 py-2.5 text-xs font-black text-amber-950 dark:text-white outline-none focus:border-amber-400 transition-all font-sans"
                                         />
                                     </div>
                                 </div>
@@ -1650,7 +1650,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                             </div>
 
                             {/* DIAS DE FOLGA AVULSOS SECTION */}
-                            <div className="bg-slate-50/50 dark:bg-zinc-800/50 p-5 rounded-[2rem] border-2 border-slate-100 dark:border-zinc-700/50 space-y-4">
+                            <div className="bg-slate-50/50 dark:bg-zinc-800/50 p-5 rounded-sm border-2 border-slate-100 dark:border-zinc-700/50 space-y-4">
                                 <h4 className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest flex items-center gap-2">
                                     <Calendar size={14} /> Dias de Folga Específicos
                                 </h4>
@@ -1661,7 +1661,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         <input
                                             type="date"
                                             id="new_day_off_input"
-                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-2 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all font-sans"
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm px-4 py-2 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all font-sans"
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     e.preventDefault();
@@ -1683,7 +1683,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                 input.value = '';
                                             }
                                         }}
-                                        className="h-[38px] px-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                                        className="h-[38px] px-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
                                     >
                                         Adicionar
                                     </button>
@@ -1693,7 +1693,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 {(formData.daysOff && formData.daysOff.length > 0) ? (
                                     <div className="flex flex-wrap gap-2 pt-2">
                                         {formData.daysOff.map(dateStr => (
-                                            <div key={dateStr} className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg px-2.5 py-1.5 shadow-sm">
+                                            <div key={dateStr} className="flex items-center gap-1 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm px-2.5 py-1.5 shadow-sm">
                                                 <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300">
                                                     {new Date(dateStr + 'T12:00:00Z').toLocaleDateString('pt-BR')}
                                                 </span>
@@ -1722,7 +1722,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         size="w-24 h-24"
                                         className="border-4 border-white dark:border-zinc-900 shadow-2xl"
                                     />
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm" onClick={() => document.getElementById('avatar-file-input')?.click()}>
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer backdrop-blur-sm" onClick={() => document.getElementById('avatar-file-input')?.click()}>
                                         <Camera size={24} className="text-white drop-shadow-md" />
                                     </div>
                                 </div>
@@ -1748,7 +1748,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                             />
 
                             {/* AVATAR PRESETS */}
-                            <div className="mb-6 bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                            <div className="mb-6 bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-700">
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 text-center">Escolha um Avatar</label>
                                 <div className="flex flex-wrap justify-center gap-2">
                                     {[
@@ -1796,7 +1796,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             type="button"
                                             onClick={() => document.getElementById('avatar-file-input')?.click()}
                                             disabled={isUploading}
-                                            className="w-full flex items-center justify-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-4 text-xs font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all disabled:opacity-50"
+                                            className="w-full flex items-center justify-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-sm p-4 text-xs font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all disabled:opacity-50"
                                         >
                                             <Upload size={16} />
                                             {isUploading ? `Enviando (${uploadProgress}%)` : 'Subir Foto'}
@@ -1806,7 +1806,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             type="button"
                                             onClick={() => document.getElementById('avatar-camera-input')?.click()}
                                             disabled={isUploading}
-                                            className="w-full flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-100 dark:border-emerald-900/30 rounded-2xl p-4 text-xs font-black uppercase tracking-widest hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all disabled:opacity-50"
+                                            className="w-full flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border-2 border-emerald-100 dark:border-emerald-900/30 rounded-sm p-4 text-xs font-black uppercase tracking-widest hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all disabled:opacity-50"
                                         >
                                             <Camera size={16} />
                                             {isUploading ? `Enviando (${uploadProgress}%)` : 'Usar Câmera'}
@@ -1828,7 +1828,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             id="avatar-url-input"
                                             value={(formData.avatar && !formData.avatar.includes('dicebear.com') && !formData.avatar.includes('/product-images/')) ? formData.avatar : ''}
                                             onChange={e => setFormData({ ...formData, avatar: e.target.value })}
-                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400"
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-4 text-sm font-black text-slate-950 dark:text-white focus:border-indigo-600 outline-none transition-all placeholder:text-slate-400"
                                             placeholder="Ou cole aqui o link da foto (ex: instagram, google drive, etc)"
                                         />
                                     </div>
@@ -1858,7 +1858,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
                                                 setFormData({ ...formData, name: newName, nickname: updatedNickname });
                                             }}
-                                            className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
+                                            className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-4 text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
                                             placeholder="Ex: Maria Carolina Silva"
                                         />
                                     </div>
@@ -1871,7 +1871,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             required
                                             value={formData.nickname}
                                             onChange={e => setFormData({ ...formData, nickname: e.target.value })}
-                                            className="w-full bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400"
+                                            className="w-full bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-900/30 rounded-sm p-4 text-sm font-black text-slate-950 dark:text-white focus:border-indigo-500 outline-none transition-all placeholder:text-slate-400"
                                             placeholder="Ex: Mari"
                                         />
                                         <p className="text-[9px] font-bold text-slate-400 mt-1.5 ml-1">
@@ -1888,7 +1888,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             required
                                             value={formData.specialty}
                                             onChange={e => setFormData({ ...formData, specialty: e.target.value })}
-                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
+                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
                                             placeholder="Ex: Cabeleireira, Manicure, Esteticista..."
                                         />
                                         <datalist id="categories-list">
@@ -1907,7 +1907,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         {/* Original Dropdown removed in favor of integrated filter */}
                                     </label>
 
-                                    <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700 space-y-4">
+                                    <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-sm border border-slate-200 dark:border-zinc-700 space-y-4">
                                         {/* Search & Select Interface */}
                                         <div className="space-y-3">
                                             <div className="flex gap-2">
@@ -1917,7 +1917,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                     <select
                                                         value={filterCategory}
                                                         onChange={e => setFilterCategory(e.target.value)}
-                                                        className="w-full pl-9 pr-8 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black uppercase text-slate-700 dark:text-slate-300 outline-none focus:border-indigo-500 appearance-none cursor-pointer transition-all"
+                                                        className="w-full pl-9 pr-8 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black uppercase text-slate-700 dark:text-slate-300 outline-none focus:border-indigo-500 appearance-none cursor-pointer transition-all"
                                                     >
                                                         <option value="">Todas</option>
                                                         {uniqueCategories.map(cat => (
@@ -1933,7 +1933,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                     <input
                                                         type="text"
                                                         placeholder="Buscar serviço..."
-                                                        className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-600 transition-all placeholder:text-slate-400"
+                                                        className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-600 transition-all placeholder:text-slate-400"
                                                         value={serviceAddSearch}
                                                         onChange={e => setServiceAddSearch(e.target.value)}
                                                     />
@@ -1945,14 +1945,14 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                 <button
                                                     type="button"
                                                     onClick={() => handleAddGroup(filterCategory)}
-                                                    className="w-full py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center gap-2"
+                                                    className="w-full py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800 rounded-sm text-[10px] font-black uppercase tracking-wider hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center gap-2"
                                                 >
                                                     <Layers size={12} /> Adicionar Todos de {filterCategory}
                                                 </button>
                                             )}
 
                                             {/* Scrollable List of Available Services */}
-                                            <div className="max-h-40 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl p-2">
+                                            <div className="max-h-40 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-sm p-2">
                                                 <div className="flex flex-wrap gap-2">
                                                     {availableServices
                                                         .filter(s => !formData.specialties?.includes(s))
@@ -1970,7 +1970,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                                 key={spec}
                                                                 type="button"
                                                                 onClick={() => addSpecialty(spec)}
-                                                                className="px-3 py-1.5 bg-slate-50 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-zinc-700 rounded-lg text-[10px] font-black uppercase transition-all flex items-center gap-1 group"
+                                                                className="px-3 py-1.5 bg-slate-50 dark:bg-zinc-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black uppercase transition-all flex items-center gap-1 group"
                                                             >
                                                                 <Plus size={12} className="opacity-0 group-hover:opacity-100 -ml-1 transition-opacity" />
                                                                 {spec}
@@ -1998,12 +1998,12 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                     const customDur = formData.customDurations?.[spec];
 
                                                     return (
-                                                        <div key={spec} className="flex items-center justify-between bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2.5 rounded-xl animate-in zoom-in duration-200 shadow-sm">
+                                                        <div key={spec} className="flex items-center justify-between bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2.5 rounded-sm animate-in zoom-in duration-200 shadow-sm">
                                                             <div className="flex items-center gap-2 overflow-hidden">
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => removeSpecialty(spec)}
-                                                                    className="bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 p-1.5 rounded-lg hover:bg-rose-100 transition-colors flex-shrink-0"
+                                                                    className="bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 p-1.5 rounded-sm hover:bg-rose-100 transition-colors flex-shrink-0"
                                                                 >
                                                                     <X size={14} />
                                                                 </button>
@@ -2024,7 +2024,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                                             else newDurs[spec] = val;
                                                                             setFormData({ ...formData, customDurations: newDurs });
                                                                         }}
-                                                                        className="w-20 pl-8 pr-2 py-1.5 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-lg text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-600 transition-all"
+                                                                        className="w-20 pl-8 pr-2 py-1.5 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-600 transition-all"
                                                                         title="Duração personalizada (minutos)"
                                                                     />
                                                                 </div>
@@ -2051,7 +2051,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             required
                                             value={formData.birthDate || ''}
                                             onChange={e => setFormData({ ...formData, birthDate: e.target.value })}
-                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
+                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
                                         />
                                     </div>
                                 </div>
@@ -2067,7 +2067,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                     key={day.id}
                                                     type="button"
                                                     onClick={() => toggleWorkDay(day.id)}
-                                                    className={`flex-1 py-3 rounded-xl border-2 transition-all text-sm font-black uppercase ${isSelected
+                                                    className={`flex-1 py-3 rounded-sm border-2 transition-all text-sm font-black uppercase ${isSelected
                                                         ? 'bg-indigo-600 border-indigo-600 text-white shadow-md'
                                                         : 'bg-slate-50 dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:border-slate-300 dark:hover:border-zinc-600'
                                                         }`}
@@ -2087,7 +2087,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             type="tel"
                                             value={formData.phone}
                                             onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all"
+                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all"
                                             placeholder="(11) 9...."
                                         />
                                     </div>
@@ -2106,7 +2106,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             required
                                             value={formData.commissionRate}
                                             onChange={e => setFormData({ ...formData, commissionRate: parseFloat(e.target.value) })}
-                                            className="w-full pl-11 pr-4 py-4 bg-indigo-50/50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl text-sm font-black text-indigo-950 dark:text-indigo-300 focus:border-indigo-600 focus:ring-0 outline-none transition-all"
+                                            className="w-full pl-11 pr-4 py-4 bg-indigo-50/50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-sm text-sm font-black text-indigo-950 dark:text-indigo-300 focus:border-indigo-600 focus:ring-0 outline-none transition-all"
                                         />
                                     </div>
                                     <p className="text-[8px] font-bold text-indigo-600 dark:text-indigo-500 mt-1">
@@ -2114,16 +2114,16 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                     </p>
                                 </div>
 
-                                <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border-2 border-slate-100 dark:border-zinc-700/50 flex flex-col justify-center">
+                                <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-sm border-2 border-slate-100 dark:border-zinc-700/50 flex flex-col justify-center">
                                     <h4 className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
                                         <Clock size={14} className="text-indigo-500" /> Regra de Repasse
                                     </h4>
                                     <div className="space-y-2">
-                                        <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-2 px-3 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                        <div className="flex justify-between items-center bg-white dark:bg-zinc-900 p-2 px-3 rounded-sm border border-slate-100 dark:border-zinc-700">
                                             <span className="text-[9px] font-black text-slate-500 uppercase">Fechamento</span>
                                             <span className="text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-tighter">Quinzenal</span>
                                         </div>
-                                        <div className="flex justify-between items-center bg-indigo-50/50 dark:bg-indigo-900/20 p-2 px-3 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                                        <div className="flex justify-between items-center bg-indigo-50/50 dark:bg-indigo-900/20 p-2 px-3 rounded-sm border border-indigo-100 dark:border-indigo-800">
                                             <span className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase">Pagamentos</span>
                                             <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-300 uppercase tracking-tighter">Dia 05 e Dia 20</span>
                                         </div>
@@ -2137,7 +2137,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             <History size={12} /> Motivo da Alteração de Comissão
                                         </label>
                                         <textarea
-                                            className="w-full bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-2xl p-4 text-sm font-black text-slate-950 dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-amber-300 resize-none h-20"
+                                            className="w-full bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 rounded-sm p-4 text-sm font-black text-slate-950 dark:text-white focus:border-amber-500 outline-none transition-all placeholder:text-amber-300 resize-none h-20"
                                             placeholder="Ex: Promoção de cargo, reajuste anual..."
                                             value={commissionChangeReason}
                                             onChange={e => setCommissionChangeReason(e.target.value)}
@@ -2154,7 +2154,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             type="text"
                                             value={formData.pixKey}
                                             onChange={e => setFormData({ ...formData, pixKey: e.target.value })}
-                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
+                                            className="w-full pl-11 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-zinc-950 dark:focus:border-white focus:ring-0 outline-none transition-all placeholder:text-slate-400"
                                             placeholder="CPF, Celular ou E-mail"
                                         />
                                     </div>
@@ -2162,7 +2162,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                             </div>
 
                             {/* FISCAL DATA SECTION - NFSe / Salão Parceiro */}
-                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 p-5 rounded-3xl border-2 border-emerald-200 dark:border-emerald-800 mt-6">
+                            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 p-5 rounded-sm border-2 border-emerald-200 dark:border-emerald-800 mt-6">
                                 <h4 className="text-xs font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-2 flex items-center gap-2">
                                     <Briefcase size={14} /> Dados Fiscais - NFSe (Salão Parceiro SP)
                                 </h4>
@@ -2179,7 +2179,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             type="text"
                                             value={formData.fiscalCnpj || ''}
                                             onChange={e => setFormData({ ...formData, fiscalCnpj: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
                                             placeholder="XX.XXX.XXX/XXXX-XX"
                                             maxLength={18}
                                         />
@@ -2193,7 +2193,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                             type="text"
                                             value={formData.fiscalMunicipalRegistration || ''}
                                             onChange={e => setFormData({ ...formData, fiscalMunicipalRegistration: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
                                             placeholder="Ex: 12345678"
                                         />
                                     </div>
@@ -2207,7 +2207,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                 type="text"
                                                 value={formData.fiscalSocialName || ''}
                                                 onChange={e => setFormData({ ...formData, fiscalSocialName: e.target.value })}
-                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
                                                 placeholder="Se vazio, usa o nome do perfil"
                                             />
                                         </div>
@@ -2219,7 +2219,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                 type="text"
                                                 value={formData.fiscalFantasyName || ''}
                                                 onChange={e => setFormData({ ...formData, fiscalFantasyName: e.target.value })}
-                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
                                                 placeholder="Nome comercial da profissional"
                                             />
                                         </div>
@@ -2241,7 +2241,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                     step="0.01"
                                                     value={formData.fiscalDasAmount || ''}
                                                     onChange={e => setFormData({ ...formData, fiscalDasAmount: parseFloat(e.target.value) || 0 })}
-                                                    className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                                    className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
                                                     placeholder="0,00"
                                                 />
                                             </div>
@@ -2257,7 +2257,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                                     step="0.01"
                                                     value={formData.fiscalOtherDiscounts || ''}
                                                     onChange={e => setFormData({ ...formData, fiscalOtherDiscounts: parseFloat(e.target.value) || 0 })}
-                                                    className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
+                                                    className="w-full pl-9 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-sm text-sm font-black text-slate-950 dark:text-white focus:border-emerald-500 outline-none transition-all placeholder:text-emerald-300"
                                                     placeholder="0,00"
                                                 />
                                             </div>
@@ -2288,7 +2288,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 </div>
 
                                 {formData.fiscalCnpj && (
-                                    <div className="mt-3 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                                    <div className="mt-3 p-3 bg-white dark:bg-zinc-900 rounded-sm border border-emerald-200 dark:border-emerald-800">
                                         <p className="text-[9px] font-black text-emerald-800 dark:text-emerald-400 uppercase mb-1">
                                             ✓ Dados fiscais serão salvos para emissão de NFSe
                                         </p>
@@ -2301,13 +2301,13 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
                             {/* Display Commission History if available */}
                             {editingProvider && editingProvider.commissionHistory && editingProvider.commissionHistory.length > 0 && (
-                                <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border-2 border-slate-100 dark:border-zinc-700 mt-2">
+                                <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-sm border-2 border-slate-100 dark:border-zinc-700 mt-2">
                                     <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                                         <History size={12} /> Histórico de Comissões
                                     </h4>
                                     <div className="space-y-2 max-h-32 overflow-y-auto pr-2 scrollbar-hide">
                                         {editingProvider.commissionHistory.map((hist, idx) => (
-                                            <div key={idx} className="flex justify-between items-start text-xs bg-white dark:bg-zinc-900 p-3 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                            <div key={idx} className="flex justify-between items-start text-xs bg-white dark:bg-zinc-900 p-3 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                 <div>
                                                     <p className="font-black text-slate-900 dark:text-white">{(hist.rate * 100).toFixed(0)}%</p>
                                                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase mt-0.5">{hist.note}</p>
@@ -2323,13 +2323,13 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 py-4 text-slate-800 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors"
+                                    className="flex-1 py-4 text-slate-800 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
                                     <CircleCheck size={18} /> Salvar Cadastro
                                 </button>
@@ -2342,7 +2342,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
             {/* INACTIVATION CONFLICT MODAL */}
             {inactivationData && (
                 <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 bg-amber-400 text-amber-950 flex justify-between items-center flex-shrink-0 gap-4">
                             <h3 className="font-black text-[11px] md:text-sm uppercase tracking-widest flex items-center gap-2 min-w-0">
                                 <AlertTriangle size={18} className="flex-shrink-0" />
@@ -2358,7 +2358,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
 
                             <div className="space-y-3">
                                 {inactivationData.appointments.map(app => (
-                                    <div key={app.id} className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 shadow-sm flex flex-col gap-2">
+                                    <div key={app.id} className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm flex flex-col gap-2">
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <div className="font-black text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
@@ -2374,7 +2374,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                                         <div className="relative mt-1">
                                             <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                             <select
-                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-xl py-2 pl-9 pr-4 text-[10px] font-black uppercase text-slate-800 dark:text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 appearance-none transition-all"
+                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-300 dark:border-zinc-600 rounded-sm py-2 pl-9 pr-4 text-[10px] font-black uppercase text-slate-800 dark:text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 appearance-none transition-all"
                                                 value={replacementMap[app.id] || ''}
                                                 onChange={e => setReplacementMap(prev => ({ ...prev, [app.id]: e.target.value }))}
                                             >
@@ -2396,7 +2396,7 @@ export const Professionals: React.FC<ProfessionalsProps> = ({ providers, setProv
                             <button
                                 onClick={confirmInactivation}
                                 disabled={!isAllReplacementsSelected || isTransferring}
-                                className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-slate-900 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2"
                             >
                                 {isTransferring ? (
                                     <>

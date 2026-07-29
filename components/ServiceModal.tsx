@@ -3144,7 +3144,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-            <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
+            <div className="bg-white dark:bg-zinc-900 rounded-t-[2rem] md:rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden flex flex-col max-h-[95vh] border-2 border-slate-900 dark:border-zinc-700 animate-in slide-in-from-bottom duration-300">
 
                 {/* Header */}
                 <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
@@ -3172,7 +3172,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 )}
                                 <button 
                                     onClick={() => setShowHistoryPopup(true)}
-                                    className="ml-1 flex items-center gap-1 px-2.5 py-0.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-lg text-[8px] font-black text-indigo-300 uppercase transition-all active:scale-95 shadow-sm"
+                                    className="ml-1 flex items-center gap-1 px-2.5 py-0.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-sm text-[8px] font-black text-indigo-300 uppercase transition-all active:scale-95 shadow-sm"
                                 >
                                     <History size={10} /> Ver Histórico
                                 </button>
@@ -3180,22 +3180,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="relative">
                                     <button 
                                         onClick={() => setShowWhatsAppOptions(!showWhatsAppOptions)}
-                                        className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-emerald-500 hover:bg-emerald-600 border border-emerald-400 rounded-lg text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md shadow-emerald-500/20"
+                                        className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-emerald-500 hover:bg-emerald-600 border border-emerald-400 rounded-sm text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md shadow-emerald-500/20"
                                         title="Lembrete WhatsApp"
                                     >
                                         <span className="text-xs">📲</span> Lembrete
                                     </button>
                                     {showWhatsAppOptions && (
-                                        <div className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-700 p-2 z-[200] flex flex-col gap-1 min-w-[160px] animate-in slide-in-from-top-2 duration-200">
+                                        <div className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-800 rounded-sm shadow-2xl border border-slate-200 dark:border-zinc-700 p-2 z-[200] flex flex-col gap-1 min-w-[160px] animate-in slide-in-from-top-2 duration-200">
                                             <button 
                                                 onClick={() => handleWhatsAppReminder('COPY')}
-                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-lg text-[9px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-2 transition-colors"
+                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-sm text-[9px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-2 transition-colors"
                                             >
                                                 <Copy size={12} /> Copiar Mensagem
                                             </button>
                                             <button 
                                                 onClick={() => handleWhatsAppReminder('OPEN')}
-                                                className="w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-2 transition-colors"
+                                                className="w-full text-left px-3 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-sm text-[9px] font-black uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-2 transition-colors"
                                             >
                                                 <Smartphone size={12} /> Ir para WhatsApp
                                             </button>
@@ -3213,22 +3213,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="relative">
                                     <button 
                                         onClick={() => setShowFutureAgendaOptions(!showFutureAgendaOptions)}
-                                        className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-indigo-500 hover:bg-indigo-600 border border-indigo-400 rounded-lg text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md shadow-indigo-500/20"
+                                        className="ml-2 flex items-center gap-1.5 px-3 py-1 bg-indigo-500 hover:bg-indigo-600 border border-indigo-400 rounded-sm text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md shadow-indigo-500/20"
                                         title="Agenda Futura"
                                     >
                                         <span className="text-xs">📅</span> Agenda Futura
                                     </button>
                                     {showFutureAgendaOptions && (
-                                        <div className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl border border-slate-200 dark:border-zinc-700 p-2 z-[200] flex flex-col gap-1 min-w-[160px] animate-in slide-in-from-top-2 duration-200">
+                                        <div className="absolute top-full right-0 mt-2 bg-white dark:bg-zinc-800 rounded-sm shadow-2xl border border-slate-200 dark:border-zinc-700 p-2 z-[200] flex flex-col gap-1 min-w-[160px] animate-in slide-in-from-top-2 duration-200">
                                             <button 
                                                 onClick={() => handleFutureAgendaWhatsApp('COPY')}
-                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-lg text-[9px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-2 transition-colors"
+                                                className="w-full text-left px-3 py-2 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-sm text-[9px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-2 transition-colors"
                                             >
                                                 <Copy size={12} /> Copiar Mensagem
                                             </button>
                                             <button 
                                                 onClick={() => handleFutureAgendaWhatsApp('OPEN')}
-                                                className="w-full text-left px-3 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-2 transition-colors"
+                                                className="w-full text-left px-3 py-2 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-sm text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 flex items-center gap-2 transition-colors"
                                             >
                                                 <Smartphone size={12} /> Ir para WhatsApp
                                             </button>
@@ -3245,7 +3245,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                 <button 
                                     onClick={() => setShowConsentFormModal(true)}
-                                    className={`ml-2 flex items-center gap-1.5 px-3 py-1 border rounded-lg text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md ${
+                                    className={`ml-2 flex items-center gap-1.5 px-3 py-1 border rounded-sm text-[8px] font-black text-white uppercase transition-all active:scale-95 shadow-md ${
                                         hasConsentForm 
                                         ? 'bg-emerald-500 border-emerald-400 shadow-emerald-500/20' 
                                         : 'bg-rose-500 border-rose-400 shadow-rose-500/20'
@@ -3265,8 +3265,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     {/* CUSTOMER BLOCKED WARNING */}
                     {customer.isBlocked && (
-                        <div className="bg-rose-600 dark:bg-rose-700 border-2 border-rose-400 p-4 rounded-2xl flex items-start gap-4 animate-in fade-in duration-300">
-                            <div className="bg-white p-2 rounded-xl text-rose-600 flex-shrink-0">
+                        <div className="bg-rose-600 dark:bg-rose-700 border-2 border-rose-400 p-4 rounded-sm flex items-start gap-4 animate-in fade-in duration-300">
+                            <div className="bg-white p-2 rounded-sm text-rose-600 flex-shrink-0">
                                 <Ban size={24} />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -3279,14 +3279,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     {/* PROVIDER RESTRICTION WARNING */}
                     {restrictionData.isRestricted && (
-                        <div className="bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-200 dark:border-rose-800 p-4 rounded-2xl flex items-start gap-4 animate-bounce-short">
-                            <div className="bg-rose-600 p-2 rounded-xl text-white flex-shrink-0">
+                        <div className="bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-200 dark:border-rose-800 p-4 rounded-sm flex items-start gap-4 animate-bounce-short">
+                            <div className="bg-rose-600 p-2 rounded-sm text-white flex-shrink-0">
                                 <Ban size={24} />
                             </div>
                             <div className="min-w-0 flex-1">
                                 <p className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest leading-none mb-1">Ação Bloqueada</p>
                                 <p className="text-sm font-black text-rose-950 dark:text-rose-300 uppercase leading-tight mb-2">Restrição de Profissional: {restrictionData.providerName}</p>
-                                <div className="text-[11px] font-bold text-rose-900 dark:text-rose-200 leading-tight bg-white dark:bg-black/20 p-2 rounded-lg border border-rose-100 dark:border-rose-800/50">
+                                <div className="text-[11px] font-bold text-rose-900 dark:text-rose-200 leading-tight bg-white dark:bg-black/20 p-2 rounded-sm border border-rose-100 dark:border-rose-800/50">
                                     {restrictionData.reason}
                                 </div>
                                 <p className="text-[10px] font-black text-rose-700 dark:text-rose-400 mt-2 uppercase">Por favor, selecione outra profissional para prosseguir.</p>
@@ -3296,8 +3296,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     {/* GENERAL HEALTH RESTRICTION WARNING */}
                     {hasRestriction && !restrictionData.isRestricted && (
-                        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 p-4 rounded-2xl flex items-start gap-4">
-                            <div className="bg-amber-500 p-2 rounded-xl text-white flex-shrink-0">
+                        <div className="bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800 p-4 rounded-sm flex items-start gap-4">
+                            <div className="bg-amber-500 p-2 rounded-sm text-white flex-shrink-0">
                                 <AlertOctagon size={24} />
                             </div>
                             <div className="min-w-0 flex-1">
@@ -3312,13 +3312,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     {mode === 'EDIT_CUSTOMER' ? (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300">
-                            <div className="bg-white dark:bg-zinc-800 p-6 rounded-[2rem] border-2 border-slate-900 dark:border-white/10 shadow-2xl">
+                            <div className="bg-white dark:bg-zinc-800 p-6 rounded-sm border-2 border-slate-900 dark:border-white/10 shadow-2xl">
                                 <div className="space-y-4">
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Nome do Cliente</label>
                                         <input
                                             type="text"
-                                            className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm px-4 py-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
                                             value={editCustomerName}
                                             onChange={(e) => setEditCustomerName(e.target.value)}
                                             placeholder="Nome completo"
@@ -3329,7 +3329,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest ml-1">Telefone / WhatsApp</label>
                                         <input
                                             type="text"
-                                            className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl px-4 py-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm px-4 py-3 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
                                             value={editCustomerPhone}
                                             onChange={(e) => setEditCustomerPhone(e.target.value)}
                                             placeholder="(00) 00000-0000"
@@ -3339,13 +3339,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <div className="grid grid-cols-2 gap-3 pt-4">
                                         <button
                                             onClick={handleBackFromEdit}
-                                            className="py-4 bg-slate-100 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-800 transition-all"
+                                            className="py-4 bg-slate-100 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 rounded-sm font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-800 transition-all"
                                         >
                                             Cancelar
                                         </button>
                                         <button
                                             onClick={handleUpdateCustomer}
-                                            className="py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                            className="py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                         >
                                             <Save size={16} /> Salvar Alterações
                                         </button>
@@ -3355,7 +3355,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                     ) : (
                         <>
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 gap-4">
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between p-4 bg-slate-50 dark:bg-zinc-800 rounded-sm border border-slate-100 dark:border-zinc-700 gap-4">
                                 <div className="flex flex-col">
                                     {customer?.id && isFirstAppointment(customer.id, appointmentDate, allAppointments) && (customer.status === 'Novo' || (customer.registrationDate && customer.registrationDate >= getMinDate())) && (
                                         <div className="mb-2">
@@ -3366,7 +3366,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <div className="flex items-center gap-2 mt-0.5">
                                         <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">{customer.phone} • {customer.status}</p>
                                         {customer.isVip && (
-                                            <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                                            <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-sm text-[10px] font-black uppercase tracking-wider border border-amber-200 dark:border-amber-800 flex items-center gap-1">
                                                 <Sparkles size={10} />
                                                 VIP {customer.vipDiscountPercent}% OFF
                                             </div>
@@ -3386,7 +3386,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="hidden sm:flex items-center ml-auto">
                                     <button
                                         onClick={() => setWhatsappResponseNeeded(prev => !prev)}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm active:scale-95 border-2 ${
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all shadow-sm active:scale-95 border-2 ${
                                             whatsappResponseNeeded 
                                             ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-amber-200' 
                                             : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-zinc-500 hover:border-slate-300 dark:hover:border-zinc-600'
@@ -3400,7 +3400,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="flex sm:hidden w-full justify-center -mt-2 mb-2">
                                     <button
                                         onClick={() => setWhatsappResponseNeeded(prev => !prev)}
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all shadow-sm active:scale-95 border-2 ${
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-sm text-[9px] font-black uppercase transition-all shadow-sm active:scale-95 border-2 ${
                                             whatsappResponseNeeded 
                                             ? 'bg-amber-400 border-amber-500 text-amber-950 shadow-amber-200' 
                                             : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-zinc-500 hover:border-slate-300 dark:hover:border-zinc-600'
@@ -3462,13 +3462,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <div>
                                             <button
                                                 type="button" onClick={addServiceLine}
-                                                className="mr-2 text-[9px] font-black text-slate-950 dark:text-white inline-flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                                className="mr-2 text-[9px] font-black text-slate-950 dark:text-white inline-flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-sm active:scale-95 transition-all shadow-sm"
                                             >
                                                 <Plus size={14} /> ADICIONAR EXTRA
                                             </button>
                                             <button
                                                 type="button" onClick={addCompanionLine}
-                                                className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800/50 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                                className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1.5 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-800/50 px-3 py-2 rounded-sm active:scale-95 transition-all shadow-sm"
                                             >
                                                 <User size={14} /> ADICIONAR ACOMPANHANTE
                                             </button>
@@ -3477,13 +3477,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                     <div className="space-y-3">
                                         {lines.map((line) => (
-                                            <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
+                                            <div key={line.id} className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-100 dark:border-zinc-700 shadow-sm space-y-4 relative group">
                                                 {lines.length > 1 && (
                                                     <button onClick={() => removeServiceLine(line.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-rose-500 dark:hover:text-rose-400 transition-colors"><Trash2 size={16} /></button>
                                                 )}
 
                                                 {line.isCompanion && (
-                                                    <div className="mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 rounded-xl relative">
+                                                    <div className="mb-3 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/30 rounded-sm relative">
                                                         <div className="absolute -top-2 left-3 bg-indigo-100 dark:bg-indigo-800 text-indigo-700 dark:text-indigo-200 text-[8px] font-black px-2 py-0.5 rounded uppercase tracking-wider flex items-center gap-1">
                                                             <User size={10} /> Acompanhante
                                                         </div>
@@ -3492,7 +3492,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <input
                                                                     type="text"
                                                                     placeholder="Nome da Acompanhante"
-                                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800 rounded-sm px-3 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
                                                                     value={line.clientName || ''}
                                                                     onChange={e => updateLine(line.id, 'clientName', e.target.value)}
                                                                 />
@@ -3501,7 +3501,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <input
                                                                     type="text"
                                                                     placeholder="WhatsApp (Opcional)"
-                                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800 rounded-lg px-3 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                                                    className="w-full bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-800 rounded-sm px-3 py-2 text-xs font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500"
                                                                     value={line.clientPhone || ''}
                                                                     onChange={e => updateLine(line.id, 'clientPhone', e.target.value)}
                                                                 />
@@ -3514,7 +3514,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <div className="space-y-0.5">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Serviço</label>
                                                         <select
-                                                            className={`w-full bg-slate-50 dark:bg-zinc-900 border rounded-xl p-3 text-xs font-black uppercase outline-none transition-all appearance-none cursor-pointer ${!isServiceAllowed(line.serviceId, line.providerId)
+                                                            className={`w-full bg-slate-50 dark:bg-zinc-900 border rounded-sm p-3 text-xs font-black uppercase outline-none transition-all appearance-none cursor-pointer ${!isServiceAllowed(line.serviceId, line.providerId)
                                                                     ? 'border-rose-400 dark:border-rose-900 text-rose-700 dark:text-rose-400'
                                                                     : 'border-slate-200 dark:border-zinc-700 text-slate-950 dark:text-white focus:border-slate-400 dark:focus:border-zinc-500'
                                                                 }`}
@@ -3552,7 +3552,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                     e.stopPropagation();
                                                                     toggleFavoriteProvider(line.providerId);
                                                                 }}
-                                                                className={`text-[8px] font-black px-1.5 py-0.5 rounded-md flex items-center gap-0.5 transition-all outline-none ${customer.assignedProviderIds?.includes(line.providerId)
+                                                                className={`text-[8px] font-black px-1.5 py-0.5 rounded-sm flex items-center gap-0.5 transition-all outline-none ${customer.assignedProviderIds?.includes(line.providerId)
                                                                     ? 'text-rose-600 bg-rose-100 dark:text-rose-400 dark:bg-rose-900/30'
                                                                     : 'text-slate-400 bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:bg-zinc-800'
                                                                     }`}
@@ -3561,7 +3561,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <Star opacity={0.8} strokeWidth={3} size={10} fill={customer.assignedProviderIds?.includes(line.providerId) ? 'currentColor' : 'none'} /> PR
                                                             </button>
                                                         </div>
-                                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2.5">
+                                                        <div className="flex items-center gap-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm p-2.5">
                                                             <Avatar
                                                                 src={providers.find(p => p.id === line.providerId)?.avatar}
                                                                 name={providers.find(p => p.id === line.providerId)?.name.trim() || ''}
@@ -3600,7 +3600,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <Search size={12} className="absolute left-3 top-3 text-slate-400" />
                                                             <input
                                                                 type="text"
-                                                                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400 dark:focus:border-zinc-500"
+                                                                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400 dark:focus:border-zinc-500"
                                                                 placeholder="Adicionar produto..."
                                                                 value={line.currentSearchTerm}
                                                                 onFocus={() => updateLine(line.id, 'showProductResults', true)}
@@ -3610,7 +3610,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 }}
                                                             />
                                                             {line.showProductResults && (
-                                                                <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto">
+                                                                <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm shadow-2xl max-h-32 overflow-y-auto">
                                                                     {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
                                                                         <button
                                                                             key={p.id} type="button"
@@ -3627,7 +3627,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         </div>
                                                         <div className="flex flex-wrap gap-1.5 mt-2">
                                                             {line.products.map((prod, idx) => (
-                                                                <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-lg text-[9px] font-black uppercase">
+                                                                <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-1 rounded-sm text-[9px] font-black uppercase">
                                                                     {prod}
                                                                     <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
                                                                         <X size={10} />
@@ -3638,7 +3638,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </div>
                                                 </div>
 
-                                                <div className={`grid grid-cols-2 md:grid-cols-5 ${((mode as string) === 'CHECKOUT' || (mode as string) === 'HISTORY') ? 'lg:grid-cols-7' : 'lg:grid-cols-5'} gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-zinc-700`}>
+                                                <div className={`grid grid-cols-2 md:grid-cols-5 ${((mode as string) === 'CHECKOUT' || (mode as string) === 'HISTORY') ? 'lg:grid-cols-7' : 'lg:grid-cols-5'} gap-3 items-center bg-slate-50/50 dark:bg-zinc-900/50 p-2.5 rounded-sm border border-slate-100 dark:border-zinc-700`}>
                                                     <div className="flex flex-col">
                                                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Horário</label>
                                                         <input
@@ -3665,7 +3665,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <input
                                                                 type="number"
                                                                 step="0.01"
-                                                                className="bg-transparent border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-black text-slate-950 dark:text-white pl-6 pr-1 py-1 outline-none w-20 focus:border-indigo-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                className="bg-transparent border border-slate-200 dark:border-zinc-700 rounded-sm text-[11px] font-black text-slate-950 dark:text-white pl-6 pr-1 py-1 outline-none w-20 focus:border-indigo-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                 value={line.unitPrice}
                                                                 onChange={e => updateLine(line.id, 'unitPrice', Math.max(0, parseFloat(e.target.value) || 0))}
                                                             />
@@ -3677,7 +3677,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <input
                                                                 type="number"
                                                                 min="1"
-                                                                className="bg-transparent border border-slate-200 dark:border-zinc-700 rounded-lg text-[11px] font-black text-slate-950 dark:text-white px-2 py-1 outline-none w-16 focus:border-indigo-500 transition-colors"
+                                                                className="bg-transparent border border-slate-200 dark:border-zinc-700 rounded-sm text-[11px] font-black text-slate-950 dark:text-white px-2 py-1 outline-none w-16 focus:border-indigo-500 transition-colors"
                                                                 value={line.quantity || 1}
                                                                 onChange={e => updateLine(line.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
                                                             />
@@ -3698,7 +3698,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleStartIndividualService(line.id)}
-                                                                    className="px-2 py-1 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center gap-1 active:scale-95 transition-all shadow-sm shadow-indigo-200"
+                                                                    className="px-2 py-1 bg-indigo-600 text-white rounded-sm text-[9px] font-black uppercase flex items-center gap-1 active:scale-95 transition-all shadow-sm shadow-indigo-200"
                                                                 >
                                                                     <Play size={10} fill="currentColor" /> Iniciar
                                                                 </button>
@@ -3707,7 +3707,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => handleFinishIndividualService(line.id)}
-                                                                    className="px-2 py-1 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase flex items-center gap-1 active:scale-95 transition-all shadow-sm shadow-emerald-200"
+                                                                    className="px-2 py-1 bg-emerald-600 text-white rounded-sm text-[9px] font-black uppercase flex items-center gap-1 active:scale-95 transition-all shadow-sm shadow-emerald-200"
                                                                 >
                                                                     <Check size={10} /> Finalizar
                                                                 </button>
@@ -3736,7 +3736,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                     <input
                                                                         type="number"
                                                                         step="0.01"
-                                                                        className="bg-transparent border border-rose-200 dark:border-rose-800 rounded-lg text-[11px] font-black text-rose-600 dark:text-rose-400 pl-6 pr-1 py-1 outline-none w-20 focus:border-rose-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                        className="bg-transparent border border-rose-200 dark:border-rose-800 rounded-sm text-[11px] font-black text-rose-600 dark:text-rose-400 pl-6 pr-1 py-1 outline-none w-20 focus:border-rose-500 transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                                         value={line.tipAmount}
                                                                         onChange={e => updateLine(line.id, 'tipAmount', Math.max(0, parseFloat(e.target.value) || 0))}
                                                                     />
@@ -3746,7 +3746,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <button
                                                                 type="button"
                                                                 onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                                                className={`col-span-1 flex items-center justify-center gap-1 py-2 px-1 rounded-xl border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
+                                                                className={`col-span-1 flex items-center justify-center gap-1 py-2 px-1 rounded-sm border transition-all text-[9px] font-black uppercase ${line.isCourtesy ? 'bg-slate-950 dark:bg-white text-white dark:text-black border-slate-950 dark:border-white' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 dark:text-slate-500'}`}
                                                             >
                                                                 <Check size={12} /> {line.isCourtesy ? 'CORTESIA' : 'CORTESIA?'}
                                                             </button>
@@ -3760,7 +3760,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     {/* RECURENCE & COUPON OPTIONS */}
                                     {mode === 'VIEW' && (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-2xl border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
+                                            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 rounded-sm border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 flex flex-col justify-between">
                                                 <div className="flex items-center justify-between mb-2">
                                                     <div className="flex items-center gap-2">
                                                         <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
@@ -3780,7 +3780,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         <div className="space-y-1">
                                                             <label className="text-[8px] font-black text-indigo-800 dark:text-indigo-400 uppercase ml-1">Freq.</label>
                                                             <select
-                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-sm p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
                                                                 value={recurrenceFrequency}
                                                                 onChange={e => setRecurrenceFrequency(e.target.value as any)}
                                                             >
@@ -3795,26 +3795,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 type="number"
                                                                 min="1"
                                                                 max="24"
-                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-xl p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
+                                                                className="w-full bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-indigo-800 rounded-sm p-2 text-[10px] font-black text-slate-950 dark:text-white outline-none"
                                                                 value={recurrenceCount}
                                                                 onChange={e => setRecurrenceCount(Math.min(24, Math.max(1, parseInt(e.target.value) || 1)))}
                                                             />
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="h-[44px] flex items-center justify-center border border-dashed border-indigo-100 dark:border-indigo-800/20 rounded-xl">
+                                                    <div className="h-[44px] flex items-center justify-center border border-dashed border-indigo-100 dark:border-indigo-800/20 rounded-sm">
                                                         <span className="text-[9px] font-bold text-indigo-300 dark:text-indigo-800 uppercase">Não recorrente</span>
                                                     </div>
                                                 )}
                                             </div>
 
-                                            <div className="p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-2xl border border-slate-100 dark:border-zinc-800 flex flex-col justify-between">
+                                            <div className="p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between">
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <Tag size={14} className="text-slate-400" />
                                                     <h4 className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Cupom de Desconto</h4>
                                                 </div>
                                                 {appliedCampaign ? (
-                                                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
+                                                    <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-sm px-3 py-2">
                                                         <div className="flex items-center gap-2">
                                                             <CircleCheck size={14} className="text-emerald-600 dark:text-emerald-400" />
                                                             <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
@@ -3831,12 +3831,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             value={couponCode}
                                                             onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                                             onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                                                            className="flex-1 min-w-0 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-2 py-2 text-[10px] font-black uppercase placeholder-slate-400 text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                                                            className="flex-1 min-w-0 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm px-2 py-2 text-[10px] font-black uppercase placeholder-slate-400 text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
                                                         />
                                                         <button
                                                             type="button"
                                                             onClick={handleApplyCoupon}
-                                                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
+                                                            className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-sm"
                                                         >
                                                             APLICAR
                                                         </button>
@@ -3855,7 +3855,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </div>
 
                                         {customer.outstandingBalance !== undefined && customer.outstandingBalance > 0 && (
-                                            <div className="flex flex-col gap-2 p-3 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900 mb-2">
+                                            <div className="flex flex-col gap-2 p-3 bg-rose-50 dark:bg-rose-900/10 rounded-sm border border-rose-100 dark:border-rose-900 mb-2">
                                                 <div className="flex items-center gap-2">
                                                     <input
                                                         type="checkbox"
@@ -3873,7 +3873,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <button
                                                         type="button"
                                                         onClick={(e) => { e.stopPropagation(); setShowDebtDetails(!showDebtDetails); }}
-                                                        className="ml-2 px-2 py-1 bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase rounded-lg border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors"
+                                                        className="ml-2 px-2 py-1 bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase rounded-sm border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors"
                                                     >
                                                         {showDebtDetails ? 'OCULTAR' : 'DETALHES'}
                                                     </button>
@@ -3929,14 +3929,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                                                 if (unpaidItems.length === 0) {
                                                                     return (
-                                                                        <div className="text-[10px] text-slate-500 italic p-2 bg-white dark:bg-zinc-800 rounded-lg">
+                                                                        <div className="text-[10px] text-slate-500 italic p-2 bg-white dark:bg-zinc-800 rounded-sm">
                                                                             Este saldo é oriundo de compras pendentes ou anteriores ao novo histórico.
                                                                         </div>
                                                                     );
                                                                 }
 
                                                                 return unpaidItems.map((item, i) => (
-                                                                    <div key={item.id + '-' + i} className="bg-white dark:bg-zinc-900 p-2 rounded-lg border border-rose-100 dark:border-zinc-800 flex justify-between items-center text-[10px]">
+                                                                    <div key={item.id + '-' + i} className="bg-white dark:bg-zinc-900 p-2 rounded-sm border border-rose-100 dark:border-zinc-800 flex justify-between items-center text-[10px]">
                                                                         <div className="flex flex-col">
                                                                             <span className="font-bold text-slate-900 dark:text-white">
                                                                                 {item.date ? new Date(item.date).toLocaleDateString('pt-BR') : '-'}
@@ -3961,7 +3961,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             {isAgendaMode ? (
                                                 <>
                                                     {isZeroing ? (
-                                                        <div className="space-y-3 bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border-2 border-amber-100 dark:border-amber-900 animate-in zoom-in-95 duration-200">
+                                                        <div className="space-y-3 bg-amber-50 dark:bg-amber-900/10 p-4 rounded-sm border-2 border-amber-100 dark:border-amber-900 animate-in zoom-in-95 duration-200">
                                                             <h4 className="text-[10px] font-black text-amber-800 dark:text-amber-400 uppercase tracking-widest flex items-center gap-2">
                                                                 <Coins size={12} /> Zerar Comanda (Justificativa)
                                                             </h4>
@@ -3984,7 +3984,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                                         setSelectedLineIdsForZeroing([...selectedLineIdsForZeroing, line.id]);
                                                                                     }
                                                                                 }}
-                                                                                className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all border-2 flex items-center gap-2 ${
+                                                                                className={`px-3 py-2 rounded-sm text-[10px] font-black transition-all border-2 flex items-center gap-2 ${
                                                                                     isSelected
                                                                                         ? 'bg-amber-100 border-amber-500 text-amber-700 dark:bg-amber-900/40 dark:border-amber-500 dark:text-amber-300'
                                                                                         : 'bg-white border-slate-200 text-slate-400 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-500'
@@ -4000,7 +4000,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 </div>
                                                             </div>
                                                             <textarea
-                                                                className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-200 dark:border-amber-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
+                                                                className="w-full bg-white dark:bg-zinc-900 border-2 border-amber-200 dark:border-amber-800 rounded-sm p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
                                                                 placeholder="Descreva o motivo para zerar esta comanda..."
                                                                 value={zeroOutReason}
                                                                 onChange={e => setZeroOutReason(e.target.value)}
@@ -4010,26 +4010,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setIsZeroing(false)}
-                                                                    className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-xl transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
+                                                                    className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-sm transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
                                                                 >
                                                                     Voltar
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={handleConfirmZeroOut}
-                                                                    className="flex-[2] py-3 bg-amber-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-amber-700"
+                                                                    className="flex-[2] py-3 bg-amber-600 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-amber-700"
                                                                 >
                                                                     Confirmar e Zerar
                                                                 </button>
                                                             </div>
                                                         </div>
                                                     ) : isCancelling ? (
-                                                        <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
+                                                        <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-sm border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
                                                             <h4 className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
                                                                 <AlertTriangle size={12} /> Cancelamento de Agendamento
                                                             </h4>
                                                             <textarea
-                                                                className="w-full bg-white dark:bg-zinc-900 border-2 border-rose-200 dark:border-rose-800 rounded-xl p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-rose-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
+                                                                className="w-full bg-white dark:bg-zinc-900 border-2 border-rose-200 dark:border-rose-800 rounded-sm p-3 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-rose-500 placeholder:font-normal placeholder:text-slate-400 resize-none h-24"
                                                                 placeholder="Motivo obrigatório para o histórico..."
                                                                 value={cancellationReason}
                                                                 onChange={e => setCancellationReason(e.target.value)}
@@ -4039,14 +4039,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setIsCancelling(false)}
-                                                                    className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-xl transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
+                                                                    className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-sm transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
                                                                 >
                                                                     Voltar
                                                                 </button>
                                                                 <button
                                                                     type="button"
                                                                     onClick={handleConfirmCancellation}
-                                                                    className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-rose-700"
+                                                                    className="flex-[2] py-3 bg-rose-600 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-rose-700"
                                                                 >
                                                                     Confirmar Cancelamento
                                                                 </button>
@@ -4057,7 +4057,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <button
                                                                 type="button"
                                                                 onClick={handleDeleteAppointment}
-                                                                className="py-4 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
+                                                                className="py-4 px-4 bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40"
                                                                 title="Excluir Permanentemente (Sumir da Agenda)"
                                                             >
                                                                 <Trash2 size={16} />
@@ -4065,7 +4065,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <button
                                                                 type="button"
                                                                 onClick={() => setIsCancelling(true)}
-                                                                className="py-4 px-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-700"
+                                                                className="py-4 px-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-slate-200 dark:border-zinc-700 hover:bg-slate-200 dark:hover:bg-zinc-700"
                                                                 title="Cancelar Agendamento (Fica no Histórico)"
                                                             >
                                                                 <CircleX size={16} />
@@ -4076,7 +4076,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                     setSelectedLineIdsForZeroing(lines.map(l => l.id));
                                                                     setIsZeroing(true);
                                                                 }}
-                                                                className="py-4 px-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40"
+                                                                className="py-4 px-4 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                                                                 title="Zerar Comanda (Justificativa)"
                                                             >
                                                                 <Coins size={16} />
@@ -4085,7 +4085,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <button
                                                                     type="button"
                                                                     onClick={handleRemakeService}
-                                                                    className="py-4 px-4 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40"
+                                                                    className="py-4 px-4 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40"
                                                                     title="Transformar em Refazer (Zerar)"
                                                                 >
                                                                     <RefreshCw size={16} />
@@ -4100,7 +4100,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                         handleCheckIn();
                                                                     }
                                                                 }}
-                                                                className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
+                                                                className="flex-1 py-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/40"
                                                             >
                                                                 {appointment.status === 'Concluído' ? <CreditCard size={16} /> : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? <CreditCard size={16} /> : <CircleCheck size={16} />)}
                                                                 {appointment.status === 'Concluído' ? 'ATUALIZAR PAGAMENTO' : ((appointment.status === 'Em Andamento' || appointment.status === 'Em atendimento' || appointment.status === 'Aguardando') ? 'PAGAR / CHECKOUT' : 'REALIZAR CHECK-IN')}
@@ -4109,7 +4109,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 type="button"
                                                                 onClick={appointment.status === 'Concluído' ? () => setMode('HISTORY') : () => handleSave()}
                                                                 disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                                                className={`flex-1 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                                className={`flex-1 py-4 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                             >
                                                                 {appointment.status === 'Concluído' ? <ArrowLeft size={16} /> : (isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <Save size={16} />))}
                                                                 {appointment.status === 'Concluído' ? 'VOLTAR HISTÓRICO' : (isSaving ? 'GRAVANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'SALVAR'))}
@@ -4123,7 +4123,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         type="button"
                                                         onClick={() => handleCheckIn()}
                                                         disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                                        className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                        className={`w-full py-4 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                     >
                                                         {isSaving ? <Sparkles size={16} className="animate-spin" /> : (restrictionData.isRestricted || customer.isBlocked ? <Ban size={16} /> : <CircleCheck size={16} />)}
                                                         {isSaving ? 'PROCESSANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : 'REALIZAR CHECK-IN')}
@@ -4133,7 +4133,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         type="button"
                                                         onClick={() => setMode('CHECKOUT')}
                                                         disabled={restrictionData.isRestricted}
-                                                        className={`w-full py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
+                                                        className={`w-full py-4 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${restrictionData.isRestricted ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500 cursor-not-allowed' : 'bg-slate-950 dark:bg-white text-white dark:text-black'}`}
                                                     >
                                                         {restrictionData.isRestricted ? 'BLOQUEADO' : (appointment.status === 'Concluído' ? 'ATUALIZAR PAGAMENTO' : 'IR PARA PAGAMENTO')}
                                                     </button>
@@ -4145,9 +4145,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     {/* FUTURE APPOINTMENTS - RESTORED BELOW ACTION BUTTONS */}
                                     {futureAppointments.length > 0 && (
                                         <div className="mt-6 pt-6 border-t border-slate-100 dark:border-zinc-800 animate-in fade-in duration-500">
-                                            <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800/50 rounded-[2rem] p-5 shadow-sm">
+                                            <div className="bg-indigo-50/50 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800/50 rounded-sm p-5 shadow-sm">
                                                 <div className="flex items-center gap-2 mb-3">
-                                                    <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                                                    <div className="p-1.5 bg-indigo-100 dark:bg-indigo-800/50 text-indigo-600 dark:text-indigo-400 rounded-sm">
                                                         <Calendar size={18} />
                                                     </div>
                                                     <span className="text-[10px] font-black text-indigo-900 dark:text-indigo-300 uppercase tracking-widest leading-none">Próximos Agendamentos</span>
@@ -4156,7 +4156,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     {futureAppointments.slice(0, 5).map(app => {
                                                         const s = services.find(serv => serv.id === app.serviceId);
                                                         return (
-                                                            <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-3 rounded-2xl border border-indigo-50 dark:border-indigo-900/50 shadow-sm transition-all hover:scale-[1.01]">
+                                                            <div key={app.id} className="flex justify-between items-center text-xs bg-white dark:bg-zinc-800 p-3 rounded-sm border border-indigo-50 dark:border-indigo-900/50 shadow-sm transition-all hover:scale-[1.01]">
                                                                 <div
                                                                     className={`flex-1 flex items-center group ${onSelectAppointment ? 'cursor-pointer' : ''}`}
                                                                     onClick={() => onSelectAppointment && onSelectAppointment(app)}
@@ -4200,7 +4200,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     {mode === 'CHECKOUT' && (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
-                            <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-700 flex justify-between items-center group relative overflow-hidden">
+                            <div className="bg-slate-50 dark:bg-zinc-800 p-5 rounded-sm border border-slate-100 dark:border-zinc-700 flex justify-between items-center group relative overflow-hidden">
                                 <div className="flex flex-col z-10">
                                     <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total a Receber</span>
                                     {customer.isVip && (
@@ -4209,7 +4209,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         </span>
                                     )}
                                     {customer.creditBalance !== undefined && customer.creditBalance > 0 && (
-                                        <div className="mt-2 flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded-lg border border-purple-100 dark:border-purple-800">
+                                        <div className="mt-2 flex items-center gap-1.5 bg-purple-50 dark:bg-purple-900/20 px-2 py-1 rounded-sm border border-purple-100 dark:border-purple-800">
                                             <Wallet size={12} className="text-purple-600 dark:text-purple-400" />
                                             <span className="text-[9px] font-black text-purple-700 dark:text-purple-400 uppercase tracking-tight">Crédito Aminna: R$ {customer.creditBalance.toFixed(2)}</span>
                                         </div>
@@ -4236,23 +4236,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <input
                                             type="text"
                                             placeholder="Código do cupom"
-                                            className="flex-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-xs font-black uppercase outline-none focus:border-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400"
+                                            className="flex-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm px-4 py-3 text-xs font-black uppercase outline-none focus:border-indigo-500 text-slate-900 dark:text-white placeholder:text-slate-400"
                                             value={couponCode}
                                             onChange={(e) => setCouponCode(e.target.value)}
                                             disabled={!!appliedCampaign}
                                         />
                                         {appliedCampaign ? (
-                                            <button onClick={handleRemoveCoupon} className="bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-800 px-4 rounded-xl font-black text-xs uppercase flex items-center gap-1 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors">
+                                            <button onClick={handleRemoveCoupon} className="bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-800 px-4 rounded-sm font-black text-xs uppercase flex items-center gap-1 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors">
                                                 <X size={14} /> Remover
                                             </button>
                                         ) : (
-                                            <button onClick={handleApplyCoupon} className="bg-slate-900 dark:bg-white text-white dark:text-black px-4 rounded-xl font-black text-xs uppercase hover:bg-black dark:hover:bg-slate-200 transition-colors">
+                                            <button onClick={handleApplyCoupon} className="bg-slate-900 dark:bg-white text-white dark:text-black px-4 rounded-sm font-black text-xs uppercase hover:bg-black dark:hover:bg-slate-200 transition-colors">
                                                 Aplicar
                                             </button>
                                         )}
                                     </div>
                                     {appliedCampaign && (
-                                        <div className="mt-2 flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-lg text-emerald-800 dark:text-emerald-400 text-[10px] font-black uppercase">
+                                        <div className="mt-2 flex items-center gap-2 p-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 rounded-sm text-emerald-800 dark:text-emerald-400 text-[10px] font-black uppercase">
                                             <Check size={12} />
                                             Cupom {appliedCampaign.couponCode} applied:
                                             {appliedCampaign.discountType === 'PERCENTAGE' ? ` ${appliedCampaign.discountValue}% OFF` : ` R$ ${appliedCampaign.discountValue} OFF`}
@@ -4268,7 +4268,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     </h4>
                                     <button
                                         type="button" onClick={addServiceLine}
-                                        className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-lg border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                                        className="text-[8px] font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-1 rounded-sm border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
                                     >
                                         <Plus size={10} /> Adicionar
                                     </button>
@@ -4280,7 +4280,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         const prv = providers.find(p => p.id === line.providerId);
 
                                         return (
-                                            <div key={`svc-edit-${line.id}`} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm relative group">
+                                            <div key={`svc-edit-${line.id}`} className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-100 dark:border-zinc-700 shadow-sm relative group">
                                                 {lines.length > 1 && (
                                                     <button
                                                         onClick={() => removeServiceLine(line.id)}
@@ -4319,7 +4319,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-rose-500">R$</span>
                                                                 <input
                                                                     type="number"
-                                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl py-2.5 pl-8 pr-3 text-xs font-black text-rose-500 dark:text-rose-400 outline-none focus:border-rose-400 transition-colors shadow-sm"
+                                                                    className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm py-2.5 pl-8 pr-3 text-xs font-black text-rose-500 dark:text-rose-400 outline-none focus:border-rose-400 transition-colors shadow-sm"
                                                                     value={line.tipAmount}
                                                                     onChange={e => updateLine(line.id, 'tipAmount', parseFloat(e.target.value) || 0)}
                                                                     placeholder="0,00"
@@ -4333,7 +4333,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
                                                                     <input
                                                                         type="number"
-                                                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl py-2.5 pl-8 pr-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-indigo-400 transition-colors shadow-sm"
+                                                                        className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm py-2.5 pl-8 pr-3 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-indigo-400 transition-colors shadow-sm"
                                                                         value={line.discount}
                                                                         onChange={e => updateLine(line.id, 'discount', parseFloat(e.target.value) || 0)}
                                                                         placeholder="0,00"
@@ -4342,7 +4342,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => updateLine(line.id, 'isCourtesy', !line.isCourtesy)}
-                                                                    className={`px-4 rounded-xl border font-black text-[9px] uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2 ${line.isCourtesy ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white dark:bg-zinc-800 text-slate-400 border-slate-200 dark:border-zinc-700 hover:border-slate-300'}`}
+                                                                    className={`px-4 rounded-sm border font-black text-[9px] uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2 ${line.isCourtesy ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg' : 'bg-white dark:bg-zinc-800 text-slate-400 border-slate-200 dark:border-zinc-700 hover:border-slate-300'}`}
                                                                     title="Marcar como Cortesia"
                                                                 >
                                                                     <Check size={14} className={line.isCourtesy ? "stroke-[3px]" : ""} />
@@ -4354,7 +4354,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <label className="text-[8px] font-black text-slate-400 uppercase ml-1 block mb-1">Feedback do Atendimento</label>
                                                             <input
                                                                 type="text"
-                                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-2.5 text-[10px] font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-400 transition-colors shadow-sm"
+                                                                className="w-full bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm p-2.5 text-[10px] font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-400 transition-colors shadow-sm"
                                                                 placeholder="Elogios ou observações sobre o serviço prestado por este profissional..."
                                                                 value={line.feedback}
                                                                 onChange={e => updateLine(line.id, 'feedback', e.target.value)}
@@ -4369,7 +4369,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             <Search size={12} className="absolute left-3 top-3 text-slate-400" />
                                                             <input
                                                                 type="text"
-                                                                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400"
+                                                                className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-bold text-slate-950 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 outline-none focus:border-slate-400"
                                                                 placeholder="Adicionar material..."
                                                                 value={line.currentSearchTerm}
                                                                 onFocus={() => updateLine(line.id, 'showProductResults', true)}
@@ -4379,7 +4379,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 }}
                                                             />
                                                             {line.showProductResults && (
-                                                                <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-2xl max-h-32 overflow-y-auto scrollbar-hide">
+                                                                <div className="absolute z-[110] left-0 right-0 top-full mt-1 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm shadow-2xl max-h-32 overflow-y-auto scrollbar-hide">
                                                                     {stock.filter(p => p.category === 'Uso Interno' && (p.name.toLowerCase().includes(line.currentSearchTerm.toLowerCase()) || p.code.toLowerCase().includes(line.currentSearchTerm.toLowerCase()))).map(p => (
                                                                         <button
                                                                             key={p.id} type="button"
@@ -4394,7 +4394,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         </div>
                                                         <div className="flex flex-wrap gap-1 mt-2">
                                                             {line.products.map((prod, idx) => (
-                                                                <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-lg text-[8px] font-black uppercase">
+                                                                <span key={idx} className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 text-indigo-900 dark:text-indigo-300 px-2 py-0.5 rounded-sm text-[8px] font-black uppercase">
                                                                     {prod}
                                                                     <button onClick={() => removeProductFromLine(line.id, idx)} className="text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-200">
                                                                         <X size={10} />
@@ -4415,7 +4415,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <div className="flex flex-col">
                                         <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Formas de Recebimento</label>
                                         {customer.creditBalance && customer.creditBalance > 0 ? (
-                                            <div className="mt-1 flex items-center gap-2 bg-purple-50 dark:bg-zinc-800/50 border border-purple-100 dark:border-purple-900 shadow-sm rounded-lg px-3 py-1.5 animate-in fade-in zoom-in duration-300">
+                                            <div className="mt-1 flex items-center gap-2 bg-purple-50 dark:bg-zinc-800/50 border border-purple-100 dark:border-purple-900 shadow-sm rounded-sm px-3 py-1.5 animate-in fade-in zoom-in duration-300">
                                                 <Wallet size={12} className="text-purple-600 dark:text-purple-400" />
                                                 <span className="text-[10px] font-black text-purple-700 dark:text-purple-300 uppercase">
                                                     R$ {customer.creditBalance.toFixed(2)} DISPONÍVEL
@@ -4426,14 +4426,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <div className="flex items-center gap-2">
                                         <button
                                             type="button" onClick={addPayment}
-                                            className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl active:scale-95 transition-all shadow-sm"
+                                            className="text-[9px] font-black text-slate-950 dark:text-white flex items-center gap-1.5 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-sm active:scale-95 transition-all shadow-sm"
                                         >
                                             <Plus size={14} /> ADD PAGAMENTO
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => setMode('VIEW')}
-                                            className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl border-2 border-slate-100 dark:border-zinc-700 transition-all active:scale-95 shadow-sm"
+                                            className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-sm border-2 border-slate-100 dark:border-zinc-700 transition-all active:scale-95 shadow-sm"
                                             title="Voltar"
                                         >
                                             <ChevronLeft size={20} />
@@ -4446,7 +4446,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         return (
                                             <div key={payment.id} className="flex gap-2 animate-in slide-in-from-left duration-200">
                                                 <select
-                                                    className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit && payment.method !== 'Crédito Aminna' ? 'rounded-r-none border-r-0' : ''}`}
+                                                    className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase ${isCredit && payment.method !== 'Crédito Aminna' ? 'rounded-r-none border-r-0' : ''}`}
                                                     value={payment.method}
                                                     onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
                                                 >
@@ -4459,7 +4459,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                                 {isCredit && payment.method !== 'Crédito Aminna' && (
                                                     <select
-                                                        className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase border-l-0"
+                                                        className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase border-l-0"
                                                         value={payment.installments || 1}
                                                         onChange={(e) => updatePayment(payment.id, 'installments', parseInt(e.target.value))}
                                                     >
@@ -4471,7 +4471,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                                 {(payment.method.toLowerCase().includes('cartão') || payment.method.toLowerCase().includes('crédito') || payment.method.toLowerCase().includes('débito')) && payment.method !== 'Crédito Aminna' && (
                                                     <select
-                                                        className="flex-1 min-w-[100px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
+                                                        className="flex-1 min-w-[100px] bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400 dark:focus:border-zinc-500 uppercase"
                                                         value={payment.cardBrand || ''}
                                                         onChange={(e) => updatePayment(payment.id, 'cardBrand', e.target.value)}
                                                     >
@@ -4486,7 +4486,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
                                                     <input
                                                         type="number"
-                                                        className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
+                                                        className="w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-slate-400"
                                                         value={payment.amount || ''}
                                                         placeholder="0,00"
                                                         onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
@@ -4496,7 +4496,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <button
                                                         type="button"
                                                         onClick={() => removePayment(payment.id)}
-                                                        className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                                        className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-sm transition-colors"
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
@@ -4511,14 +4511,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     <button
                                         type="button"
                                         onClick={() => setShowAdjustmentField(!showAdjustmentField)}
-                                        className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${adjustmentAmount !== 0 ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-zinc-800'}`}
+                                        className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-sm transition-all ${adjustmentAmount !== 0 ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-zinc-800'}`}
                                     >
                                         <DollarSign size={12} />
                                         Ajustar Valor Final {adjustmentAmount !== 0 && `(R$ ${adjustmentAmount.toFixed(2)})`}
                                     </button>
 
                                     {showAdjustmentField && (
-                                        <div className="mt-3 p-4 bg-slate-50 dark:bg-zinc-950 border-2 border-slate-200 dark:border-zinc-800 rounded-2xl animate-in slide-in-from-top-2">
+                                        <div className="mt-3 p-4 bg-slate-50 dark:bg-zinc-950 border-2 border-slate-200 dark:border-zinc-800 rounded-sm animate-in slide-in-from-top-2">
                                             <div className="flex gap-4">
                                                 <div className="flex-1">
                                                     <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Valor do Ajuste (+ ou -)</label>
@@ -4526,7 +4526,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
                                                         <input
                                                             type="number"
-                                                            className="w-full pl-8 pr-3 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black"
+                                                            className="w-full pl-8 pr-3 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black"
                                                             placeholder="+10.00 ou -10.00"
                                                             value={adjustmentAmount || ''}
                                                             onChange={e => setAdjustmentAmount(parseFloat(e.target.value) || 0)}
@@ -4537,7 +4537,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Motivo do Ajuste</label>
                                                     <input
                                                         type="text"
-                                                        className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
+                                                        className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
                                                         placeholder="Ex: Taxa extra, Desconto especial..."
                                                         value={adjustmentReason}
                                                         onChange={e => setAdjustmentReason(e.target.value)}
@@ -4563,7 +4563,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                             const customer = customers.find(c => c.id === ps.customerId);
                                                                             const itemInfo = (ps.items as any[]).find(i => i.productId === insight.id);
                                                                             return (
-                                                                                <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl flex justify-between items-center">
+                                                                                <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-sm flex justify-between items-center">
                                                                                     <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400 truncate max-w-[100px]">{customer?.name || 'Cliente'}</span>
                                                                                     <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {itemInfo?.unitPrice?.toFixed(2) || '0.00'}</span>
                                                                                 </div>
@@ -4573,7 +4573,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                     <div className="space-y-1">
                                                                         <p className="text-[8px] font-black text-slate-400 uppercase">Histórico de Preços</p>
                                                                         {insight.priceHistory.length > 0 ? (insight.priceHistory as any[]).slice(-2).reverse().map((ph, idx) => (
-                                                                            <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl flex justify-between items-center">
+                                                                            <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-sm flex justify-between items-center">
                                                                                 <div className="flex flex-col">
                                                                                     <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {ph.price.toFixed(2)}</span>
                                                                                     <span className="text-[7px] text-slate-400 uppercase font-black">{new Date(ph.date).toLocaleDateString()}</span>
@@ -4600,14 +4600,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         onChange={(e) => setObservation(e.target.value)}
                                         placeholder="Adicione observações importantes sobre este atendimento..."
                                         rows={2}
-                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500 placeholder-slate-300 resize-none transition-all"
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-bold text-slate-900 dark:text-white outline-none focus:border-indigo-500 placeholder-slate-300 resize-none transition-all"
                                     />
                                 </div>
 
                                 {/* Coupon / Campaign Input */}
                                 <div className="mt-3">
                                     {appliedCampaign ? (
-                                        <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2">
+                                        <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-sm px-3 py-2">
                                             <div className="flex items-center gap-2">
                                                 <Tag size={14} className="text-emerald-600 dark:text-emerald-400" />
                                                 <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase">{appliedCampaign.couponCode}</span>
@@ -4629,12 +4629,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 value={couponCode}
                                                 onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                                                 onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
-                                                className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl px-3 py-2.5 text-[10px] font-black uppercase placeholder-slate-300 text-slate-900 dark:text-white outline-none focus:border-slate-400"
+                                                className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm px-3 py-2.5 text-[10px] font-black uppercase placeholder-slate-300 text-slate-900 dark:text-white outline-none focus:border-slate-400"
                                             />
                                             <button
                                                 type="button"
                                                 onClick={handleApplyCoupon}
-                                                className="px-3 py-2.5 bg-slate-950 dark:bg-white text-white dark:text-black rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                                                className="px-3 py-2.5 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
                                             >
                                                 APLICAR
                                             </button>
@@ -4643,7 +4643,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 </div>
 
                                 <div className="flex gap-2 mt-4">
-                                    <div className={`flex-1 p-3 rounded-xl border flex flex-col justify-center ${totalPaid >= totalValue - 0.01 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800'}`}>
+                                    <div className={`flex-1 p-3 rounded-sm border flex flex-col justify-center ${totalPaid >= totalValue - 0.01 ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800' : 'bg-rose-50 dark:bg-rose-900/10 border-rose-100 dark:border-rose-800'}`}>
                                         <div className="flex items-center justify-between w-full">
                                             <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">Total Pago</span>
                                             <span className={`text-xs font-black ${totalPaid >= totalValue - 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -4663,7 +4663,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         type="button"
                                         onClick={() => handleCreateDebt()}
                                         disabled={isSaving || (lines.some(l => !l.serviceId || !l.providerId))}
-                                        className={`px-4 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap ${isSaving ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40'}`}
+                                        className={`px-4 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap ${isSaving ? 'bg-slate-300 dark:bg-zinc-700 text-slate-500' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40'}`}
                                         title="Registrar como Dívida (Fiado)"
                                     >
                                         <Wallet size={14} />
@@ -4674,7 +4674,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                             {/* EXIBIÇÃO DA DÍVIDA ANTERIOR */}
                             {customer.outstandingBalance !== undefined && customer.outstandingBalance > 0 && (
-                                <div className="flex flex-col gap-2 p-3 bg-rose-50 dark:bg-rose-900/10 rounded-xl border border-rose-100 dark:border-rose-900">
+                                <div className="flex flex-col gap-2 p-3 bg-rose-50 dark:bg-rose-900/10 rounded-sm border border-rose-100 dark:border-rose-900">
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
@@ -4692,7 +4692,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <button
                                             type="button"
                                             onClick={(e) => { e.stopPropagation(); setShowDebtDetails(!showDebtDetails); }}
-                                            className="ml-2 px-2 py-1 bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase rounded-lg border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors"
+                                            className="ml-2 px-2 py-1 bg-white dark:bg-zinc-800 text-rose-600 dark:text-rose-400 text-[9px] font-black uppercase rounded-sm border border-rose-200 dark:border-rose-800 hover:bg-rose-50 dark:hover:bg-rose-900/40 transition-colors"
                                         >
                                             {showDebtDetails ? 'OCULTAR' : 'DETALHES'}
                                         </button>
@@ -4702,7 +4702,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <div className="mt-2 pt-2 border-t border-rose-100 dark:border-rose-800/50 animate-in slide-in-from-top-2">
                                             <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
                                                 {customer.history?.filter(h => h.details?.includes('Dívida Criada') || h.description?.toLowerCase().includes('fiado')).slice(0, 10).map((h, i) => (
-                                                    <div key={i} className="bg-white dark:bg-zinc-900 p-2 rounded-lg border border-rose-100 dark:border-zinc-800 flex justify-between items-center text-[10px]">
+                                                    <div key={i} className="bg-white dark:bg-zinc-900 p-2 rounded-sm border border-rose-100 dark:border-zinc-800 flex justify-between items-center text-[10px]">
                                                         <div className="flex flex-col">
                                                             <span className="font-bold text-slate-900 dark:text-white">{new Date(h.date).toLocaleDateString('pt-BR')}</span>
                                                             <span className="text-slate-500 truncate max-w-[150px]" title={h.description}>{h.description}</span>
@@ -4711,7 +4711,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     </div>
                                                 ))}
                                                 {(customer.history?.filter(h => h.details?.includes('Dívida Criada') || h.description?.toLowerCase().includes('fiado'))?.length || 0) === 0 && (
-                                                    <div className="text-[10px] text-slate-500 italic p-2 bg-white dark:bg-zinc-800 rounded-lg">
+                                                    <div className="text-[10px] text-slate-500 italic p-2 bg-white dark:bg-zinc-800 rounded-sm">
                                                         Este saldo é oriundo de compras pendentes ou anteriores ao novo histórico.
                                                     </div>
                                                 )}
@@ -4726,7 +4726,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     type="button"
                                     onClick={() => handleFinishService()}
                                     disabled={isSaving || restrictionData.isRestricted || customer.isBlocked}
-                                    className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
+                                    className={`w-full py-4 rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 ${isSaving || restrictionData.isRestricted || customer.isBlocked ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-emerald-600 text-white'}`}
                                 >
                                     {isSaving ? 'PROCESSANDO...' : (restrictionData.isRestricted || customer.isBlocked ? 'BLOQUEADO' : (appointment.status === 'Concluído' ? <><Save size={20} /> ATUALIZAR ATENDIMENTO</> : <><Check size={20} /> FINALIZAR ATENDIMENTO</>))}
                                 </button>
@@ -4741,7 +4741,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                     {mode === 'HISTORY' && (
                         <div className="space-y-6 animate-in slide-in-from-right duration-300 pb-4">
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-sm border border-emerald-100 dark:border-emerald-800 flex justify-between items-center">
                                 <div className="flex items-center gap-2">
                                     <div className="p-2 bg-emerald-100 dark:bg-emerald-800/50 text-emerald-700 dark:text-emerald-400 rounded-full"><CircleCheck size={20} /></div>
                                     <span className="text-[10px] font-black text-emerald-900 dark:text-emerald-300 uppercase tracking-widest">{appointment.paymentMethod === 'Dívida' ? 'Dívida Registrada' : 'Atendimento Finalizado'}</span>
@@ -4756,9 +4756,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         const srv = services.find(s => s.id === line.serviceId);
                                         const prv = providers.find(p => p.id === line.providerId);
                                         return (
-                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex justify-between items-center">
+                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-100 dark:border-zinc-700 shadow-sm flex justify-between items-center">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="bg-indigo-50 dark:bg-indigo-950 p-2 rounded-xl text-indigo-600 dark:text-indigo-400 flex-shrink-0">
+                                                    <div className="bg-indigo-50 dark:bg-indigo-950 p-2 rounded-sm text-indigo-600 dark:text-indigo-400 flex-shrink-0">
                                                         <Sparkles size={16} />
                                                     </div>
                                                     <div>
@@ -4787,7 +4787,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-200 dark:border-zinc-700">
                                 <div>
                                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Método de Pagamento</p>
                                     <div className="space-y-1">
@@ -4835,7 +4835,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 {appointment.observation && (
                                     <div className="md:col-span-2 pt-3 border-t border-slate-200 dark:border-zinc-700 mt-1">
                                         <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Observações e Sugestões do Atendimento</p>
-                                        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-zinc-900/80 p-3 rounded-xl border border-slate-200 dark:border-zinc-700 leading-relaxed">
+                                        <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 bg-white dark:bg-zinc-900/80 p-3 rounded-sm border border-slate-200 dark:border-zinc-700 leading-relaxed">
                                             {appointment.observation}
                                         </p>
                                     </div>
@@ -4843,7 +4843,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             </div>
 
                             {/* NFSe Section */}
-                            <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-2xl p-4">
+                            <div className="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-sm p-4">
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-2">
                                         <div className="p-2 bg-purple-100 dark:bg-purple-800/50 text-purple-700 dark:text-purple-400 rounded-full">
@@ -4852,10 +4852,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <span className="text-[10px] font-black text-purple-900 dark:text-purple-300 uppercase tracking-widest">Nota Fiscal Eletrônica (NFSe)</span>
                                     </div>
                                 </div>
-                                <div className="bg-white dark:bg-zinc-900 rounded-xl p-3 border border-purple-100 dark:border-purple-800">
+                                <div className="bg-white dark:bg-zinc-900 rounded-sm p-3 border border-purple-100 dark:border-purple-800">
                                     {nfseStatus === 'success' || (nfseData && nfseData.status === 'issued') ? (
                                         <div className="space-y-3">
-                                            <div className={`text-center p-2 rounded-xl border ${nfseData?.status === 'issued'
+                                            <div className={`text-center p-2 rounded-sm border ${nfseData?.status === 'issued'
                                                 ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800'
                                                 : 'bg-amber-50 dark:bg-amber-900/20 border-amber-100 dark:border-amber-800'
                                                 }`}>
@@ -4871,7 +4871,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 <button
                                                     onClick={refreshNFSeStatus}
                                                     disabled={nfseStatus === 'loading'}
-                                                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-slate-600 dark:text-slate-400 rounded-sm font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95"
                                                 >
                                                     <RefreshCw size={14} className={nfseStatus === 'loading' ? 'animate-spin' : ''} />
                                                     {nfseStatus === 'loading' ? 'Verificando...' : 'Atualizar Status'}
@@ -4882,7 +4882,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 {nfseData?.pdf_url && (
                                                     <button
                                                         onClick={() => window.open(nfseData.pdf_url, '_blank')}
-                                                        className="py-3 bg-slate-900 hover:bg-black text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                        className="py-3 bg-slate-900 hover:bg-black text-white rounded-sm font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
                                                     >
                                                         <FileText size={14} /> Baixar PDF
                                                     </button>
@@ -4895,7 +4895,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             const phone = customer.phone.replace(/\D/g, '');
                                                             window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
                                                         }}
-                                                        className="py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
+                                                        className="py-3 bg-green-500 hover:bg-green-600 text-white rounded-sm font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm"
                                                     >
                                                         <Smartphone size={14} /> WhatsApp
                                                     </button>
@@ -4911,7 +4911,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             )}
                                             <button
                                                 onClick={() => setShowNfseManualDetail(true)}
-                                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                                                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
                                             >
                                                 <FileText size={14} />
                                                 GERAR TEXTO DA NOTA
@@ -4925,13 +4925,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <button
                                     type="button"
                                     onClick={() => setMode('VIEW')}
-                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-slate-200 dark:border-zinc-700"
+                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-sm font-black uppercase text-xs tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border-2 border-slate-200 dark:border-zinc-700"
                                 >
                                     <Edit3 size={18} /> EDITAR ATENDIMENTO
                                 </button>
 
 
-                                <button onClick={onClose} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
+                                <button onClick={onClose} className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">
                                     Fechar Histórico
                                 </button>
                             </div>
@@ -4944,7 +4944,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {
                 isCancelling && (
                     <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
                             <div className="p-8 text-center pt-10">
                                 <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
                                     <X size={40} className="animate-pulse" />
@@ -4963,7 +4963,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         value={cancellationReason}
                                         onChange={(e) => setCancellationReason(e.target.value)}
                                         placeholder="Ex: Cliente solicitou reagendamento, Profissional indisponível, etc."
-                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
+                                        className="w-full px-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent resize-none"
                                         rows={3}
                                         autoFocus
                                     />
@@ -4971,14 +4971,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
                                         onClick={() => setIsCancelling(false)}
-                                        className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                        className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
                                     >
                                         Não, Manter
                                     </button>
                                     <button
                                         onClick={handleConfirmCancellation}
                                         disabled={isSaving}
-                                        className="px-6 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                        className="px-6 py-4 bg-rose-600 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
                                     >
                                         {isSaving ? 'Cancelando...' : <><X size={16} /> Sim, Cancelar</>}
                                     </button>
@@ -4993,7 +4993,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {
                 showDebtConfirmModal && (
                     <div className="fixed inset-0 bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
                             <div className="p-8 text-center pt-10">
                                 <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
                                     <AlertTriangle size={40} className="animate-pulse" />
@@ -5003,7 +5003,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                     Atenção: Registro de "Fiado"
                                 </h3>
 
-                                <div className="bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-3xl mb-8 space-y-4">
+                                <div className="bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-sm mb-8 space-y-4">
                                     <p className="text-sm font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
                                         Este atendimento para <span className="text-slate-900 dark:text-white font-black">{customer.name}</span> será registrado como dívida pendente.
                                     </p>
@@ -5013,7 +5013,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <span className="text-3xl font-black text-rose-600 dark:text-rose-400">R$ {totalValue.toFixed(2)}</span>
                                     </div>
 
-                                    <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-zinc-900 px-4 py-3 rounded-2xl border border-dashed border-slate-300 dark:border-zinc-700 uppercase leading-normal">
+                                    <p className="text-[11px] font-black text-slate-500 dark:text-slate-400 bg-white dark:bg-zinc-900 px-4 py-3 rounded-sm border border-dashed border-slate-300 dark:border-zinc-700 uppercase leading-normal">
                                         💡 Este valor será cobrado automaticamente no próximo atendimento desta cliente.
                                     </p>
                                 </div>
@@ -5021,13 +5021,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="grid grid-cols-2 gap-4">
                                     <button
                                         onClick={() => setShowDebtConfirmModal(false)}
-                                        className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                        className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
                                     >
                                         Cancelar
                                     </button>
                                     <button
                                         onClick={() => handleCreateDebt(true)}
-                                        className="px-6 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                        className="px-6 py-4 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-sm text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
                                     >
                                         <Save size={16} /> Confirmar
                                     </button>
@@ -5041,9 +5041,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {
                 showCpfPrompt && (
                     <div className="fixed inset-0 bg-black/80 z-[120] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 border-2 border-slate-900 dark:border-white/10">
                             <div className="p-8 text-center pt-8">
-                                <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-inner">
+                                <div className="w-16 h-16 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm flex items-center justify-center mx-auto mb-5 shadow-inner">
                                     <User size={32} />
                                 </div>
 
@@ -5057,7 +5057,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <input
                                     type="text"
                                     placeholder="000.000.000-00"
-                                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-center text-lg font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 mb-6"
+                                    className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm px-4 py-3 text-center text-lg font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 mb-6"
                                     value={tempCpf}
                                     onChange={e => {
                                         // Simple mask
@@ -5074,13 +5074,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="flex flex-col gap-3">
                                     <button
                                         onClick={handleSaveCpfAndIssue}
-                                        className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                        className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                                     >
                                         Salvar CPF e Emitir
                                     </button>
                                     <button
                                         onClick={handleSkipCpf}
-                                        className="w-full py-3 bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all"
+                                        className="w-full py-3 bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-sm font-black text-[10px] uppercase tracking-widest transition-all"
                                     >
                                         Emitir sem CPF (Consumidor)
                                     </button>
@@ -5093,7 +5093,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {
                 showNfseManualDetail && (
                     <div className="fixed inset-0 bg-black/80 z-[150] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-2xl overflow-hidden border-2 border-slate-900 dark:border-white/10">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-2xl overflow-hidden border-2 border-slate-900 dark:border-white/10">
                             <div className="p-8">
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase tracking-tight">Texto Detalhado da Nota</h3>
@@ -5101,7 +5101,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <X size={20} />
                                     </button>
                                 </div>
-                                <div className="bg-slate-50 dark:bg-zinc-800 p-6 rounded-2xl mb-6 font-mono text-xs whitespace-pre-wrap max-h-[400px] overflow-y-auto border border-slate-200 dark:border-zinc-700 leading-relaxed text-slate-700 dark:text-slate-300">
+                                <div className="bg-slate-50 dark:bg-zinc-800 p-6 rounded-sm mb-6 font-mono text-xs whitespace-pre-wrap max-h-[400px] overflow-y-auto border border-slate-200 dark:border-zinc-700 leading-relaxed text-slate-700 dark:text-slate-300">
                                     {generateFiscalDetailingText()}
                                 </div>
                                 <div className="flex gap-4">
@@ -5110,13 +5110,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             navigator.clipboard.writeText(generateFiscalDetailingText());
                                             showToast('Texto copiado com sucesso! ✅', 'success');
                                         }}
-                                        className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                     >
                                         <Copy size={18} /> COPIAR TEXTO
                                     </button>
                                     <button 
                                         onClick={() => setShowNfseManualDetail(false)}
-                                        className="px-8 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
+                                        className="px-8 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm font-black uppercase text-xs tracking-widest active:scale-95 transition-all"
                                     >
                                         FECHAR
                                     </button>
@@ -5129,10 +5129,10 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {
                 showHistoryPopup && (
                     <div className="fixed inset-0 bg-black/80 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border-2 border-slate-900 dark:border-zinc-800 scale-in-center">
+                        <div className="bg-white dark:bg-zinc-950 rounded-sm shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] border-2 border-slate-900 dark:border-zinc-800 scale-in-center">
                             <div className="px-8 py-6 bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-zinc-800 flex justify-between items-center">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400">
+                                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-sm text-indigo-600 dark:text-indigo-400">
                                         <History size={24} />
                                     </div>
                                     <div>
@@ -5152,8 +5152,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Carregando histórico...</p>
                                     </div>
                                 ) : customerHistory.length === 0 ? (
-                                    <div className="text-center py-20 bg-slate-50 dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-slate-200 dark:border-zinc-800">
-                                        <div className="bg-white dark:bg-zinc-800 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                    <div className="text-center py-20 bg-slate-50 dark:bg-zinc-900 rounded-sm border-2 border-dashed border-slate-200 dark:border-zinc-800">
+                                        <div className="bg-white dark:bg-zinc-800 w-16 h-16 rounded-sm flex items-center justify-center mx-auto mb-4 text-slate-300">
                                             <Calendar size={32} />
                                         </div>
                                         <p className="text-xs font-black text-slate-300 uppercase tracking-widest">Nenhum histórico disponível</p>
@@ -5170,13 +5170,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                     <div className="w-0.5 h-full min-h-[40px] bg-slate-100 dark:bg-zinc-800 mt-2 rounded-full" />
                                                 </div>
 
-                                                <div className="flex-1 bg-slate-50 dark:bg-zinc-900/50 p-6 rounded-2xl border border-slate-100 dark:border-zinc-800 hover:border-indigo-200 dark:hover:border-indigo-900 transition-all hover:shadow-md">
+                                                <div className="flex-1 bg-slate-50 dark:bg-zinc-900/50 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 hover:border-indigo-200 dark:hover:border-indigo-900 transition-all hover:shadow-md">
                                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4">
                                                         <div className="flex items-center gap-3">
-                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white dark:bg-zinc-800 px-3 py-1 rounded-lg border border-slate-100 dark:border-zinc-700">
+                                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-white dark:bg-zinc-800 px-3 py-1 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                                 {new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR')}
                                                             </span>
-                                                            <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${item.type === 'VISIT' ? 'bg-indigo-50 text-indigo-700' :
+                                                            <span className={`px-2.5 py-1 rounded-sm text-[8px] font-black uppercase tracking-widest ${item.type === 'VISIT' ? 'bg-indigo-50 text-indigo-700' :
                                                                 item.type === 'PURCHASE' ? 'bg-emerald-50 text-emerald-700' :
                                                                     'bg-rose-50 text-rose-700'
                                                                 }`}>
@@ -5214,7 +5214,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <div className="p-6 bg-slate-50 dark:bg-zinc-900 border-t border-slate-200 dark:border-zinc-800">
                                 <button 
                                     onClick={() => setShowHistoryPopup(false)}
-                                    className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all"
+                                    className="w-full py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all"
                                 >
                                     FECHAR HISTÓRICO
                                 </button>
@@ -5226,16 +5226,16 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {/* Histórico Pop-up Overlay */}
             {showHistoryPopup && (
                 <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-950 w-full max-w-xl rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-900 dark:border-zinc-800">
+                    <div className="bg-white dark:bg-zinc-950 w-full max-w-xl rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-900 dark:border-zinc-800">
                         <div className="p-8 border-b border-slate-100 dark:border-zinc-900 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/50">
                             <div className="flex items-center gap-4">
-                                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl shadow-inner"><History size={24} /></div>
+                                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-sm shadow-inner"><History size={24} /></div>
                                 <div>
                                     <h3 className="text-sm font-black text-slate-950 dark:text-white uppercase tracking-tight">Histórico da Cliente</h3>
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none mt-1.5">{customer.name.toUpperCase()}</p>
                                 </div>
                             </div>
-                            <button onClick={() => setShowHistoryPopup(false)} className="p-3 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-all"><X size={20} className="text-slate-400" /></button>
+                            <button onClick={() => setShowHistoryPopup(false)} className="p-3 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-all"><X size={20} className="text-slate-400" /></button>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-8 space-y-4 bg-white dark:bg-zinc-950 scrollbar-hide">
@@ -5291,8 +5291,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
                                 if (combined.length === 0 && !isLoadingHistory) {
                                     return (
-                                        <div className="text-center py-20 bg-slate-50/50 dark:bg-zinc-900/10 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
-                                            <div className="w-16 h-16 bg-white dark:bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm"><Calendar size={32} /></div>
+                                        <div className="text-center py-20 bg-slate-50/50 dark:bg-zinc-900/10 rounded-sm border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                                            <div className="w-16 h-16 bg-white dark:bg-zinc-900 rounded-sm flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm"><Calendar size={32} /></div>
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhum histórico disponível</p>
                                         </div>
                                     );
@@ -5314,7 +5314,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                 </div>
 
                                                 {/* Card Content */}
-                                                <div className="flex-1 ml-12 p-6 rounded-[2rem] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                                                <div className="flex-1 ml-12 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group-hover:shadow-md">
                                                     <div className="flex justify-between items-start">
                                                         <div className="space-y-1.5 flex-1 pr-4">
                                                             <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{new Date(item.date + (item.date.includes('T') ? '' : 'T12:00:00')).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
@@ -5336,7 +5336,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                         Valor: R$ {(item.price || 0).toFixed(2)} | Pagamento: {item.method || 'Não informado'}
                                                                     </p>
                                                                     {item.observation && (
-                                                                        <p className="text-[10px] font-black text-indigo-600/70 dark:text-indigo-400/70 mt-1 uppercase tracking-tight bg-indigo-50/50 dark:bg-indigo-900/10 px-3 py-2 rounded-xl border border-indigo-100/50 dark:border-indigo-900/20">
+                                                                        <p className="text-[10px] font-black text-indigo-600/70 dark:text-indigo-400/70 mt-1 uppercase tracking-tight bg-indigo-50/50 dark:bg-indigo-900/10 px-3 py-2 rounded-sm border border-indigo-100/50 dark:border-indigo-900/20">
                                                                             Nota: {item.observation}
                                                                         </p>
                                                                     )}
@@ -5346,7 +5346,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             {(item.feedback) && <p className="text-[10px] text-slate-500 italic mt-2 dark:text-slate-400 border-l-2 border-slate-100 dark:border-zinc-800 pl-3">"{item.feedback}"</p>}
                                                         </div>
                                                         <div className="text-right">
-                                                            <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg uppercase truncate max-w-[80px] inline-block shadow-sm">
+                                                            <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-sm uppercase truncate max-w-[80px] inline-block shadow-sm">
                                                                 {item.isDb ? 'REGISTRO' : 'SISTEMA'}
                                                             </span>
                                                         </div>
@@ -5362,7 +5362,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         <div className="p-8 border-t border-slate-100 dark:border-zinc-900 bg-slate-50/50 dark:bg-zinc-900/50">
                             <button 
                                 onClick={() => { setShowHistoryPopup(false); setMode('EDIT_CUSTOMER'); }}
-                                className="w-full py-5 bg-slate-950 dark:bg-zinc-800 text-white rounded-3xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl hover:bg-slate-900 dark:hover:bg-zinc-700"
+                                className="w-full py-5 bg-slate-950 dark:bg-zinc-800 text-white rounded-sm text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl hover:bg-slate-900 dark:hover:bg-zinc-700"
                             >
                                 <User size={18} /> Gerenciar Cliente Completo
                             </button>
@@ -5388,7 +5388,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             {conflictAlert && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-sm border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center pt-10">
                             <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
                                 <AlertCircle size={40} className="animate-pulse" />
@@ -5423,7 +5423,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 <div className="grid grid-cols-2 gap-3">
                                     <button
                                         onClick={() => setConflictAlert(null)}
-                                        className="py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95"
+                                        className="py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-sm text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95"
                                     >
                                         Cancelar
                                     </button>
@@ -5432,7 +5432,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                             conflictAlert.onConfirm?.();
                                             setConflictAlert(null);
                                         }}
-                                        className="py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                                        className="py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
                                     >
                                         Prosseguir
                                     </button>
@@ -5440,7 +5440,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             ) : (
                                 <button
                                     onClick={() => setConflictAlert(null)}
-                                    className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                                    className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
                                 >
                                     OK
                                 </button>
@@ -5452,7 +5452,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
             {showDeleteConfirm && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-sm border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center pt-10">
                             <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-rose-50/50 dark:ring-rose-900/10">
                                 <Trash2 size={40} className="animate-pulse" />
@@ -5462,7 +5462,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 ATENÇÃO: EXCLUIR AGENDAMENTO
                             </h3>
                             
-                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-3xl p-6 mb-6 border border-slate-100 dark:border-zinc-800 space-y-2 text-left">
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-sm p-6 mb-6 border border-slate-100 dark:border-zinc-800 space-y-2 text-left">
                                 <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
                                     Esta ação excluirá <span className="text-rose-600 dark:text-rose-400 font-black">PERMANENTEMENTE</span> este agendamento do banco de dados.
                                 </p>
@@ -5478,13 +5478,13 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     onClick={() => setShowDeleteConfirm(false)}
-                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                    className="px-6 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     onClick={executeDeleteAppointment}
-                                    className="px-6 py-4 bg-rose-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    className="px-6 py-4 bg-rose-600 text-white rounded-sm text-[10px] font-black uppercase tracking-widest shadow-xl hover:shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     OK
                                 </button>
@@ -5497,7 +5497,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             {/* Custom Restriction Alert Modal */}
             {restrictionAlert.open && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-sm border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center">
                             <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <ShieldAlert size={40} className="text-amber-600 dark:text-amber-400" />
@@ -5511,14 +5511,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                 Profissional Restrito: <span className="text-rose-600 dark:text-rose-400 font-black">{restrictionAlert.providerName}</span>
                             </p>
                             
-                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-5 border border-slate-100 dark:border-zinc-800 mb-6 text-left">
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-sm p-5 border border-slate-100 dark:border-zinc-800 mb-6 text-left">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Detalhes da Restrição:</p>
                                 <p className="text-xs font-black text-slate-800 dark:text-slate-200 italic leading-relaxed">
                                     "{restrictionAlert.reason}"
                                 </p>
                             </div>
                             
-                            <div className="flex items-center gap-2 justify-center py-3 px-4 bg-rose-50 dark:bg-rose-900/20 rounded-xl border border-rose-100 dark:border-rose-900/50 mb-8 text-center">
+                            <div className="flex items-center gap-2 justify-center py-3 px-4 bg-rose-50 dark:bg-rose-900/20 rounded-sm border border-rose-100 dark:border-rose-900/50 mb-8 text-center">
                                 <Ban size={14} className="text-rose-600" />
                                 <p className="text-[9px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest leading-tight">
                                     Ação bloqueada. Altere o profissional para salvar o registro.
@@ -5527,7 +5527,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                             
                             <button
                                 onClick={() => setRestrictionAlert({ ...restrictionAlert, open: false })}
-                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
+                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
                             >
                                 Entendi e vou ajustar
                             </button>

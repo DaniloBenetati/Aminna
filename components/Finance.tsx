@@ -108,7 +108,7 @@ const BatchLinkModal: React.FC<BatchLinkModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden scale-in-center duration-300">
+            <div className="bg-white dark:bg-zinc-900 rounded-sm w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden scale-in-center duration-300">
                 <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 sticky top-0 z-10">
                     <div>
                         <h2 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
@@ -122,7 +122,7 @@ const BatchLinkModal: React.FC<BatchLinkModalProps> = ({
                 </div>
 
                 <div className="flex-1 overflow-auto p-6 space-y-6">
-                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/20">
+                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-5 rounded-sm border border-indigo-100 dark:border-indigo-900/20">
                         <h3 className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-3">Itens Selecionados ({selectedExpenses.length})</h3>
                         <div className="space-y-2 max-h-32 overflow-auto scrollbar-hide">
                             {selectedExpenses.map(exp => (
@@ -144,7 +144,7 @@ const BatchLinkModal: React.FC<BatchLinkModalProps> = ({
                             <input 
                                 type="text"
                                 placeholder="Buscar transação bancária (descrição ou valor)..."
-                                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[10px]"
+                                className="w-full pl-10 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[10px]"
                                 value={searchBank}
                                 onChange={e => setSearchBank(e.target.value)}
                             />
@@ -155,10 +155,10 @@ const BatchLinkModal: React.FC<BatchLinkModalProps> = ({
                                 <button
                                     key={tx.id}
                                     onClick={() => setSelectedBankTxId(tx.id)}
-                                    className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all group ${selectedBankTxId === tx.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-slate-300'}`}
+                                    className={`w-full p-4 rounded-sm border-2 flex items-center justify-between transition-all group ${selectedBankTxId === tx.id ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-slate-300'}`}
                                 >
                                     <div className="flex items-center gap-4 text-left">
-                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${selectedBankTxId === tx.id ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-zinc-800 text-slate-400 group-hover:bg-slate-100'}`}>
+                                        <div className={`w-10 h-10 rounded-sm flex items-center justify-center ${selectedBankTxId === tx.id ? 'bg-indigo-600 text-white' : 'bg-slate-50 dark:bg-zinc-800 text-slate-400 group-hover:bg-slate-100'}`}>
                                             <Landmark size={18} />
                                         </div>
                                         <div>
@@ -173,7 +173,7 @@ const BatchLinkModal: React.FC<BatchLinkModalProps> = ({
                                 </button>
                             ))}
                             {filteredBankTxs.length === 0 && (
-                                <div className="py-12 text-center text-slate-400 text-xs font-bold uppercase border-2 border-dashed border-slate-100 dark:border-zinc-800 rounded-3xl">
+                                <div className="py-12 text-center text-slate-400 text-xs font-bold uppercase border-2 border-dashed border-slate-100 dark:border-zinc-800 rounded-sm">
                                     Nenhuma transação bancária disponível
                                 </div>
                             )}
@@ -182,11 +182,11 @@ const BatchLinkModal: React.FC<BatchLinkModalProps> = ({
                 </div>
 
                 <div className="p-6 border-t border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex gap-4">
-                    <button onClick={onClose} className="flex-1 px-6 py-4 bg-white dark:bg-zinc-800 text-slate-600 dark:text-slate-400 text-xs font-black uppercase rounded-2xl border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 transition-all">Cancelar</button>
+                    <button onClick={onClose} className="flex-1 px-6 py-4 bg-white dark:bg-zinc-800 text-slate-600 dark:text-slate-400 text-xs font-black uppercase rounded-sm border border-slate-200 dark:border-zinc-700 hover:bg-slate-50 transition-all">Cancelar</button>
                     <button 
                         onClick={() => selectedBankTxId && onLink(selectedBankTxId, selectedExpenses.map(e => e.id))}
                         disabled={!selectedBankTxId || isProcessing}
-                        className="flex-[2] px-6 py-4 bg-indigo-600 text-white text-xs font-black uppercase rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="flex-[2] px-6 py-4 bg-indigo-600 text-white text-xs font-black uppercase rounded-sm shadow-lg shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                         {isProcessing ? <RefreshCw size={16} className="animate-spin" /> : <Link2 size={16} />}
                         Confirmar Vínculo
@@ -322,11 +322,11 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
 
     return (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-zinc-900 w-full md:max-w-4xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="bg-white dark:bg-zinc-900 w-full md:max-w-4xl rounded-sm shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]">
                 <div className="p-8 border-b dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50">
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600">
+                            <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-sm flex items-center justify-center text-indigo-600">
                                 <Link2 size={24} />
                             </div>
                             <div>
@@ -338,9 +338,9 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                             <X size={20} />
                         </button>
                     </div>
-                    <div className="mt-6 p-4 bg-white dark:bg-zinc-800 border-2 border-dashed border-indigo-200 dark:border-indigo-900/50 rounded-2xl flex items-center justify-between">
+                    <div className="mt-6 p-4 bg-white dark:bg-zinc-800 border-2 border-dashed border-indigo-200 dark:border-indigo-900/50 rounded-sm flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bankTx.type === 'RECEITA' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                            <div className={`w-10 h-10 rounded-sm flex items-center justify-center ${bankTx.type === 'RECEITA' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                                 {bankTx.type === 'RECEITA' ? <ArrowUpCircle size={20} /> : <ArrowDownCircle size={20} />}
                             </div>
                             <div>
@@ -363,17 +363,17 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                 placeholder="Buscar por descrição, valor ou entidade..."
                                 value={innerSearch}
                                 onChange={e => setInnerSearch(e.target.value)}
-                                className="w-full pl-12 pr-4 py-4 bg-slate-100 dark:bg-zinc-800 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
+                                className="w-full pl-12 pr-4 py-4 bg-slate-100 dark:bg-zinc-800 border-none rounded-sm text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
                             />
                         </div>
-                        <div className={`px-6 py-4 rounded-2xl flex flex-col items-center justify-center min-w-[150px] ${Math.abs(diff) < 0.01 ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600'}`}>
+                        <div className={`px-6 py-4 rounded-sm flex flex-col items-center justify-center min-w-[150px] ${Math.abs(diff) < 0.01 ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-zinc-800 text-slate-600'}`}>
                             <span className="text-[9px] font-black uppercase">Total Selecionado</span>
                             <span className="text-lg font-black font-mono">R$ {totalSelected.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                         </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
+                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-sm border border-slate-200 dark:border-zinc-700">
                             <Calendar size={14} className="text-slate-400 ml-1" />
                             <select
                                 value={filterMonth}
@@ -386,7 +386,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                             </select>
                         </div>
 
-                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
+                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-sm border border-slate-200 dark:border-zinc-700">
                             <Clock size={14} className="text-slate-400 ml-1" />
                             <select
                                 value={filterYear}
@@ -399,7 +399,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                             </select>
                         </div>
 
-                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-xl border border-slate-200 dark:border-zinc-700">
+                        <div className="flex items-center gap-2 bg-slate-100 dark:bg-zinc-800 p-2 rounded-sm border border-slate-200 dark:border-zinc-700">
                             <BarChart2 size={14} className="text-slate-400 ml-1" />
                             <select
                                 value={filterType}
@@ -455,7 +455,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                     return (
                                         <div 
                                             key={`selected-${item.type}-${item.id}`}
-                                            className="w-full p-4 rounded-2xl border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10 flex items-center justify-between group animate-in zoom-in-95 duration-200"
+                                            className="w-full p-4 rounded-sm border-2 border-indigo-500 bg-indigo-50 dark:bg-indigo-900/10 flex items-center justify-between group animate-in zoom-in-95 duration-200"
                                         >
                                             <div className="flex items-center gap-4 text-left">
                                                 <div className="w-5 h-5 rounded bg-indigo-600 text-white flex items-center justify-center">
@@ -493,7 +493,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                         </p>
                         <div className="space-y-2">
                             {allPending.filter(item => !selectedItems.some(si => si.id === item.id && si.type === item.type)).length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 dark:bg-zinc-800/20 rounded-[2rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                                <div className="flex flex-col items-center justify-center py-10 text-slate-400 bg-slate-50 dark:bg-zinc-800/20 rounded-sm border-2 border-dashed border-slate-100 dark:border-zinc-800">
                                     <Search size={32} className="mb-2 opacity-20" />
                                     <p className="font-bold uppercase text-[9px] tracking-widest">Nenhum item adicional encontrado</p>
                                 </div>
@@ -504,7 +504,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                         onClick={() => {
                                             setSelectedItems(prev => [...prev, { id: item.id, type: item.type, amount: item.amount }]);
                                         }}
-                                        className="w-full p-4 rounded-2xl border-2 border-slate-50 dark:border-zinc-800/50 hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all flex items-center justify-between group"
+                                        className="w-full p-4 rounded-sm border-2 border-slate-50 dark:border-zinc-800/50 hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all flex items-center justify-between group"
                                     >
                                         <div className="flex items-center gap-4 text-left">
                                             <div className="w-5 h-5 rounded bg-slate-200 dark:bg-zinc-700 text-transparent flex items-center justify-center group-hover:bg-indigo-100 group-hover:text-indigo-400 transition-colors">
@@ -543,7 +543,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                             </div>
                         )}
                         {isCreatingQuickExpense && (
-                            <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-2xl border-2 border-indigo-200 dark:border-indigo-900/30 flex flex-col gap-3 max-w-md animate-in slide-in-from-bottom-2 duration-200">
+                            <div className="bg-slate-50 dark:bg-zinc-800 p-4 rounded-sm border-2 border-indigo-200 dark:border-indigo-900/30 flex flex-col gap-3 max-w-md animate-in slide-in-from-bottom-2 duration-200">
                                 <div className="flex justify-between items-center mb-1">
                                     <p className="text-[9px] font-black uppercase text-slate-500">Nova Despesa de Ajuste (R$ {Math.abs(diff).toLocaleString('pt-BR', { minimumFractionDigits: 2 })})</p>
                                     <button onClick={() => setIsCreatingQuickExpense(false)} className="text-slate-400 hover:text-slate-600"><X size={14} /></button>
@@ -554,12 +554,12 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                         placeholder="Descrição do ajuste..."
                                         value={quickExpenseDescription}
                                         onChange={e => setQuickExpenseDescription(e.target.value)}
-                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-500"
+                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-sm text-xs font-bold outline-none focus:border-indigo-500"
                                     />
                                     <select
                                         value={quickExpenseCategory}
                                         onChange={e => setQuickExpenseCategory(e.target.value)}
-                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-500"
+                                        className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-sm text-xs font-bold outline-none focus:border-indigo-500"
                                     >
                                         <option value="">Selecione a Categoria...</option>
                                         {expenseCategories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
@@ -577,7 +577,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                                 else if (val.startsWith('EMP_')) setQuickEmployeeId(val.replace('EMP_', ''));
                                                 else setQuickSupplierId(val);
                                             }}
-                                            className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg text-xs font-bold outline-none focus:border-indigo-500"
+                                            className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 p-2 rounded-sm text-xs font-bold outline-none focus:border-indigo-500"
                                         >
                                             <option value="">Selecione o Favorecido (Opcional)...</option>
                                             <optgroup label="Profissionais">
@@ -602,7 +602,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                         )}
                     </div>
                     <div className="flex gap-3">
-                        <button onClick={onClose} className="px-6 py-3.5 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-xl font-black uppercase text-[10px] tracking-widest">
+                        <button onClick={onClose} className="px-6 py-3.5 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm font-black uppercase text-[10px] tracking-widest">
                             Fechar
                         </button>
                         <button
@@ -632,7 +632,7 @@ const ManualLinkModal: React.FC<ManualLinkModalProps> = ({
                                 }
                                 await onLink(bankTx.id, selectedItems, newExpense);
                             }}
-                            className="px-8 py-3.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg disabled:opacity-50 flex items-center gap-2"
+                            className="px-8 py-3.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg disabled:opacity-50 flex items-center gap-2"
                         >
                             {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Link2 size={14} />}
                             {isCreatingQuickExpense ? 'Criar e Vincular' : `Vincular ${selectedItems.length > 1 ? `(${selectedItems.length})` : ''}`}
@@ -3151,7 +3151,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             </div>
 
             <div className="flex flex-col xl:flex-row gap-4 items-start xl:items-center justify-between">
-                <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full xl:w-auto flex-nowrap">
+                <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full xl:w-auto flex-nowrap">
                     {[
                         { id: 'ACCOUNTS', label: 'Contas', icon: FileText },
                         { id: 'DRE', label: 'DRE', icon: CalcIcon },
@@ -3170,7 +3170,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     setDateRef(new Date());
                                 }
                             }}
-                            className={`flex-1 md:flex-none min-w-[80px] md:min-w-[100px] flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2.5 md:py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                            className={`flex-1 md:flex-none min-w-[80px] md:min-w-[100px] flex items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2.5 md:py-3 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                         >
                             <tab.icon size={13} className="md:size-[14px]" /> {tab.label}
                         </button>
@@ -3186,7 +3186,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 <input
                                     type="text"
                                     placeholder="Buscar por descrição ou nome..."
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-100 dark:bg-zinc-800 border-2 border-transparent rounded-sm text-[10px] font-bold uppercase outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-900 transition-all"
                                     value={detailedFilter}
                                     onChange={e => setDetailedFilter(e.target.value)}
                                 />
@@ -3194,15 +3194,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         </div>
                     )}
 
-                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto overflow-x-auto scrollbar-hide flex-nowrap">
+                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700 w-full md:w-auto overflow-x-auto scrollbar-hide flex-nowrap">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
-                            <button key={v} onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }} className={`flex-1 md:flex-none px-3 md:px-4 py-2 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}</button>
+                            <button key={v} onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }} className={`flex-1 md:flex-none px-3 md:px-4 py-2 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}>{v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}</button>
                         ))}
                     </div>
                     {timeView !== 'custom' ? (
-                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between group shadow-sm transition-all">
+                        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-sm w-full md:w-auto justify-between group shadow-sm transition-all">
                             <div className="flex items-center">
-                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
                             </div>
 
                             <div 
@@ -3214,7 +3214,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 }}
                             >
                                 <CalendarDays className="absolute left-0 text-indigo-500 opacity-0 group-hover:opacity-100 transition-opacity" size={12} />
-                                <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight whitespace-nowrap px-4 py-1 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-lg transition-colors">{getDateLabel()}</span>
+                                <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight whitespace-nowrap px-4 py-1 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm transition-colors">{getDateLabel()}</span>
                                 <input 
                                     ref={datePickerRef}
                                     type={timeView === 'day' ? 'date' : timeView === 'month' ? 'month' : 'text'}
@@ -3234,11 +3234,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
 
                             <div className="flex items-center">
-                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
+                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
                             </div>
 
                             {/* META SIMULATOR (MOVED) */}
-                            <div className="ml-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-0.5 rounded-xl flex items-center gap-1.5 shadow-sm">
+                            <div className="ml-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-0.5 rounded-sm flex items-center gap-1.5 shadow-sm">
                                 <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest whitespace-nowrap flex items-center gap-1"><Target size={10} className="text-indigo-500" /> Meta</span>
                                 <div className="flex items-center gap-1">
                                     <button onClick={() => setPredictiveTargetGrowth(Math.max(0, predictiveTargetGrowth - 5))} className="w-3.5 h-3.5 rounded-full bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 flex items-center justify-center text-[9px] font-black">-</button>
@@ -3250,7 +3250,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             {timeView === 'month' && activeTab === 'DRE' && (
                                 <button
                                     onClick={() => toggleMonthlyClosing(dateRef.getFullYear(), dateRef.getMonth())}
-                                    className={`ml-2 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm border ${monthlyClosings[`${dateRef.getFullYear()}-${dateRef.getMonth()}`]
+                                    className={`ml-2 px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider flex items-center gap-2 transition-all shadow-sm border ${monthlyClosings[`${dateRef.getFullYear()}-${dateRef.getMonth()}`]
                                         ? 'bg-emerald-500 text-white border-emerald-400 hover:bg-emerald-600'
                                         : 'bg-white dark:bg-zinc-800 text-slate-400 border-slate-200 dark:border-zinc-700 hover:text-emerald-500 hover:border-emerald-200'
                                         }`}
@@ -3262,9 +3262,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 w-full md:w-auto">
-                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-indigo-500" />
+                            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-sm text-[10px] font-black uppercase outline-none focus:border-indigo-500" />
                             <span className="text-[10px] font-black text-slate-400">Até</span>
-                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase outline-none focus:border-indigo-500" />
+                            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-sm text-[10px] font-black uppercase outline-none focus:border-indigo-500" />
                         </div>
                     )}
                 </div>
@@ -3275,7 +3275,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     <div className="space-y-4 md:space-y-6 animate-in fade-in duration-500">
                         {/* ===== ACCOUNTS Sub-nav — always first ===== */}
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 w-full">
-                            <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
+                            <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                 {[
                                     { id: 'DETAILED', label: 'Extrato / Fluxo', icon: List },
                                     { id: 'CONCILIADO', label: 'Conciliados', icon: CircleCheck },
@@ -3290,7 +3290,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             setAccountsSubTab(st.id as any);
                                             if (st.id === 'DAILY') { setTimeView('day'); setDateRef(new Date()); }
                                         }}
-                                        className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${accountsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                        className={`flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${accountsSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                                     >
                                         <st.icon size={12} className="md:size-[13px]" /> {st.label}
                                     </button>
@@ -3301,14 +3301,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 {(accountsSubTab === 'DETAILED' || accountsSubTab === 'PAYABLES') && (
                                     <button 
                                         onClick={() => handleOpenModal()} 
-                                        className="hidden md:flex group relative items-center gap-2 px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
+                                        className="hidden md:flex group relative items-center gap-2 px-6 py-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 active:scale-95 transition-all outline-none"
                                     >
                                         <Plus size={16} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
                                         Lançar Despesa
                                     </button>
                                 )}
                                 {accountsSubTab === 'CONCILIADO' && (
-                                    <button onClick={() => setIsReconciliationOpen(true)} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-xl items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
+                                    <button onClick={() => setIsReconciliationOpen(true)} className="hidden md:flex w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-2.5 rounded-sm items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
                                         <RefreshCw size={12} /> Conciliação
                                     </button>
                                 )}
@@ -3320,7 +3320,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <div className="flex md:hidden justify-center px-4 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300">
                                 <button 
                                     onClick={() => handleOpenModal()} 
-                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all outline-none"
+                                    className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all outline-none"
                                 >
                                     <Plus size={16} strokeWidth={3} />
                                     Lançar Despesa
@@ -3329,7 +3329,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         )}
                         {accountsSubTab === 'CONCILIADO' && (
                             <div className="flex md:hidden justify-center px-4 -mt-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                                <button onClick={() => setIsReconciliationOpen(true)} className="w-full text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
+                                <button onClick={() => setIsReconciliationOpen(true)} className="w-full text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border border-indigo-200 px-4 py-3 rounded-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all hover:bg-indigo-100">
                                     <RefreshCw size={14} /> Conciliação
                                 </button>
                             </div>
@@ -3337,20 +3337,20 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                         {/* ===== EXTRATO / FLUXO ===== */}
                         {accountsSubTab === 'DETAILED' && (
-                            <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-300">
+                            <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-300">
                                 <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
                                     <div>
                                         <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2"><List size={16} /> Extrato de Fluxo Financeiro</h3>
                                         <p className="text-[9px] text-slate-500 uppercase mt-0.5">Listagem de todas as entradas e saídas no período</p>
                                     </div>
-                                    <button onClick={handlePrintDetailedReport} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-900 transition-colors"><Printer size={16} /></button>
+                                    <button onClick={handlePrintDetailedReport} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-sm text-slate-400 hover:text-slate-900 transition-colors"><Printer size={16} /></button>
                                 </div>
                                 <div className="overflow-x-auto scrollbar-hide">
                                     {/* Mobile Cards View */}
                                     <div className="grid grid-cols-1 md:hidden p-4 space-y-3">
                                         {filteredTransactions.length > 0 ? (
                                             filteredTransactions.map(t => (
-                                                <div key={t.id} className={`p-4 rounded-2xl border-2 flex flex-col gap-2 transition-colors ${selectedExpenseIds.includes(t.id) ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm'}`}>
+                                                <div key={t.id} className={`p-4 rounded-sm border-2 flex flex-col gap-2 transition-colors ${selectedExpenseIds.includes(t.id) ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/10' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm'}`}>
                                                     <div className="flex justify-between items-start">
                                                         <div className="flex items-center gap-2">
                                                             {t.origin === 'Despesa' && (
@@ -3719,7 +3719,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             };
 
                             return (
-                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-300 relative">
+                                <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 shadow-sm overflow-hidden animate-in slide-in-from-bottom-2 duration-300 relative">
                                     {bankTransactionsLoading && (
                                         <div className="absolute inset-0 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[2px] z-50 flex items-center justify-center">
                                             <div className="flex flex-col items-center gap-3">
@@ -3741,10 +3741,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     </p>
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <button onClick={handlePrintConciliado} className="p-1.5 sm:p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-slate-900 transition-colors shadow-sm" title="Imprimir Extrato">
+                                                    <button onClick={handlePrintConciliado} className="p-1.5 sm:p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-sm text-slate-400 hover:text-slate-900 transition-colors shadow-sm" title="Imprimir Extrato">
                                                         <Printer size={16} />
                                                     </button>
-                                                    <button onClick={handleDownloadCSV} className="p-1.5 sm:p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-xl text-slate-400 hover:text-emerald-600 transition-colors shadow-sm" title="Baixar CSV">
+                                                    <button onClick={handleDownloadCSV} className="p-1.5 sm:p-2 bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 rounded-sm text-slate-400 hover:text-emerald-600 transition-colors shadow-sm" title="Baixar CSV">
                                                         <Download size={16} />
                                                     </button>
                                                 </div>
@@ -3771,10 +3771,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </div>
 
                                             {/* Type Filters */}
-                                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 w-fit">
+                                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700 w-fit">
                                                 <button
                                                     onClick={() => setConciliadoTypeFilter((prev: 'ALL' | 'RECEITA' | 'DESPESA') => prev === 'RECEITA' ? 'ALL' : 'RECEITA')}
-                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoTypeFilter === 'RECEITA'
+                                                    className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoTypeFilter === 'RECEITA'
                                                         ? 'bg-emerald-500 text-white shadow-sm'
                                                         : 'text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400'
                                                         }`}
@@ -3783,7 +3783,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </button>
                                                 <button
                                                     onClick={() => setConciliadoTypeFilter((prev: 'ALL' | 'RECEITA' | 'DESPESA') => prev === 'DESPESA' ? 'ALL' : 'DESPESA')}
-                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoTypeFilter === 'DESPESA'
+                                                    className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoTypeFilter === 'DESPESA'
                                                         ? 'bg-rose-500 text-white shadow-sm'
                                                         : 'text-slate-500 hover:text-rose-600 dark:hover:text-rose-400'
                                                         }`}
@@ -3793,10 +3793,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </div>
 
                                             {/* Conciliation Filters */}
-                                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700 w-fit ml-auto">
+                                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700 w-fit ml-auto">
                                                 <button
                                                     onClick={() => setConciliadoSplitFilter('ALL')}
-                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all ${conciliadoSplitFilter === 'ALL'
+                                                    className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all ${conciliadoSplitFilter === 'ALL'
                                                         ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm'
                                                         : 'text-slate-500 hover:text-slate-700'
                                                         }`}
@@ -3805,7 +3805,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </button>
                                                 <button
                                                     onClick={() => setConciliadoSplitFilter('SPLIT')}
-                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoSplitFilter === 'SPLIT'
+                                                    className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoSplitFilter === 'SPLIT'
                                                         ? 'bg-emerald-500 text-white shadow-sm'
                                                         : 'text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400'
                                                         }`}
@@ -3814,7 +3814,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </button>
                                                 <button
                                                     onClick={() => setConciliadoSplitFilter('NOT_SPLIT')}
-                                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoSplitFilter === 'NOT_SPLIT'
+                                                    className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5 ${conciliadoSplitFilter === 'NOT_SPLIT'
                                                         ? 'bg-amber-500 text-white shadow-sm'
                                                         : 'text-slate-500 hover:text-amber-600 dark:hover:text-amber-400'
                                                         }`}
@@ -3831,7 +3831,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 value={conciliadoFilter}
                                                 onChange={e => setConciliadoFilter(e.target.value)}
                                                 placeholder="Buscar por descrição, categoria, favorecido ou pagamento..."
-                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl pl-9 pr-4 py-2 text-xs font-medium outline-none focus:border-indigo-400 placeholder:text-slate-400"
+                                                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm pl-9 pr-4 py-2 text-xs font-medium outline-none focus:border-indigo-400 placeholder:text-slate-400"
                                             />
                                         </div>
                                     </div>
@@ -3855,11 +3855,11 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </thead>
                                             <tbody className="block md:table-row-group divide-y md:divide-y divide-slate-100 dark:divide-zinc-800 mt-4 px-4 md:px-0 md:mt-0">
                                                 {/* Opening balance row */}
-                                                <tr className="flex flex-col md:table-row bg-slate-50 dark:bg-zinc-800/80 border md:border-0 border-slate-200 dark:border-zinc-700 rounded-2xl md:rounded-none mb-4 md:mb-0 p-4 md:p-0">
+                                                <tr className="flex flex-col md:table-row bg-slate-50 dark:bg-zinc-800/80 border md:border-0 border-slate-200 dark:border-zinc-700 rounded-sm md:rounded-none mb-4 md:mb-0 p-4 md:p-0">
                                                      <td colSpan={7} className="block md:table-cell md:px-5 md:py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 md:mb-0 uppercase">
                                                          Saldo Anterior ({parseDateSafe(startDate).toLocaleDateString('pt-BR')})
                                                      </td>
-                                                     <td className="block md:table-cell md:px-5 md:py-3 text-[16px] md:text-[11px] font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-900 md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border md:border-0 border-slate-200 dark:border-zinc-800 md:text-right">
+                                                     <td className="block md:table-cell md:px-5 md:py-3 text-[16px] md:text-[11px] font-black text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-900 md:bg-transparent p-3 md:p-0 rounded-sm md:rounded-none border md:border-0 border-slate-200 dark:border-zinc-800 md:text-right">
                                                          R$ {openingBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                      </td>
                                                      <td colSpan={2} className="hidden md:table-cell"></td>
@@ -3906,7 +3906,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     }
 
                                                     return (
-                                                        <tr key={`${t.id}-${match?.id || 'main'}`} className={`flex flex-col md:table-row md:hover:bg-slate-50/60 md:dark:hover:bg-zinc-800/30 transition-colors group text-sm block bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-800 rounded-3xl mb-4 p-5 md:border-b md:border-x-0 md:border-t-0 md:rounded-none md:mb-0 md:p-0 relative md:static shadow-sm md:shadow-none ${isSplit ? 'bg-slate-50/30 dark:bg-zinc-900/20' : ''}`}>
+                                                        <tr key={`${t.id}-${match?.id || 'main'}`} className={`flex flex-col md:table-row md:hover:bg-slate-50/60 md:dark:hover:bg-zinc-800/30 transition-colors group text-sm block bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-800 rounded-sm mb-4 p-5 md:border-b md:border-x-0 md:border-t-0 md:rounded-none md:mb-0 md:p-0 relative md:static shadow-sm md:shadow-none ${isSplit ? 'bg-slate-50/30 dark:bg-zinc-900/20' : ''}`}>
                                                             <td className="block md:table-cell md:px-5 md:py-3.5 text-xs font-bold font-mono text-slate-500 whitespace-nowrap mb-2 md:mb-0">
                                                                 {parseDateSafe(t.date).toLocaleDateString('pt-BR')}
                                                             </td>
@@ -3921,10 +3921,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                 {label}
                                                                             </div>
                                                                             {isSplit && (
-                                                                                <span className="text-[8px] font-black uppercase bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md w-fit">Desmembrado</span>
+                                                                                <span className="text-[8px] font-black uppercase bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-sm w-fit">Desmembrado</span>
                                                                             )}
                                                                             {isResidual && (
-                                                                                <span className="text-[8px] font-black uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-md w-fit">Divergência de Valor</span>
+                                                                                <span className="text-[8px] font-black uppercase bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-sm w-fit">Divergência de Valor</span>
                                                                             )}
                                                                         </div>
                                                                     );
@@ -3964,7 +3964,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                     alert('Erro ao atualizar categoria: ' + (err as any).message);
                                                                                 }
                                                                             }}
-                                                                            className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
+                                                                            className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
                                                                         >
                                                                             <option value="">Selecione...</option>
                                                                             {t.type === 'RECEITA' ? (
@@ -4134,7 +4134,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                         alert('Erro ao processar: ' + (err as any).message);
                                                                                     }
                                                                                 }}
-                                                                                className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
+                                                                                className="w-full bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm px-2 py-1 text-[10px] font-bold outline-none focus:border-indigo-500 appearance-none pr-6"
                                                                             >
                                                                                 <option value="">Selecione...</option>
                                                                                 {t.type === 'DESPESA'
@@ -4217,7 +4217,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                             setLinkingBankTx(t);
                                                                             setIsManualLinkModalOpen(true);
                                                                         }}
-                                                                        className="p-1.5 bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors"
+                                                                        className="p-1.5 bg-slate-100 dark:bg-zinc-800 hover:bg-indigo-100 text-slate-400 hover:text-indigo-600 rounded-sm transition-colors"
                                                                         title="Gerenciar Vínculo"
                                                                     >
                                                                         <Link2 size={14} />
@@ -4324,9 +4324,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         { label: 'Pendente', value: filteredPayables.filter(p => (p.status || '').toUpperCase() === 'PENDENTE' || (p.status || '').toUpperCase() === 'PENDING').reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: Clock, color: 'amber' },
                                         { label: 'Atrasado', value: filteredPayables.filter(p => ((p.status || '').toUpperCase() === 'PENDENTE' || (p.status || '').toUpperCase() === 'PENDING') && p.date && new Date(p.date) < new Date(new Date().setHours(0, 0, 0, 0))).reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0), icon: AlertCircle, color: 'rose' },
                                     ].map((card, idx) => (
-                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-3 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm group hover:shadow-md transition-all flex flex-col justify-between">
+                                        <div key={idx} className="bg-white dark:bg-zinc-900 p-3 md:p-6 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm group hover:shadow-md transition-all flex flex-col justify-between">
                                             <div className="flex items-center gap-2 mb-2 md:mb-4">
-                                                <div className={`p-2 md:p-3 rounded-xl md:rounded-2xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
+                                                <div className={`p-2 md:p-3 rounded-sm md:rounded-sm bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400 group-hover:scale-110 transition-transform`}>
                                                     <card.icon size={16} className="md:w-5 md:h-5" />
                                                 </div>
                                                 <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest flex-1 leading-tight">{card.label}</p>
@@ -4338,7 +4338,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     ))}
                                 </div>
 
-                                <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden mt-6">
+                                <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 shadow-sm overflow-hidden mt-6">
                                     <div className="p-5 border-b flex flex-col gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
                                         <div className="flex flex-wrap items-center gap-4 lg:gap-6">
                                             <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2 whitespace-nowrap"><ArrowDownCircle size={16} /> Contas a Pagar</h3>
@@ -4348,7 +4348,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 <input
                                                     type="text"
                                                     placeholder="Buscar descrição..."
-                                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
+                                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all placeholder:text-[9px]"
                                                     value={payablesSearch}
                                                     onChange={e => setPayablesSearch(e.target.value)}
                                                 />
@@ -4357,7 +4357,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <div className="relative flex-1 min-w-[180px] max-w-xs">
                                                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                                                 <select
-                                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
+                                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-bold uppercase outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
                                                     value={payablesSupplierFilter}
                                                     onChange={e => setPayablesSupplierFilter(e.target.value)}
                                                 >
@@ -4381,19 +4381,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={12} />
                                             </div>
 
-                                            <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border-2 border-slate-200 dark:border-zinc-700 sm:w-auto justify-center">
+                                            <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-sm border-2 border-slate-200 dark:border-zinc-700 sm:w-auto justify-center">
                                                 {(['ALL', 'Pago', 'Pendente', 'Atrasado'] as const).map(s => (
                                                     <button
                                                         key={s}
                                                         onClick={() => setPayablesStatusFilter(s)}
-                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${payablesStatusFilter === s ? 'bg-slate-900 dark:bg-zinc-700 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                                        className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${payablesStatusFilter === s ? 'bg-slate-900 dark:bg-zinc-700 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                                                     >
                                                         {s === 'ALL' ? 'Todos' : s}
                                                     </button>
                                                 ))}
                                             </div>
 
-                                            <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border-2 border-slate-200 dark:border-zinc-700 sm:w-auto justify-center">
+                                            <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-sm border-2 border-slate-200 dark:border-zinc-700 sm:w-auto justify-center">
                                                 <span className="self-center px-3 text-[8px] font-black uppercase text-slate-400 border-r border-slate-200 dark:border-zinc-700 mr-1">Desmembrado</span>
                                                 {[
                                                     { id: 'ALL', label: 'Todos' },
@@ -4403,14 +4403,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <button
                                                         key={opt.id}
                                                         onClick={() => setPayablesSplitFilter(opt.id as any)}
-                                                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${payablesSplitFilter === opt.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                                        className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${payablesSplitFilter === opt.id ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                                                     >
                                                         {opt.label}
                                                     </button>
                                                 ))}
                                             </div>
 
-                                            <button onClick={handlePrintPayablesReport} className="flex text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all w-fit"><Printer size={12} /> Relatório</button>
+                                            <button onClick={handlePrintPayablesReport} className="flex text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 px-4 py-2 rounded-sm items-center gap-1 shadow-sm active:scale-95 transition-all w-fit"><Printer size={12} /> Relatório</button>
 
                                             <button 
                                                 onClick={() => {
@@ -4424,7 +4424,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     setSelectedExpenseIds(prev => Array.from(new Set([...prev, ...nonReconciledPaid])));
                                                     alert(`${nonReconciledPaid.length} despesas (pagas mas não conciliadas) foram selecionadas. Você pode excluí-las usando o menu flutuante abaixo.`);
                                                 }}
-                                                className="flex text-[10px] font-black uppercase text-amber-700 bg-amber-50 border-2 border-amber-200 px-4 py-2 rounded-xl items-center gap-1 shadow-sm active:scale-95 transition-all w-fit"
+                                                className="flex text-[10px] font-black uppercase text-amber-700 bg-amber-50 border-2 border-amber-200 px-4 py-2 rounded-sm items-center gap-1 shadow-sm active:scale-95 transition-all w-fit"
                                                 title="Seleciona itens que estão como PAGO mas não têm vínculo bancário"
                                             >
                                                 <ListChecks size={12} /> Selecionar Não-Conciliados
@@ -4432,7 +4432,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                             <button
                                                 onClick={() => setShowDuplicatesOnly(v => !v)}
-                                                className={`relative flex text-[10px] font-black uppercase px-4 py-2 rounded-xl items-center gap-1.5 shadow-sm active:scale-95 transition-all w-fit border-2 ${
+                                                className={`relative flex text-[10px] font-black uppercase px-4 py-2 rounded-sm items-center gap-1.5 shadow-sm active:scale-95 transition-all w-fit border-2 ${
                                                     showDuplicatesOnly
                                                         ? 'bg-orange-500 text-white border-orange-500'
                                                         : 'text-orange-700 bg-orange-50 border-orange-200'
@@ -4465,7 +4465,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 const isOverdue = (normalizedStatus === 'PENDENTE' || normalizedStatus === 'PENDING') && new Date(exp.date) < new Date(new Date().setHours(0, 0, 0, 0));
                                                 
                                                 return (
-                                                    <div key={exp.id} className={`p-4 rounded-2xl border-2 flex flex-col gap-3 transition-colors shadow-sm ${selectedExpenseIds.includes(exp.id) ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900'}`}>
+                                                    <div key={exp.id} className={`p-4 rounded-sm border-2 flex flex-col gap-3 transition-colors shadow-sm ${selectedExpenseIds.includes(exp.id) ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-900/20' : 'border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900'}`}>
                                                         <div className="flex justify-between items-start gap-2">
                                                             <div className="flex gap-3">
                                                                 <input type="checkbox" className="mt-1 flex-shrink-0 w-5 h-5 rounded border-rose-300 text-rose-500 focus:ring-rose-500 cursor-pointer" checked={selectedExpenseIds.includes(exp.id)} onChange={() => toggleSelectExpense(exp.id)} />
@@ -4492,15 +4492,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <div className="flex items-center gap-3">
                                                                 <span className="font-black text-sm text-rose-600 dark:text-rose-400">R$ {exp.amount.toFixed(2)}</span>
                                                                 <div className="flex items-center gap-1">
-                                                                    <button onClick={() => handleOpenModal(exp as unknown as Expense)} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-slate-50 dark:bg-zinc-800 rounded-lg"><Edit2 size={12} /></button>
-                                                                    <button onClick={() => handleDeleteExpense(exp.id)} className="p-1.5 text-slate-400 hover:text-rose-600 bg-slate-50 dark:bg-zinc-800 rounded-lg"><Trash2 size={12} /></button>
+                                                                    <button onClick={() => handleOpenModal(exp as unknown as Expense)} className="p-1.5 text-slate-400 hover:text-indigo-600 bg-slate-50 dark:bg-zinc-800 rounded-sm"><Edit2 size={12} /></button>
+                                                                    <button onClick={() => handleDeleteExpense(exp.id)} className="p-1.5 text-slate-400 hover:text-rose-600 bg-slate-50 dark:bg-zinc-800 rounded-sm"><Trash2 size={12} /></button>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 );
                                             }) : (
-                                                <div className="py-12 mt-2 mx-1 text-center text-slate-400 text-xs font-bold uppercase border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-2xl bg-slate-50/50 dark:bg-zinc-800/10">
+                                                <div className="py-12 mt-2 mx-1 text-center text-slate-400 text-xs font-bold uppercase border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-sm bg-slate-50/50 dark:bg-zinc-800/10">
                                                     Nenhuma despesa no período
                                                 </div>
                                             )}
@@ -4608,7 +4608,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                         <div className="relative group/tooltip flex items-center justify-center">
                                                                             <CircleCheck size={16} className={`cursor-pointer ${linkedBankTx ? 'text-emerald-500' : 'text-sky-400'}`} />
                                                                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 hidden group-hover/tooltip:block w-64 pointer-events-none">
-                                                                                <div className="bg-zinc-900 text-white text-[10px] rounded-xl p-3 shadow-2xl border border-white/10">
+                                                                                <div className="bg-zinc-900 text-white text-[10px] rounded-sm p-3 shadow-2xl border border-white/10">
                                                                                     {linkedBankTx ? (
                                                                                         <>
                                                                                             <p className="font-black uppercase tracking-widest text-emerald-400 mb-1.5 flex items-center gap-1"><Link2 size={10}/> Vínculo Bancário</p>
@@ -4637,8 +4637,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </td>
                                                             <td className="px-6 py-4 text-right font-black text-rose-700 dark:text-rose-400">R$ {exp.amount.toFixed(2)}</td>
                                                             <td className="px-6 py-4 flex items-center justify-center gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                                                <button onClick={() => handleOpenModal(exp as unknown as Expense)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                                                                <button onClick={() => handleDeleteExpense(exp.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                                                <button onClick={() => handleOpenModal(exp as unknown as Expense)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-sm transition-colors"><Edit2 size={14} /></button>
+                                                                <button onClick={() => handleDeleteExpense(exp.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-sm transition-colors"><Trash2 size={14} /></button>
                                                             </td>
                                                         </tr>
                                                     );
@@ -4656,19 +4656,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         {accountsSubTab === 'AUDIT' && (
                             <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Agenda (Bruto)</p>
                                         <p className="text-2xl font-black text-slate-900 dark:text-white">
                                             {formatCurrency(auditReportData.reduce((acc, curr) => acc + curr.agenda, 0))}
                                         </p>
                                     </div>
-                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                                         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Total Fechamento (Realizado)</p>
                                         <p className="text-2xl font-black text-emerald-600">
                                             {formatCurrency(auditReportData.reduce((acc, curr) => acc + curr.closure, 0))}
                                         </p>
                                     </div>
-                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-6 rounded-[2rem] border border-rose-100 dark:border-rose-900/30 shadow-sm">
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-6 rounded-sm border border-rose-100 dark:border-rose-900/30 shadow-sm">
                                         <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest mb-1">Diferença (Não Concluído)</p>
                                         <p className="text-2xl font-black text-rose-600">
                                             {formatCurrency(auditReportData.reduce((acc, curr) => acc + curr.agenda, 0) - auditReportData.reduce((acc, curr) => acc + curr.closure, 0))}
@@ -4676,7 +4676,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     </div>
                                 </div>
 
-                                <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                                <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                                     <div className="p-8 border-b dark:border-zinc-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50/50 dark:bg-zinc-800/50">
                                         <div>
                                             <h3 className="font-black text-sm uppercase tracking-tighter flex items-center gap-2">
@@ -4685,10 +4685,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Comparativo entre Agenda e Produção Realizada</p>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button onClick={handleDownloadAuditExcel} className="p-3 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-slate-400 hover:text-emerald-500 transition-all flex items-center gap-2 text-[10px] font-black uppercase">
+                                            <button onClick={handleDownloadAuditExcel} className="p-3 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm text-slate-400 hover:text-emerald-500 transition-all flex items-center gap-2 text-[10px] font-black uppercase">
                                                 <FileText size={16} /> Excel
                                             </button>
-                                            <button onClick={handlePrintAuditReport} className="p-3 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-slate-400 hover:text-indigo-500 transition-all flex items-center gap-2 text-[10px] font-black uppercase">
+                                            <button onClick={handlePrintAuditReport} className="p-3 bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm text-slate-400 hover:text-indigo-500 transition-all flex items-center gap-2 text-[10px] font-black uppercase">
                                                 <Printer size={16} /> PDF
                                             </button>
                                         </div>
@@ -4754,7 +4754,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             {isExpanded && (
                                                                 <tr>
                                                                     <td colSpan={5} className="px-8 pb-6 bg-slate-50/30 dark:bg-zinc-900/10">
-                                                                        <div className="rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
+                                                                        <div className="rounded-sm border border-slate-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-sm">
                                                                             <table className="w-full">
                                                                                 <thead className="bg-slate-50 dark:bg-zinc-800/50">
                                                                                     <tr>
@@ -4808,7 +4808,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             });
                             return (
                                 <div className="space-y-6">
-                                    <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
+                                    <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                         {[
                                             { id: 'PROFISSIONAIS', label: 'Profissionais', icon: Scissors },
                                             { id: 'RH', label: 'Recursos Humanos', icon: Users },
@@ -4817,7 +4817,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <button
                                                 key={st.id}
                                                 onClick={() => setSupplierSubTab(st.id as any)}
-                                                className={`px-3 md:px-6 py-2 rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 md:gap-2 ${supplierSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                                className={`px-3 md:px-6 py-2 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex items-center gap-1.5 md:gap-2 ${supplierSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                             >
                                                 <st.icon size={12} className="md:size-[14px]" />
                                                 {st.label}
@@ -4825,7 +4825,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         ))}
                                     </div>
 
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
                                         <div className="p-5 border-b flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
                                             <h3 className="font-black text-xs uppercase tracking-widest flex items-center gap-2">
                                                 {supplierSubTab === 'PROFISSIONAIS' ? <Scissors size={16} /> :
@@ -4840,7 +4840,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         setSupplierForm({ name: '', document: '', phone: '', email: '', category: '' });
                                                         setIsSupplierModalOpen(true);
                                                     }}
-                                                    className="px-4 py-2 bg-slate-900 dark:bg-zinc-100 text-white dark:text-slate-900 text-[10px] font-black uppercase rounded-xl hover:scale-95 transition-all flex items-center gap-2"
+                                                    className="px-4 py-2 bg-slate-900 dark:bg-zinc-100 text-white dark:text-slate-900 text-[10px] font-black uppercase rounded-sm hover:scale-95 transition-all flex items-center gap-2"
                                                 >
                                                     <Plus size={14} /> Novo Fornecedor
                                                 </button>
@@ -4850,15 +4850,15 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {/* Mobile Cards View */}
                                             <div className="grid grid-cols-1 md:hidden p-4 space-y-3">
                                                 {list.length > 0 ? list.map(sup => (
-                                                    <div key={sup.id} className="p-4 rounded-2xl border-2 border-slate-50 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex flex-col gap-3">
+                                                    <div key={sup.id} className="p-4 rounded-sm border-2 border-slate-50 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm flex flex-col gap-3">
                                                         <div className="flex justify-between items-start">
                                                             <div className="flex flex-col gap-1">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="font-black text-xs uppercase text-slate-900 dark:text-white">{sup.name || 'Sem Nome'}</span>
                                                                     {sup.isProvider ? (
-                                                                        <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-md border border-indigo-100">Profissional</span>
+                                                                        <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-sm border border-indigo-100">Profissional</span>
                                                                     ) : (
-                                                                        <span className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase rounded-md border border-slate-100">Fornecedor</span>
+                                                                        <span className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase rounded-sm border border-slate-100">Fornecedor</span>
                                                                     )}
                                                                 </div>
                                                                 <span className="text-[10px] font-bold text-slate-400 uppercase">
@@ -4869,8 +4869,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </div>
                                                             {!sup.isProvider && (
                                                                 <div className="flex items-center gap-2">
-                                                                    <button onClick={() => handleOpenSupplierModal(sup as any)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-indigo-600 rounded-xl hover:bg-indigo-50 transition-colors"><Edit2 size={14} /></button>
-                                                                    <button onClick={() => handleDeleteSupplier(sup.id)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-rose-600 rounded-xl hover:bg-rose-50 transition-colors"><Trash2 size={14} /></button>
+                                                                    <button onClick={() => handleOpenSupplierModal(sup as any)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-indigo-600 rounded-sm hover:bg-indigo-50 transition-colors"><Edit2 size={14} /></button>
+                                                                    <button onClick={() => handleDeleteSupplier(sup.id)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-rose-600 rounded-sm hover:bg-rose-50 transition-colors"><Trash2 size={14} /></button>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -4886,7 +4886,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             </div>
                                                         </div>
                                                         {sup.isProvider && (
-                                                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-2 rounded-xl text-center">
+                                                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-2 rounded-sm text-center">
                                                                 <span className="text-[9px] font-black text-slate-400 uppercase italic">Gerenciado em Profissionais</span>
                                                             </div>
                                                         )}
@@ -4918,9 +4918,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="font-black text-xs uppercase">{sup.name || 'Sem Nome'}</span>
                                                                     {sup.isProvider ? (
-                                                                        <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-md border border-indigo-100 dark:border-indigo-800">Profissional</span>
+                                                                        <span className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[8px] font-black uppercase rounded-sm border border-indigo-100 dark:border-indigo-800">Profissional</span>
                                                                     ) : (
-                                                                        <span className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase rounded-md border border-slate-100 dark:border-zinc-700">Fornecedor</span>
+                                                                        <span className="px-1.5 py-0.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-black uppercase rounded-sm border border-slate-100 dark:border-zinc-700">Fornecedor</span>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -4939,8 +4939,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                             <td className="px-6 py-4 flex items-center justify-center gap-2">
                                                                 {!sup.isProvider ? (
                                                                     <>
-                                                                        <button onClick={() => handleOpenSupplierModal(sup as any)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"><Edit2 size={14} /></button>
-                                                                        <button onClick={() => handleDeleteSupplier(sup.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                                                                        <button onClick={() => handleOpenSupplierModal(sup as any)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-sm transition-colors"><Edit2 size={14} /></button>
+                                                                        <button onClick={() => handleDeleteSupplier(sup.id)} className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-sm transition-colors"><Trash2 size={14} /></button>
                                                                     </>
                                                                 ) : (
                                                                     <span className="text-[10px] font-black text-slate-300 uppercase italic">Gerenciado em Profissionais</span>
@@ -4963,7 +4963,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                 {activeTab === 'CHARTS' && (
                     <div className="space-y-6">
                         {/* CHARTS Sub-tab header */}
-                        <div className="flex p-1 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-700 w-fit">
+                        <div className="flex p-1 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-700 w-fit">
                             {[
                                 { id: 'GENERAL', label: 'Dashboard Financeiro', icon: BarChart3 },
                                 { id: 'PREDICTIVE', label: 'Gráfico de Projeção', icon: BrainCircuit }
@@ -4971,7 +4971,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 <button
                                     key={st.id}
                                     onClick={() => setChartsSubTab(st.id as any)}
-                                    className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${chartsSubTab === st.id ? 'bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                    className={`px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${chartsSubTab === st.id ? 'bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
                                     <st.icon size={14} />
                                     {st.label}
@@ -5161,7 +5161,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             {/* Core Strategic Diagnostics Reverted to Original Vision */}
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                                                 {/* Left Card: Dynamic Scenario */}
-                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
+                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
                                                             <div className="w-2 h-2 rounded-full bg-amber-400" /> Cenário de {currentMonthData.name}
@@ -5209,7 +5209,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     <div className="mt-3 space-y-3">
                                                         {gapToTarget > 0 ? (
                                                             <div className="space-y-1">
-                                                                <p className="text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit bg-amber-100 text-amber-700">
+                                                                <p className="text-[9px] font-black uppercase px-2 py-1 rounded-sm w-fit bg-amber-100 text-amber-700">
                                                                     Faltam R$ {gapToTarget.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} para a meta
                                                                 </p>
                                                                 {currentRealizedData[currentMonthIndex].projectedServices > 0 && gapToTarget > 0 && (
@@ -5220,7 +5220,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                                             </div>
                                                         ) : (
-                                                            <p className="text-[9px] font-black uppercase px-2 py-1 rounded-lg w-fit bg-emerald-100 text-emerald-700">
+                                                            <p className="text-[9px] font-black uppercase px-2 py-1 rounded-sm w-fit bg-emerald-100 text-emerald-700">
                                                                 Meta superada com excelência!
                                                             </p>
                                                         )}
@@ -5238,7 +5238,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </div>
 
                                                 {/* Middle Card: Seasonality Pattern */}
-                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
+                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-1 mb-2">
                                                             <BarChart3 size={12} className="text-indigo-500" /> Histórico
@@ -5257,7 +5257,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 </div>
 
                                                 {/* Right Card: Recall/Gap Monitor */}
-                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-rose-200 dark:border-rose-900/30 flex flex-col justify-between">
+                                                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm shadow-sm border border-rose-200 dark:border-rose-900/30 flex flex-col justify-between">
                                                     <div>
                                                         <p className="text-[10px] font-black text-rose-500 uppercase tracking-widest flex items-center gap-1 mb-2">
                                                             <AlertCircle size={12} /> Ponto Crítico
@@ -5276,7 +5276,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             </div>
 
                                             {/* Predictive Chart */}
-                                            <div className="bg-white dark:bg-zinc-900 p-3 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800">
+                                            <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-10">
                                                     <div>
                                                         <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter flex items-center gap-2">
@@ -5347,10 +5347,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                     </div>
                 )}
                 {activeTab === 'DRE' && (
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 shadow-sm overflow-hidden animate-in zoom-in-95 duration-300">
                         {/* DRE Sub-tab header */}
                         <div className="p-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50/50 dark:bg-zinc-800/50">
-                            <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
+                            <div className="flex p-0.5 md:p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide w-full sm:w-auto flex-nowrap">
                                 {[
                                     { id: 'STATEMENT', label: 'Demonstrativo DRE', icon: BarChart3 },
                                     { id: 'ACCOUNTS', label: 'Plano de Contas', icon: Files },
@@ -5358,7 +5358,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     <button
                                         key={st.id}
                                         onClick={() => setDreSubTab(st.id as any)}
-                                        className={`flex-1 sm:flex-none items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex ${dreSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
+                                        className={`flex-1 sm:flex-none items-center justify-center gap-1.5 md:gap-2 px-3 md:px-4 py-2 md:py-2.5 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap flex ${dreSubTab === st.id ? 'bg-white dark:bg-zinc-900 text-slate-950 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'}`}
                                     >
                                         <st.icon size={12} className="md:size-[13px]" /> {st.label}
                                     </button>
@@ -5366,14 +5366,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
                             {dreSubTab === 'STATEMENT' && (
                                 <div className="flex gap-2">
-                                    <button onClick={handlePrintDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Printer size={18} /></button>
-                                    <button onClick={handleDownloadDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-xl text-slate-400 hover:text-slate-950 transition-colors"><Download size={18} /></button>
+                                    <button onClick={handlePrintDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-sm text-slate-400 hover:text-slate-950 transition-colors"><Printer size={18} /></button>
+                                    <button onClick={handleDownloadDRE} className="p-2 bg-white dark:bg-zinc-700 border border-slate-200 rounded-sm text-slate-400 hover:text-slate-950 transition-colors"><Download size={18} /></button>
                                 </div>
                             )}
                             {dreSubTab === 'ACCOUNTS' && (
                                 <button
                                     onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: '', dreClass: 'EXPENSE_ADM' }); setIsCategoryFormOpen(true); }}
-                                    className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-zinc-950 dark:bg-white dark:text-black px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all"
+                                    className="w-full sm:w-auto text-[9px] md:text-[10px] font-black uppercase text-white bg-zinc-950 dark:bg-white dark:text-black px-4 py-2.5 rounded-sm flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all"
                                 >
                                     <Plus size={12} /> Nova Conta
                                 </button>
@@ -5405,7 +5405,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 placeholder="Buscar conta..."
                                                 value={categorySearch}
                                                 onChange={e => setCategorySearch(e.target.value)}
-                                                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent rounded-xl text-[11px] font-bold outline-none focus:border-indigo-500 transition-all"
+                                                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent rounded-sm text-[11px] font-bold outline-none focus:border-indigo-500 transition-all"
                                             />
                                         </div>
 
@@ -5415,7 +5415,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 return (
                                                     <div key={cls.key}>
                                                         {/* Group header */}
-                                                        <div className={`flex items-center justify-between px-4 py-2 rounded-xl mb-2 ${cls.bg}`}>
+                                                        <div className={`flex items-center justify-between px-4 py-2 rounded-sm mb-2 ${cls.bg}`}>
                                                             <div>
                                                                 <p className={`text-[10px] font-black uppercase tracking-widest ${cls.color}`}>{cls.label}</p>
                                                                 <p className="text-[8px] font-bold text-slate-400 uppercase">Linha DRE → {cls.lineRef}</p>
@@ -5429,7 +5429,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                 {catList.sort((a, b) => a.name.localeCompare(b.name)).map(cat => {
                                                                     const usageCount = expenses.filter(e => e.category === cat.name).length;
                                                                     return (
-                                                                        <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-zinc-800/50 group transition-colors">
+                                                                        <div key={cat.id} className="flex items-center gap-3 px-4 py-2.5 rounded-sm hover:bg-slate-50 dark:hover:bg-zinc-800/50 group transition-colors">
                                                                             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cls.color.replace('text-', 'bg-')}`} />
                                                                             <div className="flex-1 min-w-0">
                                                                                 <p className="text-[11px] font-black text-slate-900 dark:text-white uppercase truncate">{cat.name}</p>
@@ -5438,12 +5438,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                                                 <button
                                                                                     onClick={() => { setEditingCategoryId(cat.id); setCategoryForm({ name: cat.name, dreClass: cat.dreClass }); setIsCategoryFormOpen(true); }}
-                                                                                    className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-lg transition-colors"
+                                                                                    className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-indigo-600 rounded-sm transition-colors"
                                                                                 ><Edit2 size={12} /></button>
                                                                                 {usageCount === 0 && (
                                                                                     <button
                                                                                         onClick={() => handleDeleteCategory(cat.id)}
-                                                                                        className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-lg transition-colors"
+                                                                                        className="p-1.5 bg-slate-100 dark:bg-zinc-700 text-slate-500 hover:text-rose-600 rounded-sm transition-colors"
                                                                                     ><Trash2 size={12} /></button>
                                                                                 )}
                                                                             </div>
@@ -5465,7 +5465,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                 <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">
                                                     {editingCategoryId ? 'Editar Conta' : 'Nova Conta'}
                                                 </h4>
-                                                <button onClick={() => setIsCategoryFormOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors"><X size={16} /></button>
+                                                <button onClick={() => setIsCategoryFormOpen(false)} className="p-1.5 text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-sm transition-colors"><X size={16} /></button>
                                             </div>
                                             <form onSubmit={handleSaveCategory} className="space-y-4">
                                                 <div>
@@ -5477,7 +5477,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         placeholder="Ex: Energia Elétrica"
                                                         value={categoryForm.name}
                                                         onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-white dark:bg-zinc-900 text-slate-950 dark:text-white outline-none focus:border-indigo-500 text-sm"
+                                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-white dark:bg-zinc-900 text-slate-950 dark:text-white outline-none focus:border-indigo-500 text-sm"
                                                     />
                                                 </div>
                                                 <div>
@@ -5486,7 +5486,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         <select
                                                             value={categoryForm.dreClass}
                                                             onChange={e => setCategoryForm({ ...categoryForm, dreClass: e.target.value })}
-                                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-white dark:bg-zinc-900 text-slate-950 dark:text-white outline-none focus:border-indigo-500 appearance-none text-sm"
+                                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-white dark:bg-zinc-900 text-slate-950 dark:text-white outline-none focus:border-indigo-500 appearance-none text-sm"
                                                         >
                                                             <option value="REVENUE">Receita Operacional Bruta</option>
                                                             <option value="COSTS">CPV / Custos Operacionais</option>
@@ -5500,10 +5500,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     </div>
                                                 </div>
                                                 <div className="pt-2 flex flex-col gap-2">
-                                                    <button type="submit" className="w-full py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow active:scale-95 transition-all">
+                                                    <button type="submit" className="w-full py-3 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow active:scale-95 transition-all">
                                                         {editingCategoryId ? 'Atualizar' : 'Adicionar'} Conta
                                                     </button>
-                                                    <button type="button" onClick={() => setIsCategoryFormOpen(false)} className="w-full py-3 bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-slate-200 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all">
+                                                    <button type="button" onClick={() => setIsCategoryFormOpen(false)} className="w-full py-3 bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-slate-200 rounded-sm font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all">
                                                         Cancelar
                                                     </button>
                                                 </div>
@@ -5528,9 +5528,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             { label: 'Ponto de Equilíbrio', value: formatCurrency((dreData.grossProfit / dreData.grossRevenue) > 0 ? (dreData.totalOpExpenses / (dreData.grossProfit / dreData.grossRevenue)) : 0), color: 'amber', icon: FileText },
                                             { label: 'Resultado Líquido', value: formatCurrency(dreData.netResult), color: dreData.netResult >= 0 ? 'emerald' : 'rose', icon: CircleCheck },
                                         ].map((card, idx) => (
-                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
+                                            <div key={idx} className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
                                                 <div className="flex justify-between items-start mb-2">
-                                                    <div className={`p-2 rounded-xl bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400`}>
+                                                    <div className={`p-2 rounded-sm bg-${card.color}-50 dark:bg-${card.color}-900/20 text-${card.color}-600 dark:text-${card.color}-400`}>
                                                         <card.icon size={16} />
                                                     </div>
                                                 </div>
@@ -6210,7 +6210,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200 my-auto">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200 my-auto">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><ArrowDownCircle size={18} /> {editingExpenseId ? 'Editar' : 'Nova'} Despesa</h3>
                                 <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
@@ -6218,7 +6218,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <form onSubmit={(e) => handleSaveExpense(e)} className="p-6 space-y-4">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Descrição do Gasto</label>
-                                    <input type="text" placeholder="Ex: Conta de Luz" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} />
+                                    <input type="text" placeholder="Ex: Conta de Luz" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
@@ -6227,7 +6227,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             type="text"
                                             placeholder="0,00"
                                             required
-                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
                                             value={expenseForm.amount || ''}
                                             onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value as any })}
                                         />
@@ -6237,7 +6237,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         <input
                                             type="text"
                                             placeholder="Ex: 123456"
-                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
                                             value={expenseForm.invoiceNumber || ''}
                                             onChange={e => setExpenseForm({ ...expenseForm, invoiceNumber: e.target.value })}
                                         />
@@ -6245,7 +6245,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Vencimento</label>
-                                    <input type="date" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} />
+                                    <input type="date" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={expenseForm.date} onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })} />
                                 </div>
 
                                 {/* Recurrence Field (Only for new expenses) */}
@@ -6259,12 +6259,12 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     min="1"
                                                     max="120"
                                                     placeholder="1"
-                                                    className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
+                                                    className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
                                                     value={recurrenceMonths}
                                                     onChange={e => setRecurrenceMonths(parseInt(e.target.value) || 1)}
                                                 />
                                             </div>
-                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-zinc-800 p-3 rounded-xl">
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 dark:bg-zinc-800 p-3 rounded-sm">
                                                 {recurrenceMonths > 1 ? 'Meses' : 'Mês'}
                                             </div>
                                         </div>
@@ -6296,7 +6296,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             onFocus={() => { setCategoryInputSearch(expenseForm.category || ''); setIsCategoryDropdownOpen(true); }}
                                             onChange={e => { setCategoryInputSearch(e.target.value); setIsCategoryDropdownOpen(true); setExpenseForm({ ...expenseForm, category: e.target.value }); }}
                                             onBlur={() => setTimeout(() => setIsCategoryDropdownOpen(false), 180)}
-                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black pr-10"
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black pr-10"
                                         />
                                         {expenseForm.category && (() => {
                                             const selCat = expenseCategories.find(c => c.name === expenseForm.category);
@@ -6312,7 +6312,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             return dl ? <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[8px] font-black px-2 py-0.5 rounded-full ${dl.color}`}>{dl.text}</span> : null;
                                         })()}
                                         {isCategoryDropdownOpen && (
-                                            <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl shadow-xl max-h-52 overflow-y-auto">
+                                            <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm shadow-xl max-h-52 overflow-y-auto">
                                                 {expenseCategories
                                                     .filter(c => !categoryInputSearch || c.name.toLowerCase().includes(categoryInputSearch.toLowerCase()))
                                                     .sort((a, b) => a.name.localeCompare(b.name))
@@ -6345,7 +6345,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <select
                                                 value={expenseForm.status}
                                                 onChange={e => setExpenseForm({ ...expenseForm, status: e.target.value as 'Pago' | 'Pendente' })}
-                                                className={`w-full border-2 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 outline-none appearance-none transition-colors ${expenseForm.status === 'Pago' ? 'border-emerald-200 text-emerald-700 dark:border-emerald-900/30 dark:text-emerald-400' : 'border-amber-200 text-amber-700 dark:border-amber-900/30 dark:text-amber-400'}`}
+                                                className={`w-full border-2 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 outline-none appearance-none transition-colors ${expenseForm.status === 'Pago' ? 'border-emerald-200 text-emerald-700 dark:border-emerald-900/30 dark:text-emerald-400' : 'border-amber-200 text-amber-700 dark:border-amber-900/30 dark:text-amber-400'}`}
                                             >
                                                 <option value="Pago">Pago</option>
                                                 <option value="Pendente">Pendente</option>
@@ -6378,7 +6378,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                     // No auto-fill category anymore as per user request
                                                     setExpenseForm(updatedForm);
                                                 }}
-                                                className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
+                                                className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
                                             >
                                                 <option value="">Nenhum / Geral</option>
                                                 <optgroup label="Fornecedores">
@@ -6396,7 +6396,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     </div>
                                 </div>
                                 <div className="pt-2">
-                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
+                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
                                         {recurrenceMonths > 1 ? `Lançar ${recurrenceMonths}x Despesas` : 'Salvar Despesa'}
                                     </button>
                                 </div>
@@ -6409,7 +6409,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isSupplierModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Users size={18} /> {editingSupplierId ? 'Editar' : 'Novo'} Fornecedor</h3>
                                 <button onClick={() => setIsSupplierModalOpen(false)}><X size={24} /></button>
@@ -6417,24 +6417,24 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <form onSubmit={handleSaveSupplier} className="p-6 space-y-4">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Nome do Fornecedor</label>
-                                    <input type="text" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.name} onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })} />
+                                    <input type="text" required className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.name} onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Documento (CPF/CNPJ)</label>
-                                    <input type="text" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.document} onChange={e => setSupplierForm({ ...supplierForm, document: e.target.value })} />
+                                    <input type="text" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.document} onChange={e => setSupplierForm({ ...supplierForm, document: e.target.value })} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">Telefone</label>
-                                        <input type="text" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.phone} onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })} />
+                                        <input type="text" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.phone} onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })} />
                                     </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 ml-1">E-mail</label>
-                                        <input type="email" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.email} onChange={e => setSupplierForm({ ...supplierForm, email: e.target.value })} />
+                                        <input type="email" className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black" value={supplierForm.email} onChange={e => setSupplierForm({ ...supplierForm, email: e.target.value })} />
                                     </div>
                                 </div>
                                 <div className="pt-2">
-                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
+                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
                                         Salvar Fornecedor
                                     </button>
                                 </div>
@@ -6448,7 +6448,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isBatchModalOpen && (
                     <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-200 dark:border-zinc-800 animate-in zoom-in-95 duration-300 my-auto">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-200 dark:border-zinc-800 animate-in zoom-in-95 duration-300 my-auto">
                             <div className="p-8 text-center space-y-6">
                                 <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
                                     <AlertCircle size={40} />
@@ -6464,19 +6464,19 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 <div className="space-y-3">
                                     <button
                                         onClick={() => { if (batchActionType === 'SAVE') handleSaveExpense(undefined, 'ONLY_THIS'); else handleDeleteExpense(editingExpenseId!, 'ONLY_THIS'); }}
-                                        className="w-full py-4 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-950 dark:text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95"
+                                        className="w-full py-4 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-950 dark:text-white rounded-sm font-black uppercase text-[10px] tracking-widest transition-all active:scale-95"
                                     >
                                         Somente esta
                                     </button>
                                     <button
                                         onClick={() => { if (batchActionType === 'SAVE') handleSaveExpense(undefined, 'THIS_AND_FUTURE'); else handleDeleteExpense(editingExpenseId!, 'THIS_AND_FUTURE'); }}
-                                        className="w-full py-4 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-950 dark:text-white rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all active:scale-95"
+                                        className="w-full py-4 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-950 dark:text-white rounded-sm font-black uppercase text-[10px] tracking-widest transition-all active:scale-95"
                                     >
                                         Esta e as próximas
                                     </button>
                                     <button
                                         onClick={() => { if (batchActionType === 'SAVE') handleSaveExpense(undefined, 'ALL'); else handleDeleteExpense(editingExpenseId!, 'ALL'); }}
-                                        className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
+                                        className="w-full py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 transition-all active:scale-95"
                                     >
                                         Todas da série
                                     </button>
@@ -6498,7 +6498,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isBatchDateModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><Calendar size={18} /> Ajustar Data em Lote</h3>
                                 <button onClick={() => setIsBatchDateModalOpen(false)}><X size={24} /></button>
@@ -6509,14 +6509,14 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     <input
                                         type="date"
                                         required
-                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white outline-none focus:border-black"
+                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white outline-none focus:border-black"
                                         value={batchNewDate}
                                         onChange={e => setBatchNewDate(e.target.value)}
                                     />
                                 </div>
 
                                 {selectedExpenseIds.some(id => expenses.find(e => e.id === id)?.recurringId) && (
-                                    <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-xl border border-amber-200 dark:border-amber-900/30">
+                                    <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-sm border border-amber-200 dark:border-amber-900/30">
                                         <input
                                             type="checkbox"
                                             id="applyToFuture"
@@ -6533,7 +6533,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 <div className="pt-2">
                                     <button
                                         onClick={handleBatchDateUpdate}
-                                        className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all"
+                                        className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all"
                                     >
                                         Aplicar Nova Data
                                     </button>
@@ -6548,7 +6548,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 selectedExpenseIds.length > 0 && (
                     <div className="fixed bottom-6 md:bottom-10 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-5 duration-500 w-[95%] md:w-auto">
-                        <div className="bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl md:rounded-[2rem] shadow-2xl border-4 border-white/10 dark:border-black/10 flex items-center gap-1 md:gap-4 p-1.5 md:p-3 backdrop-blur-md justify-between md:justify-start">
+                        <div className="bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm md:rounded-sm shadow-2xl border-4 border-white/10 dark:border-black/10 flex items-center gap-1 md:gap-4 p-1.5 md:p-3 backdrop-blur-md justify-between md:justify-start">
                             <div className="px-2 md:px-6 border-r border-white/20 dark:border-black/20">
                                 <div className="flex flex-col items-center md:items-start">
                                     <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest opacity-50">Itens</span>
@@ -6559,7 +6559,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <div className="flex items-center gap-1 md:gap-2">
                                 <button
                                     onClick={() => setIsBatchDateModalOpen(true)}
-                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
+                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-sm md:rounded-sm transition-all group"
                                 >
                                     <Calendar size={18} className="group-hover:scale-110 transition-transform" />
                                     <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Ajustar Data</span>
@@ -6567,7 +6567,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                 <button
                                     onClick={handleBatchStatusUpdate}
-                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-xl md:rounded-2xl transition-all group"
+                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-white/10 dark:hover:bg-black/5 rounded-sm md:rounded-sm transition-all group"
                                 >
                                     <CircleCheck size={18} className="group-hover:scale-110 transition-transform" />
                                     <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Inverter Status</span>
@@ -6575,7 +6575,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                                 <button
                                     onClick={handleBatchDelete}
-                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-rose-500 dark:hover:bg-rose-500 hover:text-white rounded-xl md:rounded-2xl transition-all group"
+                                    className="flex items-center gap-2 px-3 md:px-5 py-2 md:py-3 hover:bg-rose-500 dark:hover:bg-rose-500 hover:text-white rounded-sm md:rounded-sm transition-all group"
                                 >
                                     <Trash2 size={18} className="group-hover:scale-110 transition-transform" />
                                     <span className="hidden md:inline text-[10px] font-black uppercase tracking-widest">Excluir</span>
@@ -6584,7 +6584,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
 
                             <button
                                 onClick={() => setSelectedExpenseIds([])}
-                                className="ml-2 md:ml-4 p-2 md:p-3 bg-white/10 dark:bg-black/5 hover:bg-white/20 dark:hover:bg-black/10 rounded-xl md:rounded-2xl transition-colors"
+                                className="ml-2 md:ml-4 p-2 md:p-3 bg-white/10 dark:bg-black/5 hover:bg-white/20 dark:hover:bg-black/10 rounded-sm md:rounded-sm transition-colors"
                                 title="Limpar seleção"
                             >
                                 <X size={18} />
@@ -6597,7 +6597,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isQuickAddingCategory && isCategoryFormOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
                             <div className="px-6 py-4 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black uppercase text-sm tracking-widest flex items-center gap-2"><FolderPlus size={18} /> Nova Conta / Categoria</h3>
                                 <button onClick={() => { setIsCategoryFormOpen(false); setIsQuickAddingCategory(false); }}><X size={24} /></button>
@@ -6612,7 +6612,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         placeholder="Ex: Energia Elétrica"
                                         value={categoryForm.name}
                                         onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
+                                        className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black"
                                     />
                                 </div>
                                 <div>
@@ -6621,7 +6621,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         <select
                                             value={categoryForm.dreClass}
                                             onChange={e => setCategoryForm({ ...categoryForm, dreClass: e.target.value })}
-                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-xl font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 p-3 rounded-sm font-bold bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white outline-none focus:border-black appearance-none"
                                         >
                                             <option value="COSTS">CPV / Custos Operacionais</option>
                                             <option value="REVENUE">Outras Receitas</option>
@@ -6635,7 +6635,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     </div>
                                 </div>
                                 <div className="pt-2">
-                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
+                                    <button type="submit" className="w-full py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-lg active:scale-95 transition-all">
                                         Adicionar Conta
                                     </button>
                                 </div>
@@ -6674,7 +6674,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {
                 isReconciledEditModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full md:max-w-4xl overflow-hidden border border-slate-200 dark:border-zinc-800 animate-in zoom-in duration-300">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden border border-slate-200 dark:border-zinc-800 animate-in zoom-in duration-300">
                             <div className="px-8 py-6 bg-slate-50 dark:bg-zinc-800 border-b flex justify-between items-center">
                                 <div>
                                     <h3 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
@@ -6695,7 +6695,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             type="text"
                                             value={editReconciledForm.description}
                                             onChange={(e) => setEditReconciledForm({ ...editReconciledForm, description: e.target.value })}
-                                            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                            className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                             placeholder="Descreva o lançamento..."
                                         />
                                     </div>
@@ -6706,7 +6706,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                             <select
                                                 value={editReconciledForm.category}
                                                 onChange={(e) => setEditReconciledForm({ ...editReconciledForm, category: e.target.value })}
-                                                className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+                                                className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
                                             >
                                                 <option value="">Selecione...</option>
                                                 {expenseCategories.map(cat => (
@@ -6746,7 +6746,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                         customerOrProviderName: name
                                                     });
                                                 }}
-                                                className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
+                                                className="w-full px-5 py-3.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-bold focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none"
                                             >
                                                 <option value="">Selecione...</option>
                                                 <optgroup label="Fornecedores">
@@ -6772,13 +6772,13 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                 <div className="flex gap-3 pt-4">
                                     <button
                                         onClick={() => setIsReconciledEditModalOpen(false)}
-                                        className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
+                                        className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 transition-all"
                                     >
                                         Cancelar
                                     </button>
                                     <button
                                         onClick={handleSaveReconciledEdit}
-                                        className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                                        className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
                                     >
                                         <Save size={16} /> Salvar Alterações
                                     </button>
@@ -6826,9 +6826,9 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {/* Custom Reconcile Confirmation Modal */}
             {reconcileConfirm.isOpen && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-zinc-900 rounded-[2.5rem] w-full max-w-md border border-zinc-800 shadow-2xl overflow-hidden scale-in-center duration-300">
+                    <div className="bg-zinc-900 rounded-sm w-full max-w-md border border-zinc-800 shadow-2xl overflow-hidden scale-in-center duration-300">
                         <div className="p-8 text-center space-y-6">
-                            <div className="w-20 h-20 bg-indigo-600/20 rounded-3xl flex items-center justify-center mx-auto text-indigo-500">
+                            <div className="w-20 h-20 bg-indigo-600/20 rounded-sm flex items-center justify-center mx-auto text-indigo-500">
                                 {reconcileConfirm.type === 'LINK' ? <Link2 size={40} /> : <FilePlus size={40} />}
                             </div>
                             
@@ -6840,7 +6840,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             </div>
 
                             {reconcileConfirm.candidate && (
-                                <div className="bg-zinc-800/50 p-4 rounded-2xl border border-zinc-700/50 text-left">
+                                <div className="bg-zinc-800/50 p-4 rounded-sm border border-zinc-700/50 text-left">
                                     <div className="flex justify-between items-center mb-1">
                                         <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Sugestão Encontrada</span>
                                         <span className="text-[10px] font-black text-zinc-500">{new Date(reconcileConfirm.candidate.date).toLocaleDateString()}</span>
@@ -6853,7 +6853,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                             <div className="flex gap-3 pt-2">
                                 <button 
                                     onClick={() => setReconcileConfirm(prev => ({ ...prev, isOpen: false }))}
-                                    className="flex-1 py-4 bg-zinc-800 text-zinc-400 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-zinc-700 transition-all"
+                                    className="flex-1 py-4 bg-zinc-800 text-zinc-400 rounded-sm font-black uppercase text-[10px] tracking-widest hover:bg-zinc-700 transition-all"
                                 >
                                     Cancelar
                                 </button>
@@ -6862,7 +6862,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                         reconcileConfirm.onConfirm();
                                         setReconcileConfirm(prev => ({ ...prev, isOpen: false }));
                                     }}
-                                    className="flex-1 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                                    className="flex-1 py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
                                 >
                                     OK
                                 </button>
@@ -6875,10 +6875,10 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             {/* Strategist Detail Modal */}
             {isStrategistDetailModalOpen && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[120] flex items-center justify-center p-4">
-                    <div className="bg-white dark:bg-zinc-900 w-full md:max-w-2xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[85vh]">
+                    <div className="bg-white dark:bg-zinc-900 w-full md:max-w-2xl rounded-sm shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[85vh]">
                         <div className="p-8 border-b dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600">
+                                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-sm flex items-center justify-center text-amber-600">
                                     <Sparkles size={24} />
                                 </div>
                                 <div>
@@ -6898,7 +6898,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                     <div className="col-span-4 text-right">Realizado</div>
                                 </div>
                                 {strategistDetailData.map((item, idx) => (
-                                    <div key={idx} className="grid grid-cols-12 gap-4 px-4 py-4 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-800 items-center hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
+                                    <div key={idx} className="grid grid-cols-12 gap-4 px-4 py-4 bg-slate-50 dark:bg-zinc-800/50 rounded-sm border border-slate-100 dark:border-zinc-800 items-center hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors">
                                         <div className="col-span-8">
                                             <span className="text-[11px] font-black text-slate-700 dark:text-slate-200 uppercase">{item.name}</span>
                                             <div className="text-[9px] font-bold text-slate-400 mt-0.5">
@@ -6916,7 +6916,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                         <div className="p-8 border-t dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50 flex justify-end">
                             <button
                                 onClick={() => setIsStrategistDetailModalOpen(false)}
-                                className="px-10 py-4 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all"
+                                className="px-10 py-4 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all"
                             >
                                 Fechar Detalhamento
                             </button>

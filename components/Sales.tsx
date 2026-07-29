@@ -50,7 +50,7 @@ function SortableCatalogCard({ product }: { product: StockItem }) {
         <div
             ref={setNodeRef}
             style={style}
-            className={`bg-white dark:bg-zinc-800 rounded-lg border-2 p-2 flex flex-col gap-2 relative overflow-hidden select-none ${
+            className={`bg-white dark:bg-zinc-800 rounded-sm border-2 p-2 flex flex-col gap-2 relative overflow-hidden select-none ${
                 isDragging
                     ? 'shadow-2xl border-indigo-400 scale-105'
                     : 'border-dashed border-indigo-200 dark:border-indigo-800'
@@ -60,13 +60,13 @@ function SortableCatalogCard({ product }: { product: StockItem }) {
             <div
                 {...attributes}
                 {...listeners}
-                className="absolute top-2 right-2 z-10 p-1.5 bg-indigo-50 dark:bg-indigo-900/40 rounded-lg cursor-grab active:cursor-grabbing text-indigo-400 hover:text-indigo-600 touch-none"
+                className="absolute top-2 right-2 z-10 p-1.5 bg-indigo-50 dark:bg-indigo-900/40 rounded-sm cursor-grab active:cursor-grabbing text-indigo-400 hover:text-indigo-600 touch-none"
                 title="Arrastar para reorganizar"
             >
                 <GripVertical size={14} />
             </div>
 
-            <div className="aspect-square rounded-md bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+            <div className="aspect-square rounded-sm bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
                 {product.imageUrl ? (
                     <img
                         src={sanitizeImageUrl(product.imageUrl)}
@@ -1370,12 +1370,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     <img src="/logo.png" alt="Aminna Logo" className="h-14 w-auto object-contain dark:invert" />
                 </div>
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 md:flex-none">
+                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700 flex-1 md:flex-none">
                         {['ACTIVITY', 'CATALOG', 'ANALYSES', 'RESERVAS'].map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveMainTab(tab as any)}
-                                className={`flex-1 md:flex-none px-3 sm:px-4 py-2 rounded-xl text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${
+                                className={`flex-1 md:flex-none px-3 sm:px-4 py-2 rounded-sm text-[9px] sm:text-[10px] font-black uppercase tracking-widest transition-all ${
                                     activeMainTab === tab 
                                         ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' 
                                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
@@ -1390,14 +1390,14 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
             {/* Global Filters Section (Shared between Activity and Analytics, Search only for Catalog) */}
             {activeMainTab !== 'CATALOG' && (
-                <div className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col xl:flex-row gap-4 mb-6">
+                <div className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col xl:flex-row gap-4 mb-6">
                     {/* Search */}
                     <div className="flex-1 relative animate-in fade-in duration-300">
                         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-700 dark:text-slate-400" />
                         <input
                             type="text"
                             placeholder="Buscar por cliente ou produto..."
-                            className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-black dark:focus:border-white rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white outline-none transition-all placeholder:text-slate-400"
+                            className="w-full pl-11 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-transparent focus:border-black dark:focus:border-white rounded-sm text-xs md:text-sm font-black text-slate-950 dark:text-white outline-none transition-all placeholder:text-slate-400"
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                         />
@@ -1406,12 +1406,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                     {/* Date & Payment Controls */}
                     <div className="flex flex-col md:flex-row gap-3 overflow-x-auto pb-1 md:pb-0 scrollbar-hide">
                         {/* View Switcher */}
-                        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
+                        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700 w-full md:w-auto">
                             {(['day', 'month', 'year', 'custom'] as const).map(v => (
                                 <button
                                     key={v}
                                     onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
-                                    className={`flex-1 md:flex-none px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                    className={`flex-1 md:flex-none px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                                 >
                                     {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
                                 </button>
@@ -1420,26 +1420,26 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
                         {/* Date Navigator */}
                         {timeView === 'custom' ? (
-                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-2xl w-full md:w-auto">
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-3 py-1.5 rounded-sm w-full md:w-auto">
                                 <CalendarRange size={16} className="text-slate-400" />
                                 <input type="date" value={customRange.start} onChange={e => setCustomRange({ ...customRange, start: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
                                 <span className="text-slate-300">-</span>
                                 <input type="date" value={customRange.end} onChange={e => setCustomRange({ ...customRange, end: e.target.value })} className="text-[10px] font-black uppercase text-slate-900 dark:text-white outline-none bg-transparent" />
                             </div>
                         ) : (
-                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl w-full md:w-auto justify-between md:justify-start">
-                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
+                            <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 border-2 border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-sm w-full md:w-auto justify-between md:justify-start">
+                                <button onClick={() => navigateDate('prev')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={16} /></button>
                                 <div className="flex flex-col items-center min-w-[120px]">
                                     <span className="text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-tight">{getDateLabel()}</span>
                                 </div>
-                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
+                                <button onClick={() => navigateDate('next')} className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={16} /></button>
                             </div>
                         )}
 
                         <select
                             value={paymentFilter}
                             onChange={e => setPaymentFilter(e.target.value)}
-                            className="bg-slate-50 dark:bg-zinc-800 px-4 py-2 rounded-2xl border border-slate-100 dark:border-zinc-700 text-[11px] font-black uppercase text-slate-900 dark:text-white outline-none focus:border-black dark:focus:border-white transition-all w-full md:w-auto"
+                            className="bg-slate-50 dark:bg-zinc-800 px-4 py-2 rounded-sm border border-slate-100 dark:border-zinc-700 text-[11px] font-black uppercase text-slate-900 dark:text-white outline-none focus:border-black dark:focus:border-white transition-all w-full md:w-auto"
                         >
                             <option value="all">Todos Pagamentos</option>
                             <option value="Pix">Pix</option>
@@ -1455,24 +1455,24 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 <>
                     {/* KPI Section */}
                     <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 md:gap-6">
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl"><DollarSign size={20} /></div>
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-sm"><DollarSign size={20} /></div>
                         <TrendingUp size={16} className="text-emerald-500" />
                     </div>
                     <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Faturamento</p>
                     <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">R$ {stats.totalRevenue.toFixed(2)}</p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl"><TrendingUp size={20} /></div>
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-sm"><TrendingUp size={20} /></div>
                     </div>
                     <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Receita Líquida</p>
                     <p className="text-lg md:text-xl font-black text-emerald-700 dark:text-emerald-400">R$ {stats.netRevenue.toFixed(2)}</p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className={`p-2 ${stats.profitMargin >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'} rounded-xl`}>
+                        <div className={`p-2 ${stats.profitMargin >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'} rounded-sm`}>
                             <Percent size={20} />
                         </div>
                     </div>
@@ -1481,23 +1481,23 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         {stats.profitMargin >= 0 ? '+' : ''}{stats.profitMargin.toFixed(1)}%
                     </p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl"><Package size={20} /></div>
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-sm"><Package size={20} /></div>
                     </div>
                     <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Itens Vendidos</p>
                     <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">{stats.totalItems} un</p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-700 dark:text-slate-400 rounded-xl"><BarChart3 size={20} /></div>
+                        <div className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-700 dark:text-slate-400 rounded-sm"><BarChart3 size={20} /></div>
                     </div>
                     <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Ticket Médio</p>
                     <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">R$ {stats.avgTicket.toFixed(2)}</p>
                 </div>
-                <div className="p-4 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm whitespace-nowrap overflow-hidden">
+                <div className="p-4 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm whitespace-nowrap overflow-hidden">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl"><ArrowUpRight size={20} /></div>
+                        <div className="p-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-sm"><ArrowUpRight size={20} /></div>
                     </div>
                     <p className="text-[9px] md:text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-tighter">Mais Vendido</p>
                     <p className="text-xs md:text-sm font-black text-slate-950 dark:text-white truncate">{stats.topProduct}</p>
@@ -1507,7 +1507,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
 
                 {/* Desktop Table */}
-                <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                         <thead className="text-[10px] text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-100 dark:border-zinc-700">
@@ -1554,10 +1554,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="flex items-center justify-center gap-2">
-                                            <button onClick={() => setSelectedSaleDetail(sale)} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors" title="Detalhes">
+                                            <button onClick={() => setSelectedSaleDetail(sale)} className="p-2 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-sm transition-colors" title="Detalhes">
                                                 <Search size={16} />
                                             </button>
-                                            <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors" title="Baixar Fatura e Garantia">
+                                            <button onClick={() => handleDownloadInvoice(sale)} className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-sm transition-colors" title="Baixar Fatura e Garantia">
                                                 <FileText size={16} />
                                             </button>
                                             <button onClick={() => handleDeleteSale(sale.id)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-rose-600 dark:hover:text-rose-400 transition-colors opacity-0 group-hover:opacity-100" title="Estornar">
@@ -1575,13 +1575,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* Mobile Card List */}
             <div className="md:hidden space-y-3">
                 {filteredSales.map(sale => (
-                    <div key={sale.id} className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm space-y-3 active:scale-[0.98] transition-transform">
+                    <div key={sale.id} className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm space-y-3 active:scale-[0.98] transition-transform">
                         <div className="flex justify-between items-start">
                             <div className="flex-1 min-w-0">
                                 <p className="text-[10px] font-black text-slate-400 uppercase">{formatDateBR(sale.date)}</p>
                                 <h4 className="text-sm font-black text-slate-900 dark:text-white truncate uppercase">{getCustomerName(sale.customerId)}</h4>
                                 <div className="flex items-center gap-1.5 mt-1">
-                                    <span className="p-1 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-lg"><Package size={12} /></span>
+                                    <span className="p-1 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-sm"><Package size={12} /></span>
                                     <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">
                                         {sale.items?.map((i: any) => i.name || getProductName(i.productId)).join(', ') || 'Sem itens'}
                                     </span>
@@ -1596,10 +1596,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         </div>
                         <div className="pt-3 border-t border-slate-50 dark:border-zinc-800 flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <button onClick={() => setSelectedSaleDetail(sale)} className="text-[9px] px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-xl font-black uppercase border border-indigo-100 dark:border-indigo-800 flex items-center gap-1.5">
+                                <button onClick={() => setSelectedSaleDetail(sale)} className="text-[9px] px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-sm font-black uppercase border border-indigo-100 dark:border-indigo-800 flex items-center gap-1.5">
                                     <Search size={10} /> DETALHES
                                 </button>
-                                <button onClick={() => handleDownloadInvoice(sale)} className="text-[9px] px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-black uppercase border border-emerald-100 dark:border-emerald-800 flex items-center gap-1.5">
+                                <button onClick={() => handleDownloadInvoice(sale)} className="text-[9px] px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-sm font-black uppercase border border-emerald-100 dark:border-emerald-800 flex items-center gap-1.5">
                                     <FileText size={10} /> FATURA
                                 </button>
                                 <p className="text-[9px] font-bold text-slate-400 uppercase">
@@ -1616,7 +1616,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                 ))}
             </div>
             {filteredSales.length === 0 && (
-                    <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                    <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-sm border-2 border-dashed border-slate-100 dark:border-zinc-800">
                         <ShoppingCart size={48} className="mx-auto text-slate-100 dark:text-zinc-800 mb-2" />
                         <p className="text-sm font-black text-slate-300 dark:text-zinc-600 uppercase">Nenhuma venda encontrada</p>
                     </div>
@@ -1626,7 +1626,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             ) : activeMainTab === 'CATALOG' ? (
 
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm space-y-6">
+                    <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm space-y-6">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                             <div className="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
                                 <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 no-scrollbar">
@@ -1716,7 +1716,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 <div className="flex flex-wrap gap-2 pt-0.5 animate-in fade-in slide-in-from-top-2 duration-300">
                                     <button
                                         onClick={() => setSelectedSubGroup('all')}
-                                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${selectedSubGroup === 'all' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
+                                        className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-widest border transition-all ${selectedSubGroup === 'all' ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
                                     >
                                         Todas Subcategorias
                                     </button>
@@ -1724,7 +1724,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         <button
                                             key={sub}
                                             onClick={() => setSelectedSubGroup(sub)}
-                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${selectedSubGroup === sub ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
+                                            className={`px-3 py-1.5 rounded-sm text-[9px] font-black uppercase tracking-widest border transition-all ${selectedSubGroup === sub ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' : 'bg-white dark:bg-zinc-900 text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-300'}`}
                                         >
                                             {sub}
                                         </button>
@@ -1752,10 +1752,10 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             setActiveImageIndex(0);
                                             setCurrentQuantity(1);
                                         }}
-                                        className="group bg-white dark:bg-zinc-800 rounded-lg border-2 p-2 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-2 relative overflow-hidden"
+                                        className="group bg-white dark:bg-zinc-800 rounded-sm border-2 p-2 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-2 relative overflow-hidden"
                                         style={{ borderColor: '#D9D9D6' }}
                                     >
-                                        <div className="aspect-square rounded-md bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+                                        <div className="aspect-square rounded-sm bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
                                             {product.imageUrl ? (
                                                 <img 
                                                     src={sanitizeImageUrl(product.imageUrl)} 
@@ -1773,7 +1773,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                         e.stopPropagation();
                                                         if (product.quantity > 0) fastAddToCart(product);
                                                     }}
-                                                    className={`p-2 rounded-xl shadow-lg transition-all pointer-events-auto ${product.quantity <= 0 ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:scale-110 active:scale-90'}`}
+                                                    className={`p-2 rounded-sm shadow-lg transition-all pointer-events-auto ${product.quantity <= 0 ? 'bg-slate-100 text-slate-300 cursor-not-allowed' : 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:scale-110 active:scale-90'}`}
                                                     title={product.quantity <= 0 ? 'Produto Esgotado' : 'Adicionar 1 ao Carrinho'}
                                                     disabled={product.quantity <= 0}
                                                 >
@@ -1792,7 +1792,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             </p>
                                             <div className="flex justify-between items-end mt-1">
                                                 <p className="text-[10px] font-black" style={{ color: '#75787B' }}>R$ {product.price?.toFixed(2)}</p>
-                                                <p className={`text-[8px] font-black uppercase ${product.quantity <= 0 ? 'text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-lg' : 'text-slate-400'}`}>
+                                                <p className={`text-[8px] font-black uppercase ${product.quantity <= 0 ? 'text-rose-500 bg-rose-50 dark:bg-rose-900/20 px-1.5 py-0.5 rounded-sm' : 'text-slate-400'}`}>
                                                     {product.quantity <= 0 ? 'Esgotado' : `${product.quantity} un`}
                                                 </p>
                                             </div>
@@ -1821,7 +1821,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* New Sale Modal (Updated for Cart) */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[90vh] border border-slate-200 dark:border-zinc-800">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[90vh] border border-slate-200 dark:border-zinc-800">
                         {/* Header Updated to be Light by default, Dark in Dark Mode */}
                         <div className="px-6 py-4 border-b border-slate-100 dark:border-black flex justify-between items-center bg-white dark:bg-zinc-950 text-slate-900 dark:text-white flex-shrink-0">
                             <h3 className="font-black text-base md:text-lg uppercase tracking-tight flex items-center gap-2">
@@ -1844,7 +1844,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100" />
                                         <input
                                             type="date"
-                                            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white transition-all shadow-sm"
+                                            className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white transition-all shadow-sm"
                                             value={saleDate}
                                             onChange={e => setSaleDate(e.target.value)}
                                         />
@@ -1863,14 +1863,14 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         <input
                                             type="text"
                                             placeholder="Busque por nome ou celular..."
-                                            className={`w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 ${triedToSubmit && !customerId ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200 dark:border-zinc-700'} rounded-2xl text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white transition-all shadow-sm`}
+                                            className={`w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-800 border-2 ${triedToSubmit && !customerId ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200 dark:border-zinc-700'} rounded-sm text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-900 dark:text-white transition-all shadow-sm`}
                                             value={customerSearch}
                                             onChange={e => setCustomerSearch(e.target.value)}
                                         />
                                         <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-900 dark:text-slate-100 pointer-events-none" />
 
                                         {isQuickRegisterOpen ? (
-                                            <div className="mt-2 p-4 bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-200 dark:border-indigo-800 rounded-2xl animate-in slide-in-from-top-2">
+                                            <div className="mt-2 p-4 bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-200 dark:border-indigo-800 rounded-sm animate-in slide-in-from-top-2">
                                                 <div className="flex justify-between items-center mb-3">
                                                     <h4 className="font-black text-[10px] uppercase text-indigo-900 dark:text-indigo-400">Novo Cadastro Rápido</h4>
                                                     <button type="button" onClick={() => setIsQuickRegisterOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-[10px] font-bold uppercase">Cancelar</button>
@@ -1879,7 +1879,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                     <input
                                                         type="text"
                                                         placeholder="Nome Completo"
-                                                        className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-zinc-700 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white uppercase"
+                                                        className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-zinc-700 rounded-sm text-sm font-black outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white uppercase"
                                                         value={quickRegisterData.name}
                                                         onChange={e => setQuickRegisterData({ ...quickRegisterData, name: e.target.value })}
                                                         autoFocus
@@ -1887,7 +1887,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                     <input
                                                         type="tel"
                                                         placeholder="Telefone / WhatsApp"
-                                                        className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-zinc-700 rounded-xl text-sm font-black outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
+                                                        className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-indigo-100 dark:border-zinc-700 rounded-sm text-sm font-black outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white"
                                                         value={quickRegisterData.phone}
                                                         onChange={e => setQuickRegisterData({ ...quickRegisterData, phone: e.target.value })}
                                                     />
@@ -1895,7 +1895,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                         type="button"
                                                         onClick={handleQuickRegister}
                                                         disabled={!quickRegisterData.name || !quickRegisterData.phone || isRegisteringClient}
-                                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-sm text-xs font-black uppercase tracking-widest transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                                     >
                                                         {isRegisteringClient ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                                         {isRegisteringClient ? 'Salvando...' : 'Salvar e Selecionar'}
@@ -1912,7 +1912,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                             setQuickRegisterData(prev => ({ ...prev, name: customerSearch }));
                                                         }
                                                     }}
-                                                    className="flex items-center gap-2 text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                                                    className="flex items-center gap-2 text-[9px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-3 py-1.5 rounded-sm transition-colors"
                                                 >
                                                     <Plus size={12} /> Cadastrar Nova Cliente
                                                 </button>
@@ -1920,7 +1920,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         )}
 
                                         {customerSearch && !isQuickRegisterOpen && (
-                                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-sm shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
                                                 {filteredCustomerOptions.length > 0 ? filteredCustomerOptions.map(c => (
                                                     <button
                                                         key={c.id}
@@ -1944,16 +1944,16 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl border-2 border-indigo-200 dark:border-indigo-800/50 flex items-center justify-between shadow-sm">
+                                    <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-sm border-2 border-indigo-200 dark:border-indigo-800/50 flex items-center justify-between shadow-sm">
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg"><User size={16} /></div>
+                                            <div className="w-8 h-8 bg-indigo-600 text-white rounded-sm flex items-center justify-center flex-shrink-0 shadow-lg"><User size={16} /></div>
                                             <div className="min-w-0">
                                                 <p className="text-xs font-black text-slate-950 dark:text-white truncate uppercase">{getCustomerName(customerId)}</p>
                                                 <p className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400">{allSelectableCustomers.find(c => c.id === customerId)?.phone}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <button type="button" onClick={() => setCustomerId('')} className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase bg-white dark:bg-zinc-800 px-3 py-1.5 rounded-lg border border-indigo-200 dark:border-indigo-800 shadow-sm hover:bg-slate-50 transition-colors">Trocar</button>
+                                            <button type="button" onClick={() => setCustomerId('')} className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase bg-white dark:bg-zinc-800 px-3 py-1.5 rounded-sm border border-indigo-200 dark:border-indigo-800 shadow-sm hover:bg-slate-50 transition-colors">Trocar</button>
                                         </div>
                                     </div>
                                 )}
@@ -1964,13 +1964,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 <div className="flex justify-between items-center mb-1.5 px-1">
                                     <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Adicionar Produto</label>
                                     <div className="flex items-center gap-2">
-                                        <label className="md:hidden cursor-pointer flex items-center gap-1 px-2 py-1 bg-zinc-950 text-white rounded-lg text-[8px] font-black uppercase transition-all shadow-sm active:scale-95 border border-black">
+                                        <label className="md:hidden cursor-pointer flex items-center gap-1 px-2 py-1 bg-zinc-950 text-white rounded-sm text-[8px] font-black uppercase transition-all shadow-sm active:scale-95 border border-black">
                                             {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Camera size={10} />}
                                             {isScanning ? 'Lendo...' : 'Tirar Foto'}
                                             <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleOCRField} disabled={isScanning} />
                                         </label>
                                         <span className="text-slate-300 dark:text-zinc-700 md:hidden">|</span>
-                                        <label className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}>
+                                        <label className={`flex items-center gap-1.5 px-2 py-1 rounded-sm text-[8px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}>
                                             {isScanning ? <Loader2 size={10} className="animate-spin" /> : <Plus size={10} className="md:hidden" />}
                                             <Camera size={10} className="hidden md:block" />
                                             {isScanning ? 'Lendo...' : (
@@ -1990,7 +1990,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         <input
                                             type="text"
                                             placeholder="Busque por nome ou bipe o código..."
-                                            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 focus:border-black dark:focus:border-white rounded-2xl text-sm font-black outline-none text-slate-900 dark:text-white transition-all shadow-sm"
+                                            className="w-full pl-11 pr-10 py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 focus:border-black dark:focus:border-white rounded-sm text-sm font-black outline-none text-slate-900 dark:text-white transition-all shadow-sm"
                                             value={productSearch}
                                             onChange={e => {
                                                 const val = e.target.value;
@@ -2005,7 +2005,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
 
                                         {productSearch && (
-                                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                                            <div className="absolute z-50 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-sm shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
                                                 {filteredProductOptions.map(item => (
                                                     <button
                                                         key={item.id}
@@ -2027,13 +2027,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         )}
                                     </div>
                                 ) : (
-                                    <div className="p-3 bg-slate-100 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
+                                    <div className="p-3 bg-slate-100 dark:bg-zinc-800 rounded-sm border-2 border-black dark:border-zinc-700 flex items-center justify-between">
                                         <div className="min-w-0 flex-1">
                                             <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-0.5">Produto Selecionado</p>
                                             <p className="text-xs font-black truncate uppercase" style={{ color: '#75787B' }}>{selectedStockItem?.name}</p>
                                             <p className="text-[10px] font-bold" style={{ color: '#75787B' }}>R$ {selectedStockItem?.price?.toFixed(2)}</p>
                                         </div>
-                                        <button type="button" onClick={() => setCurrentProduct('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-white dark:bg-zinc-700 px-3 py-1.5 rounded-lg ml-2 border border-black dark:border-zinc-600 shadow-sm active:scale-95 transition-all">Remover</button>
+                                        <button type="button" onClick={() => setCurrentProduct('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-white dark:bg-zinc-700 px-3 py-1.5 rounded-sm ml-2 border border-black dark:border-zinc-600 shadow-sm active:scale-95 transition-all">Remover</button>
                                     </div>
                                 )}
                                 {ocrError && <p className="text-[9px] font-bold text-rose-600 px-1">{ocrError}</p>}
@@ -2044,7 +2044,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             type="number"
                                             min="1"
                                             max={selectedStockItem?.quantity || 999}
-                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white rounded-2xl p-4 text-xl font-black outline-none text-slate-900 dark:text-white text-center placeholder:text-slate-200 transition-all"
+                                            className="w-full border-2 border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:border-black dark:focus:border-white rounded-sm p-4 text-xl font-black outline-none text-slate-900 dark:text-white text-center placeholder:text-slate-200 transition-all"
                                             placeholder="Qtd"
                                             value={currentQuantity}
                                             onChange={e => setCurrentQuantity(parseInt(e.target.value) || 1)}
@@ -2055,7 +2055,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         type="button"
                                         onClick={handleAddItemToCart}
                                         disabled={!currentProduct}
-                                        className="flex-[2] bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-black dark:hover:bg-slate-200 disabled:opacity-50 transition-all shadow-xl active:scale-[0.98] group"
+                                        className="flex-[2] bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-black dark:hover:bg-slate-200 disabled:opacity-50 transition-all shadow-xl active:scale-[0.98] group"
                                     >
                                         <Plus size={18} className="group-active:rotate-90 transition-transform" /> 
                                         Adicionar ao Carrinho
@@ -2082,11 +2082,11 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 Limpar Cesta
                                             </button>
                                         </div>
-                                        <div className="bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl overflow-hidden divide-y divide-slate-50 dark:divide-zinc-700">
+                                        <div className="bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm overflow-hidden divide-y divide-slate-50 dark:divide-zinc-700">
                                             {cart.map(item => (
                                                 <div key={item.id} className="p-3 flex justify-between items-center group">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="bg-slate-100 dark:bg-zinc-700 p-2 rounded-lg text-slate-500 dark:text-slate-400"><ShoppingBag size={16} /></div>
+                                                        <div className="bg-slate-100 dark:bg-zinc-700 p-2 rounded-sm text-slate-500 dark:text-slate-400"><ShoppingBag size={16} /></div>
                                                         <div>
                                                             <p className="text-xs font-black text-slate-900 dark:text-white">{item.productName}</p>
                                                             <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400">{item.quantity}x R$ {item.unitPrice.toFixed(2)}</p>
@@ -2122,7 +2122,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 <button
                                                     type="button"
                                                     onClick={addPayment}
-                                                    className="w-full p-3 bg-slate-50 dark:bg-zinc-800 border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-100 transition-colors"
+                                                    className="w-full p-3 bg-slate-50 dark:bg-zinc-800 border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-400 uppercase tracking-widest hover:bg-slate-100 transition-colors"
                                                 >
                                                     Definir Pagamento
                                                 </button>
@@ -2134,7 +2134,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 return (
                                                     <div key={payment.id} className="flex gap-2 animate-in slide-in-from-left duration-200">
                                                         <select
-                                                            className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase ${isCredit && payment.method !== 'Crédito Aminna' ? 'rounded-r-none border-r-0' : ''}`}
+                                                            className={`flex-[2] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase ${isCredit && payment.method !== 'Crédito Aminna' ? 'rounded-r-none border-r-0' : ''}`}
                                                             value={payment.method}
                                                             onChange={(e) => updatePayment(payment.id, 'method', e.target.value)}
                                                         >
@@ -2147,7 +2147,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
                                                         {isCredit && payment.method !== 'Crédito Aminna' && (
                                                             <select
-                                                                className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase border-l-0"
+                                                                className="flex-1 min-w-[60px] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm rounded-l-none p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase border-l-0"
                                                                 value={payment.installments || 1}
                                                                 onChange={(e) => updatePayment(payment.id, 'installments', parseInt(e.target.value))}
                                                             >
@@ -2159,7 +2159,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
                                                         {isCard && payment.method !== 'Crédito Aminna' && (
                                                             <select
-                                                                className="flex-1 min-w-[100px] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
+                                                                className="flex-1 min-w-[100px] bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
                                                                 value={payment.cardBrand || ''}
                                                                 onChange={(e) => updatePayment(payment.id, 'cardBrand', e.target.value)}
                                                             >
@@ -2174,7 +2174,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
                                                             <input
                                                                 type="number"
-                                                                className={`w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border-2 ${Math.abs(payment.amount - cartTotal) > 0.01 && payments.length === 1 ? 'border-amber-400' : 'border-slate-200 dark:border-zinc-700'} rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black`}
+                                                                className={`w-full pl-8 pr-3 py-3 bg-slate-50 dark:bg-zinc-900 border-2 ${Math.abs(payment.amount - cartTotal) > 0.01 && payments.length === 1 ? 'border-amber-400' : 'border-slate-200 dark:border-zinc-700'} rounded-sm text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black`}
                                                                 value={payment.amount || ''}
                                                                 placeholder="0,00"
                                                                 onChange={(e) => updatePayment(payment.id, 'amount', parseFloat(e.target.value) || 0)}
@@ -2183,7 +2183,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => updatePayment(payment.id, 'amount', cartTotal)}
-                                                                    className="absolute -top-7 right-0 text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-lg border border-amber-100 dark:border-amber-800 animate-bounce"
+                                                                    className="absolute -top-7 right-0 text-[8px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest flex items-center gap-1 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded-sm border border-amber-100 dark:border-amber-800 animate-bounce"
                                                                 >
                                                                     <RefreshCw size={8} /> Igualar ao Total
                                                                 </button>
@@ -2193,7 +2193,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                             <button
                                                                 type="button"
                                                                 onClick={() => removePayment(payment.id)}
-                                                                className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-colors"
+                                                                className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-sm transition-colors"
                                                             >
                                                                 <Trash2 size={16} />
                                                             </button>
@@ -2208,14 +2208,14 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             <button
                                                 type="button"
                                                 onClick={() => setShowAdjustmentField(!showAdjustmentField)}
-                                                className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg transition-all ${adjustmentAmount !== 0 ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-zinc-800'}`}
+                                                className={`flex items-center gap-2 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-sm transition-all ${adjustmentAmount !== 0 ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-slate-50 dark:bg-zinc-800'}`}
                                             >
                                                 <DollarSign size={12} />
                                                 Ajustar Valor Final {adjustmentAmount !== 0 && `(R$ ${adjustmentAmount.toFixed(2)})`}
                                             </button>
 
                                             {showAdjustmentField && (
-                                                <div className="mt-3 p-4 bg-slate-50 dark:bg-zinc-950 border-2 border-slate-200 dark:border-zinc-800 rounded-2xl animate-in slide-in-from-top-2">
+                                                <div className="mt-3 p-4 bg-slate-50 dark:bg-zinc-950 border-2 border-slate-200 dark:border-zinc-800 rounded-sm animate-in slide-in-from-top-2">
                                                     <div className="flex gap-4">
                                                         <div className="flex-1">
                                                             <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Valor do Ajuste (+ ou -)</label>
@@ -2223,7 +2223,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-slate-400">R$</span>
                                                                 <input
                                                                     type="number"
-                                                                    className="w-full pl-8 pr-3 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black"
+                                                                    className="w-full pl-8 pr-3 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black"
                                                                     placeholder="+10.00 ou -10.00"
                                                                     value={adjustmentAmount || ''}
                                                                     onChange={e => setAdjustmentAmount(parseFloat(e.target.value) || 0)}
@@ -2234,7 +2234,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                             <label className="block text-[8px] font-black text-slate-400 uppercase mb-2">Motivo do Ajuste</label>
                                                             <input
                                                                 type="text"
-                                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
+                                                                className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-950 dark:text-white outline-none focus:border-black uppercase"
                                                                 placeholder="Ex: Desconto fidelidade, taxa extra..."
                                                                 value={adjustmentReason}
                                                                 onChange={e => setAdjustmentReason(e.target.value)}
@@ -2262,7 +2262,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                                                     const customer = customers.find(c => c.id === (ps as any).customer_id || (ps as any).customerId);
                                                                                     const itemInfo = (ps.items as any[]).find(i => i.productId === insight.id);
                                                                                     return (
-                                                                                        <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl flex justify-between items-center">
+                                                                                        <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-sm flex justify-between items-center">
                                                                                             <span className="text-[9px] font-bold text-slate-600 dark:text-slate-400 truncate max-w-[100px]">{customer?.name || 'Cliente'}</span>
                                                                                             <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {itemInfo?.unitPrice?.toFixed(2) || '0.00'}</span>
                                                                                         </div>
@@ -2274,7 +2274,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                                             <div className="space-y-1">
                                                                                 <p className="text-[8px] font-black text-slate-400 uppercase">Histórico de Preços</p>
                                                                                 {insight.priceHistory.length > 0 ? (insight.priceHistory as any[]).slice(-2).reverse().map((ph, idx) => (
-                                                                                    <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl flex justify-between items-center">
+                                                                                    <div key={idx} className="p-2 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-sm flex justify-between items-center">
                                                                                         <div className="flex flex-col">
                                                                                             <span className="text-[10px] font-black text-slate-900 dark:text-white">R$ {ph.price.toFixed(2)}</span>
                                                                                             <span className="text-[7px] text-slate-400 uppercase font-black">{new Date(ph.date).toLocaleDateString()}</span>
@@ -2294,7 +2294,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         </div>
 
                                         <div className="flex gap-2 mt-4">
-                                            <div className={`flex-1 p-3 rounded-xl border-2 flex items-center justify-between ${Math.abs(totalPaid - cartTotal) < 0.01 ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900' : 'bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900'}`}>
+                                            <div className={`flex-1 p-3 rounded-sm border-2 flex items-center justify-between ${Math.abs(totalPaid - cartTotal) < 0.01 ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900' : 'bg-rose-50 border-rose-100 dark:bg-rose-950/20 dark:border-rose-900'}`}>
                                                 <span className="text-[9px] font-black uppercase text-slate-500 dark:text-slate-400">Total Pago</span>
                                                 <span className={`text-xs font-black ${Math.abs(totalPaid - cartTotal) < 0.01 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                     R$ {totalPaid.toFixed(2)} / R$ {cartTotal.toFixed(2)}
@@ -2303,7 +2303,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             <button
                                                 type="button"
                                                 onClick={() => handleCreateDebt()}
-                                                className={`px-4 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border-2 border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40`}
+                                                className={`px-4 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-sm flex flex-col items-center justify-center gap-1 leading-none whitespace-nowrap bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-300 border-2 border-rose-100 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40`}
                                                 title="Registrar como Dívida (Fiado)"
                                             >
                                                 <Wallet size={14} />
@@ -2312,7 +2312,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         </div>
                                     </div>
 
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/30 p-5 rounded-3xl border-2 border-emerald-100 dark:border-emerald-800/50">
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/30 p-5 rounded-sm border-2 border-emerald-100 dark:border-emerald-800/50">
                                         <div className="flex justify-between items-center text-2xl font-black text-emerald-950 dark:text-emerald-400">
                                             <span>Total Geral</span>
                                             <span>R$ {cartTotal.toFixed(2)}</span>
@@ -2332,7 +2332,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 </button>
                                  <button
                                     type="submit"
-                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-3xl font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-20 disabled:cursor-not-allowed"
+                                    className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-20 disabled:cursor-not-allowed"
                                 >
                                     <Check size={18} /> Confirmar Venda
                                 </button>
@@ -2345,7 +2345,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* Sale Details Modal */}
             {selectedSaleDetail && (
                 <div className="fixed inset-0 bg-black/60 z-[60] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 border border-slate-200 dark:border-zinc-800">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 border border-slate-200 dark:border-zinc-800">
                         <div className="px-6 py-4 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50 dark:bg-zinc-950">
                             <div>
                                 <h3 className="font-black text-sm uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
@@ -2359,7 +2359,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                         </div>
 
                         <div className="p-6 space-y-6">
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-[2rem] border border-emerald-100 dark:border-emerald-800 flex justify-between items-center text-emerald-900 dark:text-emerald-300">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 p-5 rounded-sm border border-emerald-100 dark:border-emerald-800 flex justify-between items-center text-emerald-900 dark:text-emerald-300">
                                 <span className="text-[10px] font-black uppercase tracking-widest">Total Pago</span>
                                 <span className="text-2xl font-black tracking-tighter">R$ {selectedSaleDetail.totalAmount.toFixed(2)}</span>
                             </div>
@@ -2373,9 +2373,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         const productCode = product?.code || '---';
 
                                         return (
-                                            <div key={idx} className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700 flex justify-between items-center gap-4">
+                                            <div key={idx} className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-sm border border-slate-100 dark:border-zinc-700 flex justify-between items-center gap-4">
                                                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                                                    <div className="w-14 h-14 rounded-xl overflow-hidden bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 flex-shrink-0 shadow-sm">
+                                                    <div className="w-14 h-14 rounded-sm overflow-hidden bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 flex-shrink-0 shadow-sm">
                                                         <img src={sanitizeImageUrl(productImg)} className="w-full h-full object-cover" />
                                                     </div>
                                                     <div className="min-w-0">
@@ -2398,7 +2398,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
                             <div className="space-y-3">
                                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Formas de Recebimento</h4>
-                                <div className="bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-200 dark:border-zinc-700 space-y-2">
+                                <div className="bg-slate-100 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-200 dark:border-zinc-700 space-y-2">
                                     {(selectedSaleDetail.payments && selectedSaleDetail.payments.length > 0) ? (
                                         selectedSaleDetail.payments.map((p: any, idx: number) => (
                                             <div key={idx} className="flex justify-between items-center">
@@ -2421,19 +2421,19 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             <div className="grid grid-cols-2 gap-3 mt-2">
                                 <button
                                     onClick={() => handleDownloadInvoice(selectedSaleDetail)}
-                                    className="py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    className="py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
                                     <FileText size={16} /> Fatura e Garantia
                                 </button>
                                 <button
                                     onClick={() => handleEditSale(selectedSaleDetail)}
-                                    className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                                    className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
                                 >
                                     <Edit size={16} /> Editar Venda
                                 </button>
                                 <button
                                     onClick={() => setSelectedSaleDetail(null)}
-                                    className="col-span-2 py-4 bg-slate-950 dark:bg-white text-white dark:text-zinc-950 rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all"
+                                    className="col-span-2 py-4 bg-slate-950 dark:bg-white text-white dark:text-zinc-950 rounded-sm font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all"
                                 >
                                     Fechar Detalhes
                                 </button>
@@ -2497,7 +2497,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
                                             setActiveImageIndex(prev => prev > 0 ? prev - 1 : images.length - 1);
                                         }}
-                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-sm transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
                                     >
                                         <ChevronLeft size={32} />
                                     </button>
@@ -2507,7 +2507,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                             const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
                                             setActiveImageIndex(prev => prev < images.length - 1 ? prev + 1 : 0);
                                         }}
-                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-sm transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
                                     >
                                         <ChevronRight size={32} />
                                     </button>
@@ -2551,7 +2551,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 <button 
                                                     key={i}
                                                     onClick={() => setActiveImageIndex(i)}
-                                                    className={`w-10 h-10 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${i === activeImageIndex ? 'border-zinc-950 dark:border-white' : 'border-transparent opacity-40 hover:opacity-100'}`}
+                                                    className={`w-10 h-10 rounded-sm overflow-hidden border-2 transition-all flex-shrink-0 ${i === activeImageIndex ? 'border-zinc-950 dark:border-white' : 'border-transparent opacity-40 hover:opacity-100'}`}
                                                 >
                                                     <img src={sanitizeImageUrl(url as string)} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                                                 </button>
@@ -2566,7 +2566,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                         </div>
 
                                         {/* Qty Selector */}
-                                        <div className="flex items-center gap-3 bg-slate-50 dark:bg-zinc-900 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-zinc-800">
+                                        <div className="flex items-center gap-3 bg-slate-50 dark:bg-zinc-900 px-3 py-1.5 rounded-sm border border-slate-100 dark:border-zinc-800">
                                             <button 
                                                 onClick={() => setCurrentQuantity(prev => Math.max(1, prev - 1))}
                                                 className="text-slate-400 hover:text-black dark:hover:text-white transition-colors p-1"
@@ -2603,7 +2603,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 }, 1500);
                                             }}
                                             title="Adicionar ao Carrinho"
-                                            className="h-10 flex-1 md:flex-none md:w-20 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-2xl font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-1 group px-4 md:px-0"
+                                            className="h-10 flex-1 md:flex-none md:w-20 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black shadow-xl active:scale-95 transition-all flex items-center justify-center gap-1 group px-4 md:px-0"
                                         >
                                             <Plus size={14} className="group-hover:translate-x-0.5 transition-transform" />
                                             <ShoppingCart size={18} className="group-hover:scale-110 transition-transform" /> 
@@ -2625,8 +2625,8 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* Success Message Overlay */}
             {showSuccess && (
                 <div className="fixed inset-0 flex items-center justify-center z-[200] bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-emerald-500 text-white p-8 rounded-[2.5rem] shadow-2xl flex flex-col items-center gap-4 border-4 border-emerald-400 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-500">
-                        <div className="bg-white/20 p-4 rounded-3xl">
+                    <div className="bg-emerald-500 text-white p-8 rounded-sm shadow-2xl flex flex-col items-center gap-4 border-4 border-emerald-400 max-w-sm w-full mx-4 animate-in zoom-in-95 duration-500">
+                        <div className="bg-white/20 p-4 rounded-sm">
                             <CircleCheck size={48} className="text-white" />
                         </div>
                         <div className="text-center">
@@ -2635,7 +2635,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             {lastSaleForInvoice && (
                                 <button 
                                     onClick={() => handleDownloadInvoice(lastSaleForInvoice)}
-                                    className="mt-6 w-full bg-white text-emerald-600 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-50 transition-colors shadow-lg active:scale-95"
+                                    className="mt-6 w-full bg-white text-emerald-600 px-6 py-3 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-emerald-50 transition-colors shadow-lg active:scale-95"
                                 >
                                     <FileText size={14} /> Gerar Fatura e Garantia
                                 </button>
@@ -2675,9 +2675,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             {/* Aminna Premium Alert Modal */}
             {premiumAlert.isOpen && (
                 <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] w-full max-w-md border border-slate-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm w-full max-w-md border border-slate-200 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center space-y-6">
-                            <div className={`w-20 h-20 rounded-3xl flex items-center justify-center mx-auto ${
+                            <div className={`w-20 h-20 rounded-sm flex items-center justify-center mx-auto ${
                                 premiumAlert.type === 'SUCCESS' ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-500' :
                                 premiumAlert.type === 'DELETE' || premiumAlert.type === 'ERROR' ? 'bg-rose-50 dark:bg-rose-900/20 text-rose-500' :
                                 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500'
@@ -2703,7 +2703,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 premiumAlert.onCancel?.();
                                                 setPremiumAlert(prev => ({ ...prev, isOpen: false }));
                                             }}
-                                            className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all"
+                                            className="flex-1 py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-sm font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all"
                                         >
                                             Cancelar
                                         </button>
@@ -2712,7 +2712,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                                 premiumAlert.onConfirm?.();
                                                 setPremiumAlert(prev => ({ ...prev, isOpen: false }));
                                             }}
-                                            className={`flex-1 py-4 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all ${
+                                            className={`flex-1 py-4 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all ${
                                                 premiumAlert.type === 'DELETE' ? 'bg-rose-500 shadow-rose-500/20' : 'bg-indigo-600 shadow-indigo-500/20'
                                             }`}
                                         >
@@ -2722,7 +2722,7 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                                 ) : (
                                     <button 
                                         onClick={() => setPremiumAlert(prev => ({ ...prev, isOpen: false }))}
-                                        className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all"
+                                        className="w-full py-4 bg-zinc-900 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all"
                                     >
                                         Entendido
                                     </button>

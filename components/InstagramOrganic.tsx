@@ -153,7 +153,7 @@ const PRINT_DATA = {
 // --- Sub-components ---
 
 const PremiumCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
-  <div className={`bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-3xl shadow-sm hover:shadow-md transition-all duration-300 ${className}`}>
+  <div className={`bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-sm shadow-sm hover:shadow-md transition-all duration-300 ${className}`}>
     {children}
   </div>
 );
@@ -170,7 +170,7 @@ const StatBadge = ({ value, trend, label, icon: Icon, color = "indigo" }: any) =
   return (
     <div className="p-3 md:p-6 flex flex-col gap-2 md:gap-4">
       <div className="flex items-start justify-between">
-        <div className={`w-8 h-8 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-gradient-to-br ${grad} flex items-center justify-center shadow-lg text-white`}>
+        <div className={`w-8 h-8 md:w-12 md:h-12 rounded-sm md:rounded-sm bg-gradient-to-br ${grad} flex items-center justify-center shadow-lg text-white`}>
           <Icon size={18} className="md:w-[22px] md:h-[22px]" />
         </div>
         {trend !== undefined && (
@@ -613,7 +613,7 @@ export const InstagramOrganic: React.FC<{
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-             <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center text-white shadow-lg">
+             <div className="w-8 h-8 rounded-sm bg-indigo-500 flex items-center justify-center text-white shadow-lg">
                 <Instagram size={18} />
              </div>
              <h1 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Orgânico</h1>
@@ -643,7 +643,7 @@ export const InstagramOrganic: React.FC<{
 
 
       {insightsError && !isUsingMockData && (
-        <div className="flex items-center gap-3 px-6 py-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-[2rem] mb-8">
+        <div className="flex items-center gap-3 px-6 py-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-100 dark:border-rose-800 rounded-sm mb-8">
            <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-800 flex items-center justify-center text-rose-600">
               <AlertTriangle size={20} />
            </div>
@@ -659,12 +659,12 @@ export const InstagramOrganic: React.FC<{
 
        {/* Highlights Banner - Strategic View */}
         <div className="grid grid-cols-1 gap-8">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-10 shadow-sm border border-indigo-100 dark:border-zinc-800 relative overflow-hidden group">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm md:rounded-[3rem] p-6 md:p-10 shadow-sm border border-indigo-100 dark:border-zinc-800 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50 dark:bg-indigo-600 opacity-50 dark:opacity-10 rounded-full -translate-y-40 translate-x-40 blur-3xl group-hover:scale-110 transition-transform duration-1000" />
             <div className="flex flex-col md:flex-row items-center justify-between gap-10 relative z-10">
                <div className="max-w-2xl">
                   <div className="flex items-center gap-3 mb-6">
-                     <div className="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg transform -rotate-12">
+                     <div className="w-10 h-10 rounded-sm bg-indigo-600 flex items-center justify-center shadow-lg transform -rotate-12">
                         <Sparkles size={20} className="text-white" />
                      </div>
                      <h2 className="text-2xl font-black italic uppercase tracking-tight text-slate-900 dark:text-white">Destaques do Período</h2>
@@ -673,11 +673,11 @@ export const InstagramOrganic: React.FC<{
                       Análise real dos dados da conta {accInsights?.username ? `@${accInsights.username}` : ''}. O alcance total foi de <span className="text-emerald-600 dark:text-emerald-400 font-black">{fmt.compact(dynamicStats.totalReach)} contas</span> no período selecionado.
                    </p>
                    <div className="flex flex-wrap gap-4 mb-10 md:mb-0">
-                     <div className="px-6 py-4 bg-indigo-50/50 dark:bg-zinc-800 rounded-[2rem] border border-indigo-100 dark:border-zinc-700 shadow-sm">
+                     <div className="px-6 py-4 bg-indigo-50/50 dark:bg-zinc-800 rounded-sm border border-indigo-100 dark:border-zinc-700 shadow-sm">
                         <p className="text-2xl font-black text-indigo-600 dark:text-white">{fmt.compact(dynamicStats.totalFollowers)}</p>
                         <p className="text-[10px] font-black text-slate-400 dark:text-white/50 uppercase tracking-widest">Total Seguidores</p>
                      </div>
-                     <div className="px-6 py-4 bg-indigo-50/50 dark:bg-zinc-800 rounded-[2rem] border border-indigo-100 dark:border-zinc-700 shadow-sm">
+                     <div className="px-6 py-4 bg-indigo-50/50 dark:bg-zinc-800 rounded-sm border border-indigo-100 dark:border-zinc-700 shadow-sm">
                         <p className="text-2xl font-black text-indigo-600 dark:text-white">{Math.floor(dynamicStats.totalReach * 0.0018)}</p>
                         <p className="text-[10px] font-black text-slate-400 dark:text-white/50 uppercase tracking-widest">Leads Estimados</p>
                      </div>
@@ -690,8 +690,8 @@ export const InstagramOrganic: React.FC<{
                     { label: 'Nível de Engajamento', val: `${((dynamicStats.totalInteractions / dynamicStats.totalReach) * 100).toFixed(1)}% de Conversão em Fãs`, rank: 'Alta' },
                     { label: 'Eficácia de Conteúdo', val: `${(dynamicStats.totalInteractions / (dynamicStats.contentCount || 1)).toFixed(0)} Interações/Post`, rank: 'Top 5%' }
                   ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-4 px-6 py-4 bg-white dark:bg-zinc-800 rounded-2xl border border-indigo-100 dark:border-zinc-700 shadow-sm hover:border-indigo-300 transition-colors">
-                       <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-[10px] font-black text-white">
+                    <div key={i} className="flex items-center gap-4 px-6 py-4 bg-white dark:bg-zinc-800 rounded-sm border border-indigo-100 dark:border-zinc-700 shadow-sm hover:border-indigo-300 transition-colors">
+                       <div className="w-10 h-10 rounded-sm bg-indigo-600 flex items-center justify-center text-[10px] font-black text-white">
                           {item.rank}
                        </div>
                        <div>
@@ -847,7 +847,7 @@ export const InstagramOrganic: React.FC<{
            
            <div className="grid grid-cols-2 gap-4 mt-10 pt-8 border-t border-slate-100">
               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center text-pink-500">
+                 <div className="w-8 h-8 rounded-sm bg-pink-50 flex items-center justify-center text-pink-500">
                     <Heart size={16} fill="currentColor" />
                  </div>
                  <div>
@@ -856,7 +856,7 @@ export const InstagramOrganic: React.FC<{
                  </div>
               </div>
               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
+                 <div className="w-8 h-8 rounded-sm bg-indigo-50 flex items-center justify-center text-indigo-500">
                     <MessageCircle size={16} fill="currentColor" />
                  </div>
                  <div>
@@ -865,7 +865,7 @@ export const InstagramOrganic: React.FC<{
                  </div>
               </div>
               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
+                 <div className="w-8 h-8 rounded-sm bg-indigo-50 flex items-center justify-center text-indigo-500">
                     <Bookmark size={16} fill="currentColor" />
                  </div>
                  <div>
@@ -874,7 +874,7 @@ export const InstagramOrganic: React.FC<{
                  </div>
               </div>
               <div className="flex items-center gap-3">
-                 <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
+                 <div className="w-8 h-8 rounded-sm bg-indigo-50 flex items-center justify-center text-indigo-500">
                     <Share2 size={16} />
                  </div>
                  <div>
@@ -925,7 +925,7 @@ export const InstagramOrganic: React.FC<{
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Total de Atividade</p>
                 </div>
                 <div className="text-right">
-                  <div className="flex items-center gap-1 text-xs font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-lg">
+                  <div className="flex items-center gap-1 text-xs font-black text-emerald-500 bg-emerald-50 px-2 py-1 rounded-sm">
                     <ArrowUpRight size={14} /> {accInsights?.reach_growth || PRINT_DATA.profileActivityGrowth}%
                   </div>
                 </div>
@@ -1039,15 +1039,15 @@ export const InstagramOrganic: React.FC<{
                          if (active && payload && payload.length) {
                            const data = payload[0].payload;
                            return (
-                             <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xl rounded-2xl p-4 w-48 z-50">
+                             <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 shadow-xl rounded-sm p-4 w-48 z-50">
                                <p className="text-xs font-black text-slate-900 dark:text-white mb-2 pb-2 border-b border-slate-100 dark:border-zinc-800">{label}</p>
                                <div className="flex items-center justify-between mb-3">
                                   <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Alcance Base</span>
                                   <span className="text-xs font-black text-indigo-600 dark:text-indigo-400">{fmt.compact(data.value)}</span>
                                </div>
                                {data.post && (
-                                  <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-xl p-1.5 flex items-center gap-3 shadow-inner">
-                                     <img src={data.post.media_url} alt="" className="w-10 h-10 rounded-lg object-cover shadow-sm bg-slate-200 dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600" />
+                                  <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-sm p-1.5 flex items-center gap-3 shadow-inner">
+                                     <img src={data.post.media_url} alt="" className="w-10 h-10 rounded-sm object-cover shadow-sm bg-slate-200 dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600" />
                                      <div className="flex-1 min-w-0">
                                         <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-0.5">🚀 Post em Alta</p>
                                         <p className="text-[10px] text-slate-700 dark:text-slate-300 font-bold truncate leading-tight">{data.post.caption}</p>
@@ -1081,22 +1081,22 @@ export const InstagramOrganic: React.FC<{
            </div>
            
            <div className="flex flex-wrap items-center gap-2">
-             <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl">
+             <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm">
                <button 
                   onClick={() => setPostSortBy('followers')}
-                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${postSortBy === 'followers' ? 'bg-white dark:bg-zinc-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-sm transition-all ${postSortBy === 'followers' ? 'bg-white dark:bg-zinc-700 text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                >
                   👥 + Seguidores
                </button>
                <button 
                   onClick={() => setPostSortBy('reach')}
-                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${postSortBy === 'reach' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-sm transition-all ${postSortBy === 'reach' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                >
                   👁️ Alcance
                </button>
                <button 
                   onClick={() => setPostSortBy('engagement')}
-                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${postSortBy === 'engagement' ? 'bg-white dark:bg-zinc-700 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-sm transition-all ${postSortBy === 'engagement' ? 'bg-white dark:bg-zinc-700 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                >
                   🔥 Engajamento
                </button>
@@ -1104,7 +1104,7 @@ export const InstagramOrganic: React.FC<{
 
              <button 
                onClick={() => setShowAllPosts(!showAllPosts)}
-               className="flex items-center gap-1.5 px-4 py-2 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-black text-slate-700 dark:text-white hover:bg-slate-50 transition-all"
+               className="flex items-center gap-1.5 px-4 py-2 border-2 border-slate-100 dark:border-zinc-700 rounded-sm text-[10px] font-black text-slate-700 dark:text-white hover:bg-slate-50 transition-all"
              >
                {showAllPosts ? 'Mostrar Menos' : 'Ver Todas'} <ChevronRight size={14} className={showAllPosts ? 'rotate-90 transition-transform' : 'transition-transform'} />
              </button>
@@ -1119,7 +1119,7 @@ export const InstagramOrganic: React.FC<{
                return (b.insights.likes + b.insights.comments) - (a.insights.likes + a.insights.comments);
              });
              return (showAllPosts ? sortedPosts : sortedPosts.slice(0, 18)).map((post, i) => (
-            <div key={i} className="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm hover:shadow-xl transition-all duration-500">
+            <div key={i} className="group relative aspect-[4/5] rounded-sm overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm hover:shadow-xl transition-all duration-500">
               <img src={post.media_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
               
               {/* Metric Overlay - Instagram Style */}
@@ -1145,7 +1145,7 @@ export const InstagramOrganic: React.FC<{
             </div>
           ))})()}
           {posts.length === 0 && !loading && [1,2,3,4,5,6,7,8,9].map(i => (
-             <div key={i} className="aspect-square rounded-lg md:rounded-2xl bg-slate-100 dark:bg-zinc-800/50 animate-pulse flex items-center justify-center">
+             <div key={i} className="aspect-square rounded-sm md:rounded-sm bg-slate-100 dark:bg-zinc-800/50 animate-pulse flex items-center justify-center">
                 <Instagram size={24} className="text-slate-200 dark:text-zinc-700" />
              </div>
           ))}
@@ -1162,7 +1162,7 @@ export const InstagramOrganic: React.FC<{
          {taggedPosts.length > 0 ? (
             <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 snap-x">
                {taggedPosts.map((tag, i) => (
-                  <div key={i} className="snap-start shrink-0 w-36 md:w-48 group relative aspect-[4/5] rounded-2xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm hover:shadow-xl transition-all duration-500">
+                  <div key={i} className="snap-start shrink-0 w-36 md:w-48 group relative aspect-[4/5] rounded-sm overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm hover:shadow-xl transition-all duration-500">
                      <img src={tag.media_url} alt="" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                      
                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 flex flex-col justify-end items-start opacity-100 mb-2">
@@ -1179,7 +1179,7 @@ export const InstagramOrganic: React.FC<{
                ))}
             </div>
          ) : (
-            <div className="h-32 rounded-2xl border-2 border-dashed border-slate-200 dark:border-zinc-700/50 flex flex-col items-center justify-center text-center p-4">
+            <div className="h-32 rounded-sm border-2 border-dashed border-slate-200 dark:border-zinc-700/50 flex flex-col items-center justify-center text-center p-4">
                <Users size={24} className="text-slate-300 dark:text-zinc-600 mb-2" />
                <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Nenhuma Collab ou Menção</p>
                <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">Ainda não encontramos parceiros externos marcando essa conta.</p>
@@ -1189,11 +1189,11 @@ export const InstagramOrganic: React.FC<{
 
       {/* Growth Strategy Section */}
       <div id="estrategia-crescimento" className="pt-12 scroll-mt-20">
-         <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] md:rounded-[3rem] shadow-xl border border-indigo-100 dark:border-zinc-800 overflow-hidden">
+         <div className="bg-white dark:bg-zinc-900 rounded-sm md:rounded-[3rem] shadow-xl border border-indigo-100 dark:border-zinc-800 overflow-hidden">
             <div className="bg-white dark:bg-zinc-900 p-6 md:p-10 border-b border-indigo-100 dark:border-zinc-800 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -translate-y-32 translate-x-32 blur-3xl" />
                <div className="flex items-center gap-6 relative z-10">
-                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[2rem] bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-50 dark:shadow-none">
+                  <div className="w-12 h-12 md:w-16 md:h-16 rounded-sm md:rounded-sm bg-indigo-600 flex items-center justify-center shadow-xl shadow-indigo-50 dark:shadow-none">
                      <Zap size={24} className="text-white fill-white md:hidden" />
                      <Zap size={32} className="text-white fill-white hidden md:block" />
                   </div>
@@ -1202,7 +1202,7 @@ export const InstagramOrganic: React.FC<{
                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest text-center md:text-left">Aminna AI Dashboard · {datePreset}</p>
                   </div>
                </div>
-               <div className="flex items-center gap-2 px-6 py-3 bg-indigo-50 dark:bg-zinc-800 rounded-2xl border border-indigo-100 dark:border-zinc-700 text-[10px] font-black text-indigo-600 uppercase tracking-widest relative z-10">
+               <div className="flex items-center gap-2 px-6 py-3 bg-indigo-50 dark:bg-zinc-800 rounded-sm border border-indigo-100 dark:border-zinc-700 text-[10px] font-black text-indigo-600 uppercase tracking-widest relative z-10">
                   <Sparkles size={16} className="text-indigo-400" />
                   Inteligência Estratégica
                </div>
@@ -1210,7 +1210,7 @@ export const InstagramOrganic: React.FC<{
             
             <div className="p-10 space-y-12">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="p-10 bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                  <div className="p-10 bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 dark:bg-indigo-900/10 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform" />
                      <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-3 relative z-10">Pilar: Alcance</p>
                      <p className="text-xl font-black text-slate-900 dark:text-white mb-4 relative z-10 tracking-tight">Expandir Consciência de Marca</p>
@@ -1219,7 +1219,7 @@ export const InstagramOrganic: React.FC<{
                         <strong className="text-indigo-600 dark:text-indigo-400"> Recomendação:</strong> Continue investindo no formato Reels com transições rápidas.
                      </p>
                   </div>
-                  <div className="p-10 bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                  <div className="p-10 bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 dark:bg-emerald-900/10 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform" />
                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-3 relative z-10">Pilar: Conversão</p>
                      <p className="text-xl font-black text-slate-900 dark:text-white mb-4 relative z-10 tracking-tight">Gerar Desejo Imediato</p>
@@ -1238,8 +1238,8 @@ export const InstagramOrganic: React.FC<{
                        { icon: MessageCircle, text: "Gestão de Ativos", desc: "Responder DMs com CTAs diretos para o agendamento.", border: "border-emerald-100 dark:border-emerald-900/30", color: "text-emerald-600" },
                        { icon: FileText, text: "Prova Social", desc: "Criar carrossel de depoimentos usando o layout de alto salvamento.", border: "border-amber-100 dark:border-amber-900/30", color: "text-amber-600" }
                      ].map((item, i) => (
-                       <div key={i} className={`p-8 bg-white dark:bg-zinc-900 rounded-3xl border-2 ${item.border} hover:shadow-lg transition-all group overflow-hidden relative`}>
-                          <div className={`w-12 h-12 rounded-2xl bg-slate-50 dark:bg-zinc-800 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 relative z-10`}>
+                       <div key={i} className={`p-8 bg-white dark:bg-zinc-900 rounded-sm border-2 ${item.border} hover:shadow-lg transition-all group overflow-hidden relative`}>
+                          <div className={`w-12 h-12 rounded-sm bg-slate-50 dark:bg-zinc-800 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 relative z-10`}>
                              <item.icon size={20} className={item.color} />
                           </div>
                           <p className="text-sm font-black text-slate-900 dark:text-white mb-3 uppercase tracking-tight relative z-10">{item.text}</p>
@@ -1249,7 +1249,7 @@ export const InstagramOrganic: React.FC<{
                   </div>
                </div>
 
-               <div className="p-8 md:p-12 bg-indigo-50 dark:bg-zinc-800/50 rounded-[2.5rem] md:rounded-[3rem] text-center relative border border-indigo-100 dark:border-zinc-700 overflow-hidden">
+               <div className="p-8 md:p-12 bg-indigo-50 dark:bg-zinc-800/50 rounded-sm md:rounded-[3rem] text-center relative border border-indigo-100 dark:border-zinc-700 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 via-transparent to-indigo-500/5" />
                   <p className="text-[10px] text-indigo-600 font-black uppercase tracking-[0.4em] mb-6 relative z-10">Insight Final</p>
                   <p className="text-lg md:text-xl font-black text-slate-900 dark:text-white max-w-3xl mx-auto leading-relaxed relative z-10 italic">

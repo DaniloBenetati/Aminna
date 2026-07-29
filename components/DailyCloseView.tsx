@@ -463,28 +463,28 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
 
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 print:hidden">
                 {/* Card Principal de Fechamento */}
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
-                    <div className="p-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl"><Lock size={14} /></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-sm"><Lock size={14} /></div>
                     <div>
                         <p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Fechamento</p>
                         <p className="text-xs md:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalRevenue.toFixed(2)}</p>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
-                    <div className="p-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-xl"><Sparkles size={14} /></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-sm"><Sparkles size={14} /></div>
                     <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Serviços</p><p className="text-xs md:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalServices.toFixed(2)}</p></div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
-                    <div className="p-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-xl"><ShoppingBag size={14} /></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-sm"><ShoppingBag size={14} /></div>
                     <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Produtos</p><p className="text-xs md:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalProducts.toFixed(2)}</p></div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5 relative group">
-                    <div className="p-1 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-xl"><Copy size={14} /></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5 relative group">
+                    <div className="p-1 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 rounded-sm"><Copy size={14} /></div>
                     <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Descontos</p><p className="text-xs md:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {discountsData.total.toFixed(2)}</p></div>
 
                     {/* Tooltip Popup */}
                     {discountsData.items.length > 0 && (
-                        <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl shadow-xl p-3 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
+                        <div className="absolute top-full left-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-sm shadow-xl p-3 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none">
                             <h5 className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 dark:border-zinc-800 pb-1.5 mb-2">Detalhamento de Descontos</h5>
                             <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
                                 {discountsData.items.map((item, idx) => (
@@ -512,12 +512,12 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                         </div>
                     )}
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
-                    <div className="p-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-xl"><Heart size={14} /></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-sm"><Heart size={14} /></div>
                     <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Caixinhas</p><p className="text-xs md:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {totalTips.toFixed(2)}</p></div>
                 </div>
-                <div className="bg-white dark:bg-zinc-900 p-3 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
-                    <div className="p-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-xl"><Info size={14} /></div>
+                <div className="bg-white dark:bg-zinc-900 p-3 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center gap-1.5">
+                    <div className="p-1 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-sm"><Info size={14} /></div>
                     <div><p className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Dívidas / Ajustes</p><p className="text-xs md:text-sm font-black text-slate-950 dark:text-white whitespace-nowrap">R$ {(totalAjustes + totalDebtsColl + totalDebtsGen).toFixed(2)}</p></div>
                 </div>
             </div>
@@ -525,16 +525,16 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
 
 
             <div className={`grid grid-cols-1 ${showControls ? 'md:grid-cols-[1fr_1.3fr]' : ''} gap-4 print:hidden`}>
-                <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
+                <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
                     <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><Wallet size={14} /> Detalhamento</h4></div>
                     <div className="p-2 overflow-y-auto max-h-[750px]">
                         {Object.entries(groupedByProviderAndCustomer).filter(([pName]) => pName !== 'Saldo Cliente').sort((a, b) => b[1].amount - a[1].amount).map(([providerName, pData]) => {
                             const isProvExpanded = expandedProvider === providerName;
                             return (
                                 <div key={providerName} className="border-b border-slate-5 dark:border-zinc-800 last:border-none">
-                                    <div onClick={() => setExpandedProvider(isProvExpanded ? null : providerName)} className={`flex justify-between items-center p-3 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer rounded-xl transition-all ${isProvExpanded ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}>
+                                    <div onClick={() => setExpandedProvider(isProvExpanded ? null : providerName)} className={`flex justify-between items-center p-3 hover:bg-slate-50 dark:hover:bg-zinc-800 cursor-pointer rounded-sm transition-all ${isProvExpanded ? 'bg-indigo-50/30 dark:bg-indigo-900/10' : ''}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className="bg-indigo-100 dark:bg-indigo-900/30 p-1.5 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                            <div className="bg-indigo-100 dark:bg-indigo-900/30 p-1.5 rounded-sm text-indigo-600 dark:text-indigo-400">
                                                 <Users size={14} />
                                             </div>
                                             <div>
@@ -554,7 +554,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                     </div>
 
                                     {isProvExpanded && (
-                                        <div className="bg-slate-50/50 dark:bg-zinc-800/30 p-2 mx-2 mb-2 rounded-xl animate-in fade-in zoom-in-95 duration-200 space-y-2">
+                                        <div className="bg-slate-50/50 dark:bg-zinc-800/30 p-2 mx-2 mb-2 rounded-sm animate-in fade-in zoom-in-95 duration-200 space-y-2">
                                             {Object.entries(pData.customers).sort((a: [string, any], b: [string, any]) => b[1].amount - a[1].amount).map(([customerName, cData]: [string, any]) => {
                                                 const hasRefazer = cData.transactions.some((t: any) => t.paymentMethod === 'Refazer');
                                                 // If it's Refazer, we completely ignore VIP logic for display priority
@@ -562,7 +562,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                                 const customer = customers?.find(c => String(c.id) === String(cData.customerId));
 
                                                 return (
-                                                    <div key={customerName} className="bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden p-2.5">
+                                                    <div key={customerName} className="bg-white dark:bg-zinc-900/50 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden p-2.5">
                                                         <div className="flex justify-between items-center mb-1.5 pb-1 border-b border-slate-50 dark:border-zinc-800/50">
                                                             <div className="flex items-center gap-2">
                                                                 <button 
@@ -614,7 +614,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             </div>
                             <div className="p-2 space-y-2">
                                 {dailyRelTrans.filter(t => t.category === 'Recebimento de Dívida' || t.category === 'Dívida Gerada').map((t, idx) => (
-                                    <div key={t.id || idx} className="bg-white dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800 p-2.5 flex justify-between items-center">
+                                    <div key={t.id || idx} className="bg-white dark:bg-zinc-900/50 rounded-sm border border-slate-100 dark:border-zinc-800 p-2.5 flex justify-between items-center">
                                         <div>
                                             <p className="text-[10px] font-black text-slate-900 dark:text-white uppercase">{t.customerName}</p>
                                             <p className="text-[8px] font-bold text-slate-400 uppercase">{t.category}</p>
@@ -633,10 +633,10 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 </div>
 
                 {showControls && (
-                    <div className="bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col">
                         <div className="p-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50"><h4 className="text-[10px] font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2"><PenTool size={14} /> Conferência</h4></div>
                         <div className="p-4 space-y-4">
-                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-xl border border-slate-100 dark:border-zinc-800">
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 p-3 rounded-sm border border-slate-100 dark:border-zinc-800">
                                 <h5 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5"><Wallet size={12} /> Totais por Método</h5>
                                 <div className="space-y-4">
                                     {Object.entries(methodBreakdown).map(([method, data]) => {
@@ -645,7 +645,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                             <div key={method} className="space-y-2 group/method">
                                                 <div 
                                                     onClick={() => setSelectedMethodDetails(method)}
-                                                    className="flex justify-between items-center text-xs lg:text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 -mx-2 px-2 py-1.5 rounded-xl transition-all active:scale-[0.98]"
+                                                    className="flex justify-between items-center text-xs lg:text-sm cursor-pointer hover:bg-slate-100 dark:hover:bg-zinc-800 -mx-2 px-2 py-1.5 rounded-sm transition-all active:scale-[0.98]"
                                                     title={`Clique para ver detalhes de ${method}`}
                                                 >
                                                     <span className="font-black uppercase text-slate-800 dark:text-white flex items-center gap-2">
@@ -688,7 +688,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">R$</span>
                                         <input
                                             type="number"
-                                            className="w-full pl-8 pr-3 py-2 border-2 rounded-xl text-sm font-black outline-none border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white"
+                                            className="w-full pl-8 pr-3 py-2 border-2 rounded-sm text-sm font-black outline-none border-slate-200 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-800 text-slate-950 dark:text-white"
                                             value={physicalCash}
                                             onChange={e => setPhysicalCash(e.target.value)}
                                         />
@@ -697,7 +697,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             </div>
                             <div className="flex gap-2 pt-1">
                                 {isAlreadyClosed ? (
-                                    <div className="flex-1 py-3 bg-slate-100 dark:bg-zinc-800 rounded-2xl border-2 border-slate-200 dark:border-zinc-700 flex flex-col md:flex-row items-center justify-between gap-3 px-6 shadow-inner animate-in fade-in zoom-in duration-500">
+                                    <div className="flex-1 py-3 bg-slate-100 dark:bg-zinc-800 rounded-sm border-2 border-slate-200 dark:border-zinc-700 flex flex-col md:flex-row items-center justify-between gap-3 px-6 shadow-inner animate-in fade-in zoom-in duration-500">
                                         <div className="flex items-center gap-3">
                                             <div className="w-8 h-8 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
                                                 <CircleCheck size={18} />
@@ -708,7 +708,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                         {canReopen && (
                                             <button
                                                 onClick={() => setShowReopenConfirm(true)}
-                                                className="bg-slate-200 dark:bg-zinc-700 hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-2 group whitespace-nowrap"
+                                                className="bg-slate-200 dark:bg-zinc-700 hover:bg-rose-500 hover:text-white dark:hover:bg-rose-600 text-[9px] font-black uppercase tracking-widest px-4 py-2 rounded-sm transition-all active:scale-95 flex items-center gap-2 group whitespace-nowrap"
                                             >
                                                 <History size={12} className="group-hover:rotate-[-45deg] transition-transform" />
                                                 Reabrir Registro
@@ -719,7 +719,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                     <>
                                         <button
                                             onClick={handlePrint}
-                                            className="flex-1 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
+                                            className="flex-1 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-sm text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
                                         >
                                             <Printer size={12} /> Relatório
                                         </button>
@@ -728,11 +728,11 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                                 setShowConfirmModal(true);
                                             }}
                                             disabled={systemCashAmount > 0 && !physicalCash}
-                                            className="flex-1 py-2 bg-emerald-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 transition-colors"
+                                            className="flex-1 py-2 bg-emerald-600 text-white rounded-sm text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 transition-colors"
                                         >
                                             <Lock size={12} /> Fechar
                                         </button>
-                                        <button onClick={handleOpenWhatsapp} className="flex-1 py-2 bg-green-500 text-white rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"><MessageCircle size={12} /> WhatsApp</button>
+                                        <button onClick={handleOpenWhatsapp} className="flex-1 py-2 bg-green-500 text-white rounded-sm text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-green-600 transition-colors"><MessageCircle size={12} /> WhatsApp</button>
                                     </>
                                 )}
                             </div>
@@ -749,9 +749,9 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             {/* Modal de Confirmação de Fechamento (Padrão Aminna) */}
             {showConfirmModal && (
                 <div className="fixed inset-0 bg-black/60 z-[10002] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center space-y-6">
-                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 text-amber-500 dark:text-amber-400 rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                            <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/20 text-amber-500 dark:text-amber-400 rounded-sm flex items-center justify-center mx-auto mb-2 shadow-inner">
                                 <ShieldAlert size={40} className="animate-pulse" />
                             </div>
                             <div className="space-y-2">
@@ -764,10 +764,10 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                 {/* Opção de Impressão */}
                                 <button 
                                     onClick={() => setShouldPrint(!shouldPrint)}
-                                    className={`w-full p-4 rounded-2xl border-2 transition-all flex items-center justify-between group ${shouldPrint ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-100 dark:border-zinc-700'}`}
+                                    className={`w-full p-4 rounded-sm border-2 transition-all flex items-center justify-between group ${shouldPrint ? 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-100 dark:border-zinc-700'}`}
                                 >
                                     <div className="flex items-center gap-3">
-                                        <div className={`p-2 rounded-xl ${shouldPrint ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-zinc-700 text-slate-500'}`}>
+                                        <div className={`p-2 rounded-sm ${shouldPrint ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-zinc-700 text-slate-500'}`}>
                                             <Printer size={16} />
                                         </div>
                                         <div className="text-left">
@@ -791,13 +791,13 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                             onCloseRegister && onCloseRegister();
                                         }, 2500);
                                     }}
-                                    className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-emerald-700 shadow-xl shadow-emerald-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    className="w-full py-4 bg-emerald-600 text-white rounded-sm font-black uppercase text-[11px] tracking-[0.2em] hover:bg-emerald-700 shadow-xl shadow-emerald-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     <CircleCheck size={16} /> Sim, Fechar Caixa
                                 </button>
                                 <button 
                                     onClick={() => setShowConfirmModal(false)}
-                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-sm font-black uppercase text-[11px] tracking-[0.2em] hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
                                 >
                                     Voltar e Revisar
                                 </button>
@@ -812,7 +812,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                 <div className="fixed inset-0 bg-emerald-600 z-[10003] flex items-center justify-center backdrop-blur-xl animate-in fade-in duration-500">
                     <div className="text-center text-white space-y-8 animate-in zoom-in-90 duration-700">
                         <div className="relative">
-                            <div className="w-32 h-32 bg-white/20 rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl animate-bounce">
+                            <div className="w-32 h-32 bg-white/20 rounded-sm flex items-center justify-center mx-auto shadow-2xl animate-bounce">
                                 <Lock size={64} className="text-white" />
                             </div>
                             <div className="absolute -top-2 -right-2 bg-white text-emerald-600 p-2 rounded-full shadow-lg animate-pulse">
@@ -837,21 +837,21 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             {
                 isWhatsAppModalOpen && (
                     <div className="fixed inset-0 bg-black/70 z-[10000] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-200">
-                        <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-lg overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
                             <div className="p-6 bg-gradient-to-r from-green-500 to-emerald-600 text-white flex justify-between items-center">
                                 <div>
                                     <h3 className="font-black uppercase text-base tracking-widest flex items-center gap-3">
-                                        <div className="p-2 bg-white/20 rounded-xl">
+                                        <div className="p-2 bg-white/20 rounded-sm">
                                             <MessageCircle size={20} />
                                         </div>
                                         Relatório WhatsApp
                                     </h3>
                                     <p className="text-[10px] uppercase font-bold opacity-80 mt-1 pl-12">Confira a mensagem antes de enviar</p>
                                 </div>
-                                <button onClick={() => setIsWhatsAppModalOpen(false)} className="hover:bg-white/20 p-2 rounded-2xl transition-colors"><X size={24} /></button>
+                                <button onClick={() => setIsWhatsAppModalOpen(false)} className="hover:bg-white/20 p-2 rounded-sm transition-colors"><X size={24} /></button>
                             </div>
                             <div className="p-6 space-y-6">
-                                <div className="bg-slate-50 dark:bg-zinc-950 p-6 rounded-3xl text-[13px] font-medium text-slate-700 dark:text-slate-300 whitespace-pre-wrap max-h-[400px] overflow-y-auto border-2 border-slate-100 dark:border-zinc-800 shadow-inner leading-relaxed">
+                                <div className="bg-slate-50 dark:bg-zinc-950 p-6 rounded-sm text-[13px] font-medium text-slate-700 dark:text-slate-300 whitespace-pre-wrap max-h-[400px] overflow-y-auto border-2 border-slate-100 dark:border-zinc-800 shadow-inner leading-relaxed">
                                     {whatsappMessage}
                                 </div>
                                 <div className="flex gap-4">
@@ -861,7 +861,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                             setIsCopied(true);
                                             setTimeout(() => setIsCopied(false), 2000);
                                         }}
-                                        className={`flex-1 py-4 px-6 rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 ${isCopied ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-white hover:bg-slate-200 dark:hover:bg-zinc-700'}`}
+                                        className={`flex-1 py-4 px-6 rounded-sm font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 ${isCopied ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-white hover:bg-slate-200 dark:hover:bg-zinc-700'}`}
                                     >
                                         {isCopied ? <CircleCheck size={18} /> : <Copy size={18} />}
                                         {isCopied ? 'Copiado!' : 'Copiar Texto'}
@@ -876,7 +876,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                             }
                                             setIsWhatsAppModalOpen(false);
                                         }}
-                                        className="flex-1 py-4 px-6 bg-green-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-green-700 transition-all shadow-xl shadow-green-200 dark:shadow-none active:scale-95"
+                                        className="flex-1 py-4 px-6 bg-green-600 text-white rounded-sm font-black uppercase text-xs tracking-widest flex items-center justify-center gap-3 hover:bg-green-700 transition-all shadow-xl shadow-green-200 dark:shadow-none active:scale-95"
                                     >
                                         <Send size={18} /> Enviar Agora
                                     </button>
@@ -890,23 +890,23 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             {/* History Modal Popup */}
             {historyCustomerId && (
                 <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-sm shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300">
                         <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl"><History size={18} /></div>
+                                <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-sm"><History size={18} /></div>
                                 <div>
                                     <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-tight">Histórico da Cliente</h3>
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Histórico de Visitas</p>
                                 </div>
                             </div>
-                            <button onClick={() => setHistoryCustomerId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-all"><X size={18} className="text-slate-400" /></button>
+                            <button onClick={() => setHistoryCustomerId(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-all"><X size={18} className="text-slate-400" /></button>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6 space-y-4">
                             {appointments.filter(a => a.customerId === historyCustomerId && a.status === 'Concluído').sort((a,b) => b.date.localeCompare(a.date)).map((app, appIdx) => {
                                 const svc = services.find(s => s.id === app.serviceId);
                                 return (
-                                    <div key={app.id} className="p-4 rounded-3xl border border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-800/20">
+                                    <div key={app.id} className="p-4 rounded-sm border border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-800/20">
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">{new Date(app.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
@@ -925,7 +925,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             })}
                             {appointments.filter(a => a.customerId === historyCustomerId && a.status === 'Concluído').length === 0 && (
                                 <div className="text-center py-12">
-                                    <div className="w-12 h-12 bg-slate-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400"><FileText size={20} /></div>
+                                    <div className="w-12 h-12 bg-slate-100 dark:bg-zinc-800 rounded-sm flex items-center justify-center mx-auto mb-3 text-slate-400"><FileText size={20} /></div>
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Nenhum histórico encontrado</p>
                                 </div>
                             )}
@@ -936,7 +936,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                 onClick={() => {
                                     setHistoryCustomerId(null);
                                 }}
-                                className="w-full py-3 bg-slate-900 dark:bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-black transition-all shadow-lg active:scale-[0.98]"
+                                className="w-full py-3 bg-slate-900 dark:bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-black transition-all shadow-lg active:scale-[0.98]"
                             >
                                 <Users size={14} className="inline mr-2" /> Gerenciar Cliente Completo
                             </button>
@@ -948,9 +948,9 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             {/* Modal de Confirmação de Reabertura (Padrão Aminna) */}
             {showReopenConfirm && (
                 <div className="fixed inset-0 bg-black/60 z-[10004] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-sm overflow-hidden border-2 border-slate-100 dark:border-zinc-800 animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center space-y-6">
-                            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-3xl flex items-center justify-center mx-auto mb-2 shadow-inner">
+                            <div className="w-20 h-20 bg-rose-50 dark:bg-rose-900/20 text-rose-500 rounded-sm flex items-center justify-center mx-auto mb-2 shadow-inner">
                                 <History size={40} className="animate-pulse" />
                             </div>
                             <div className="space-y-2">
@@ -965,13 +965,13 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                         setShowReopenConfirm(false);
                                         onReopenRegister && onReopenRegister();
                                     }}
-                                    className="w-full py-4 bg-rose-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-rose-700 shadow-xl shadow-rose-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2"
+                                    className="w-full py-4 bg-rose-600 text-white rounded-sm font-black uppercase text-[11px] tracking-[0.2em] hover:bg-rose-700 shadow-xl shadow-rose-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2"
                                 >
                                     Confirmar Reabertura
                                 </button>
                                 <button 
                                     onClick={() => setShowReopenConfirm(false)}
-                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
+                                    className="w-full py-4 bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 rounded-sm font-black uppercase text-[11px] tracking-[0.2em] hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all active:scale-95"
                                 >
                                     Cancelar
                                 </button>
@@ -983,10 +983,10 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
             {/* Modal de Detalhamento de Método */}
             {selectedMethodDetails && (
                 <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-100 dark:border-zinc-800">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-sm shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-100 dark:border-zinc-800">
                         <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-800/50">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                                <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-sm">
                                     <Wallet size={18} />
                                 </div>
                                 <div>
@@ -994,7 +994,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Lista de Recebimentos</p>
                                 </div>
                             </div>
-                            <button onClick={() => setSelectedMethodDetails(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-all">
+                            <button onClick={() => setSelectedMethodDetails(null)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-all">
                                 <X size={18} className="text-slate-400" />
                             </button>
                         </div>
@@ -1004,7 +1004,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                                 .filter(t => (t.paymentMethod || 'Outros').trim().toUpperCase() === selectedMethodDetails && t.type === 'RECEITA')
                                 .sort((a, b) => b.amount - a.amount)
                                 .map((t, idx) => (
-                                    <div key={t.id || idx} className="p-4 rounded-3xl border border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-800/20 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all">
+                                    <div key={t.id || idx} className="p-4 rounded-sm border border-slate-100 dark:border-zinc-800 bg-slate-50/30 dark:bg-zinc-800/20 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all">
                                         <div className="flex justify-between items-center">
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">
@@ -1026,7 +1026,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             
                             {dailyRelTrans.filter(t => (t.paymentMethod || 'Outros').trim().toUpperCase() === selectedMethodDetails && t.type === 'RECEITA').length === 0 && (
                                 <div className="text-center py-12 opacity-50">
-                                    <div className="w-12 h-12 bg-slate-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
+                                    <div className="w-12 h-12 bg-slate-100 dark:bg-zinc-800 rounded-sm flex items-center justify-center mx-auto mb-3 text-slate-400">
                                         <History size={20} />
                                     </div>
                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Nenhum registro encontrado</p>
@@ -1047,7 +1047,7 @@ export const DailyCloseView: React.FC<DailyCloseViewProps> = ({
                             </div>
                             <button 
                                 onClick={() => setSelectedMethodDetails(null)}
-                                className="w-full mt-4 py-4 bg-slate-900 dark:bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest rounded-3xl hover:bg-black transition-all shadow-lg active:scale-[0.98]"
+                                className="w-full mt-4 py-4 bg-slate-900 dark:bg-zinc-800 text-white text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-black transition-all shadow-lg active:scale-[0.98]"
                             >
                                 Fechar Detalhamento
                             </button>

@@ -187,14 +187,14 @@ const KPICard = ({
   };
   const grad = danger ? 'from-rose-500 to-rose-700' : warning ? 'from-amber-500 to-orange-600' : colorMap[color] || colorMap.indigo;
   return (
-    <div className={`relative bg-white dark:bg-zinc-900 rounded-xl border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-2 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
+    <div className={`relative bg-white dark:bg-zinc-900 rounded-sm border ${danger ? 'border-rose-200 dark:border-rose-900' : warning ? 'border-amber-200 dark:border-amber-900' : 'border-slate-100 dark:border-zinc-800'} p-2 shadow-sm overflow-hidden group hover:shadow-lg transition-all duration-300 h-full`}>
       <div className={`absolute top-0 right-0 w-16 h-16 bg-gradient-to-br ${grad} opacity-5 rounded-full -translate-y-4 translate-x-4 group-hover:opacity-10 transition-opacity`} />
       <div className="flex items-start justify-between mb-1 min-w-0">
-        <div className={`w-5 h-5 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center shadow-sm`}>
+        <div className={`w-5 h-5 rounded-sm bg-gradient-to-br ${grad} flex items-center justify-center shadow-sm`}>
           <Icon size={10} className="text-white" />
         </div>
         {trend !== undefined && (
-          <div className={`flex items-center gap-0.5 text-[7px] font-bold px-1 py-0.5 rounded-md ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
+          <div className={`flex items-center gap-0.5 text-[7px] font-bold px-1 py-0.5 rounded-sm ${trend >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400'}`}>
             {trend >= 0 ? <ArrowUpRight size={7} /> : <ArrowDownRight size={7} />}
             {Math.abs(trend).toFixed(1)}%
           </div>
@@ -232,7 +232,7 @@ const NewClientTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[200px]">
+      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm min-w-[200px]">
         <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">{label}</p>
         <div className="space-y-3">
           <div className="space-y-1">
@@ -287,7 +287,7 @@ const FutureClientTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[200px]">
+      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm min-w-[200px]">
         <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">{label}</p>
         <div className="space-y-3">
           <div className="space-y-1">
@@ -401,7 +401,7 @@ const ConversasTooltip = ({ active, payload, campaignsList, appointments, servic
     }
 
     return (
-      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[220px] max-w-xs">
+      <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm min-w-[220px] max-w-xs">
         <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">
           Dia: {data.day}
         </p>
@@ -479,7 +479,7 @@ const ConversasTooltip = ({ active, payload, campaignsList, appointments, servic
 const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
   return (
     <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-full md:h-[80vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+      <div className="bg-white dark:bg-zinc-900 md:rounded-sm shadow-2xl w-full max-w-5xl h-full md:h-[80vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
         <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
           <div>
             <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
@@ -496,7 +496,7 @@ const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
 
         <div className="flex-1 overflow-hidden flex flex-col bg-slate-50/50 dark:bg-zinc-900/50">
           <div className="flex-1 overflow-auto p-4 md:p-8">
-            <div className="bg-white dark:bg-zinc-950 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-zinc-950 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -524,7 +524,7 @@ const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
                           <span className="text-[10px] font-bold text-slate-500">{new Date(row.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <span className="bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-100 dark:border-amber-900/30 text-[10px] font-black text-amber-600 dark:text-amber-400">
+                          <span className="bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-sm border border-amber-100 dark:border-amber-900/30 text-[10px] font-black text-amber-600 dark:text-amber-400">
                             {row.couponCode}
                           </span>
                         </td>
@@ -1976,7 +1976,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   const renderEmpty = () => (
     <div className="flex flex-col items-center justify-center py-24 gap-6">
-      <div className={`w-20 h-20 rounded-3xl flex items-center justify-center shadow-xl ${!token ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-200' : 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-200'}`}>
+      <div className={`w-20 h-20 rounded-sm flex items-center justify-center shadow-xl ${!token ? 'bg-gradient-to-br from-amber-400 to-orange-500 shadow-amber-200' : 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-200'}`}>
         <Megaphone size={40} className="text-white" />
       </div>
       <div className="text-center">
@@ -2011,7 +2011,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
 
   const renderCampaigns = () => (
-    <div className="bg-white dark:bg-zinc-900 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-none overflow-hidden">
+    <div className="bg-white dark:bg-zinc-900 rounded-sm md:rounded-sm border border-slate-100 dark:border-zinc-800 shadow-none overflow-hidden">
       <div className="p-4 md:p-6 bg-slate-50/50 dark:bg-zinc-800/30 border-b border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest px-6 md:px-8">
          <span className="text-slate-900 dark:text-white">Resultados de {campaignsWithCRM.filter(c => c.status === 'ACTIVE').length} campanhas ativas</span>
          <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors">
@@ -2135,7 +2135,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                    <span className="text-[13px] font-black text-slate-900 dark:text-white leading-tight uppercase">{c.name}</span>
                 </div>
 
-                <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-slate-100 dark:border-zinc-800 divide-y divide-slate-100 dark:divide-zinc-800">
+                <div className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-sm border border-slate-100 dark:border-zinc-800 divide-y divide-slate-100 dark:divide-zinc-800">
                    <div className="grid grid-cols-2 gap-4 p-3">
                       <div className="space-y-0.5">
                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Resultados</p>
@@ -2196,7 +2196,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                 </div>
 
                  {hasProblem && (
-                   <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-xl">
+                   <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-sm">
                       <Zap size={10} className="text-blue-500" />
                       <span className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Recomendação Disponível</span>
                    </div>
@@ -2265,7 +2265,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     const sortedCampaignGroups = Object.values(campaignsMap).sort((a, b) => b.items.length - a.items.length);
 
     return (
-    <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
+    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 overflow-hidden">
       {/* Desktop Version */}
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
@@ -2558,14 +2558,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
     return (
       <div className="space-y-4">
         {/* Sumário de Anúncios e Controle */}
-        <div className="flex flex-wrap items-center gap-2 mb-2 bg-slate-50 dark:bg-zinc-900/50 p-3 rounded-2xl border border-slate-100 dark:border-zinc-800/80 w-fit">
-          <span className="bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 cursor-default select-none">
+        <div className="flex flex-wrap items-center gap-2 mb-2 bg-slate-50 dark:bg-zinc-900/50 p-3 rounded-sm border border-slate-100 dark:border-zinc-800/80 w-fit">
+          <span className="bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-sm border border-emerald-100 dark:border-emerald-900/30 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest flex items-center gap-1.5 cursor-default select-none">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
             Ativos: {activeCount}
           </span>
           <button 
             onClick={() => setShowInactiveAds(!showInactiveAds)}
-            className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all select-none ${showInactiveAds ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-950/20 dark:border-indigo-900' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-700'}`}
+            className={`px-3 py-1.5 rounded-sm border text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 transition-all select-none ${showInactiveAds ? 'bg-indigo-50 border-indigo-200 text-indigo-600 dark:bg-indigo-950/20 dark:border-indigo-900' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-zinc-700'}`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${showInactiveAds ? 'bg-indigo-500' : 'bg-slate-400'}`} />
             Inativos: {inactiveCount} {showInactiveAds ? '(Exibidos)' : '(Ocultos - Clique para ver)'}
@@ -2579,7 +2579,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             const groupInactiveCount = group.ads.filter(a => a.status !== 'ACTIVE').length;
 
             return (
-              <div key={group.id} className="bg-slate-50/40 dark:bg-zinc-900/10 p-5 rounded-[2rem] border border-slate-100 dark:border-zinc-900 shadow-sm space-y-4">
+              <div key={group.id} className="bg-slate-50/40 dark:bg-zinc-900/10 p-5 rounded-sm border border-slate-100 dark:border-zinc-900 shadow-sm space-y-4">
                 {/* Cabeçalho da Campanha */}
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-zinc-800/40">
                   <div className="flex items-center gap-2">
@@ -2590,12 +2590,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                   </div>
                   <div className="flex gap-1.5">
                     {groupActiveCount > 0 && (
-                      <span className="bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-lg text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
+                      <span className="bg-emerald-50 dark:bg-emerald-950/20 px-2 py-1 rounded-sm text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
                         {groupActiveCount} {groupActiveCount === 1 ? 'Ativo' : 'Ativos'}
                       </span>
                     )}
                     {groupInactiveCount > 0 && (
-                      <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-lg text-[8px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">
+                      <span className="bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded-sm text-[8px] font-black text-slate-500 dark:text-zinc-400 uppercase tracking-widest">
                         {groupInactiveCount} {groupInactiveCount === 1 ? 'Inativo' : 'Inativos'}
                       </span>
                     )}
@@ -2612,12 +2612,12 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                         href={ad.creative?.instagram_permalink_url || `https://www.facebook.com/adsmanager/manage/ads?act=${adAccountId.replace('act_', '')}&selected_ad_ids=${ad.id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className={`bg-white dark:bg-zinc-900 rounded-lg border border-slate-100 dark:border-zinc-800 p-1.5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group/ad ${!isActive ? 'opacity-55 saturate-50 hover:opacity-100 hover:saturate-100' : ''}`}
+                        className={`bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-1.5 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group/ad ${!isActive ? 'opacity-55 saturate-50 hover:opacity-100 hover:saturate-100' : ''}`}
                       >
                         <div className="flex gap-1.5 mb-1.5">
                            <div className="relative flex-shrink-0">
-                             {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-10 h-10 rounded-md object-cover" alt="" />}
-                             <div className="absolute inset-0 bg-indigo-600/0 group-hover/ad:bg-indigo-600/20 transition-colors rounded-md flex items-center justify-center">
+                             {ad.creative?.thumbnail_url && <img src={ad.creative.thumbnail_url} className="w-10 h-10 rounded-sm object-cover" alt="" />}
+                             <div className="absolute inset-0 bg-indigo-600/0 group-hover/ad:bg-indigo-600/20 transition-colors rounded-sm flex items-center justify-center">
                                 <ArrowUpRight size={12} className="text-white opacity-0 group-hover/ad:opacity-100 transition-opacity" />
                              </div>
                            </div>
@@ -2671,15 +2671,15 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
   const renderFunil = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border-l-4 border-l-sky-500 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-sm border-l-4 border-l-sky-500 shadow-sm">
          <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Visualizações</p>
          <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{totalImpressions.toLocaleString('pt-BR')}</p>
       </div>
-      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border-l-4 border-l-indigo-500 shadow-sm">
+      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-sm border-l-4 border-l-indigo-500 shadow-sm">
          <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cliques Únicos</p>
          <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{totalClicks.toLocaleString('pt-BR')}</p>
       </div>
-      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-2xl border-l-4 border-l-emerald-500 shadow-sm sm:col-span-2 lg:col-span-1">
+      <div className="bg-white dark:bg-zinc-900 p-5 md:p-6 rounded-sm border-l-4 border-l-emerald-500 shadow-sm sm:col-span-2 lg:col-span-1">
          <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Conversões</p>
          <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white">{totalConversions.toLocaleString('pt-BR')}</p>
       </div>
@@ -2714,7 +2714,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           {/* Período (esquerda) e Botão Filtrar (direita) unificados em uma linha */}
           <div className="flex items-center gap-1.5 md:gap-2.5 flex-shrink-0">
             {isBackgroundSyncing && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 text-[8px] md:text-[9px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider animate-pulse bg-indigo-50 dark:bg-indigo-950/40 rounded-md">
+              <div className="flex items-center gap-1 px-1.5 py-0.5 text-[8px] md:text-[9px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider animate-pulse bg-indigo-50 dark:bg-indigo-950/40 rounded-sm">
                 <RefreshCw size={10} className="animate-spin" />
                 <span className="hidden sm:inline">Sincronizando...</span>
               </div>
@@ -2740,7 +2740,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
             <button 
               id="marketing-filter-btn"
               onClick={() => setIsFiltersVisible(!isFiltersVisible)}
-              className={`flex items-center gap-1 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-lg text-[8px] md:text-[9px] font-bold uppercase tracking-wider transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600 border border-slate-200 dark:border-zinc-700' : 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700'}`}
+              className={`flex items-center gap-1 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-sm text-[8px] md:text-[9px] font-bold uppercase tracking-wider transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600 border border-slate-200 dark:border-zinc-700' : 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700'}`}
             >
               <Filter size={10} className="md:w-3 md:h-3" />
               <span className="hidden min-[400px]:inline">{isFiltersVisible ? 'Ocultar' : 'Filtrar'}</span>
@@ -2753,7 +2753,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
         <div className={`sticky top-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md flex-shrink-0 z-20 transition-all ${isFiltersVisible ? 'border-b border-slate-100 dark:border-zinc-800 px-6 py-4' : 'h-0 overflow-hidden'}`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 hidden">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
+              <div className="w-10 h-10 rounded-sm bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-600">
                 <Megaphone size={20} />
               </div>
               <div>
@@ -2779,7 +2779,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               <button 
                 id="marketing-filter-btn-old"
                 onClick={() => setIsFiltersVisible(!isFiltersVisible)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'}`}
+                className={`flex items-center gap-2 px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${isFiltersVisible ? 'bg-slate-100 dark:bg-zinc-800 text-slate-600' : 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'}`}
               >
                 <Filter size={14} />
                 {isFiltersVisible ? 'Ocultar Filtros' : 'Filtrar'}
@@ -2834,7 +2834,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                   <select
                     value={datePreset}
                     onChange={e => setDatePreset(e.target.value)}
-                    className="px-4 py-2.5 text-xs font-black bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none h-[42px]"
+                    className="px-4 py-2.5 text-xs font-black bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm focus:ring-2 focus:ring-indigo-500 dark:text-white outline-none h-[42px]"
                   >
                      <option value="last_7d">Últimos 7 dias</option>
                      <option value="last_30d">Últimos 30 dias</option>
@@ -2853,14 +2853,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       type="date"
                       value={customStartDate}
                       onChange={e => setCustomStartDate(e.target.value)}
-                      className="px-3 py-2 text-xs font-bold bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl outline-none"
+                      className="px-3 py-2 text-xs font-bold bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm outline-none"
                     />
                     <span className="text-[10px] font-black text-slate-400 uppercase">até</span>
                     <input
                       type="date"
                       value={customEndDate}
                       onChange={e => setCustomEndDate(e.target.value)}
-                      className="px-3 py-2 text-xs font-bold bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl outline-none"
+                      className="px-3 py-2 text-xs font-bold bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm outline-none"
                     />
                   </div>
                 )}
@@ -2872,7 +2872,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                   else setRefreshKey(prev => prev + 1);
                 }}
                 disabled={loading || (activeMarketingTab === 'paid' && !adAccountId) || !token}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-[10px] md:text-xs font-black rounded-xl shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-[10px] md:text-xs font-black rounded-sm shadow-lg shadow-indigo-200/50 dark:shadow-indigo-900/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
                 {loading ? 'Buscando...' : 'Atualizar Dados'}
@@ -2880,7 +2880,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
               <button
                 onClick={() => setShowTokenPanel(!showTokenPanel)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black border transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-sm text-xs font-black border transition-all ${
                   token
                     ? 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400'
                     : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400'
@@ -2891,7 +2891,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
               </button>
 
               {showTokenPanel && (
-                <div className="w-full mt-4 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-2xl animate-in slide-in-from-top-2 duration-300">
+                <div className="w-full mt-4 p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-sm animate-in slide-in-from-top-2 duration-300">
                   <p className="text-xs font-black text-amber-800 dark:text-amber-300 mb-1">🔑 Token de Acesso — Meta API</p>
                   <p className="text-[11px] text-amber-700 dark:text-amber-400 mb-3">Insira seu Access Token com as permissões necessárias.</p>
                   <div className="flex gap-2">
@@ -2901,9 +2901,9 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       onChange={e => setTokenInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && saveToken()}
                       placeholder="Access Token..."
-                      className="flex-1 text-xs px-3 py-2 border border-amber-200 dark:border-amber-700 rounded-xl bg-white dark:bg-zinc-800"
+                      className="flex-1 text-xs px-3 py-2 border border-amber-200 dark:border-amber-700 rounded-sm bg-white dark:bg-zinc-800"
                     />
-                    <button onClick={saveToken} className="px-4 py-2 bg-amber-500 text-white text-xs font-black rounded-xl hover:bg-amber-600 transition-colors">Salvar</button>
+                    <button onClick={saveToken} className="px-4 py-2 bg-amber-500 text-white text-xs font-black rounded-sm hover:bg-amber-600 transition-colors">Salvar</button>
                     {token && <button onClick={clearToken} className="px-4 py-2 text-rose-500 text-xs font-black hover:text-rose-600 transition-colors">Remover</button>}
                   </div>
 
@@ -2920,7 +2920,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       {permissions.length > 0 && (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {permissions.map((p: any) => (
-                            <div key={p.permission} className={`px-2 py-1 rounded-md text-[9px] font-bold uppercase ${p.status === 'granted' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                            <div key={p.permission} className={`px-2 py-1 rounded-sm text-[9px] font-bold uppercase ${p.status === 'granted' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
                               {p.permission}: {p.status}
                             </div>
                           ))}
@@ -2940,7 +2940,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
           ) : (
             <div className="w-full">
               {error && (
-                <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-900 rounded-2xl flex items-start gap-3">
+                <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-900 rounded-sm flex items-start gap-3">
                   <AlertTriangle size={16} className="text-rose-500 mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-black text-rose-700 dark:text-rose-400">Erro na API Meta</p>
@@ -2953,7 +2953,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                 renderEmpty()
               ) : (loading && !campaigns.length) ? (
                 <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-indigo-500 flex items-center justify-center shadow-2xl animate-bounce">
+                  <div className="w-16 h-16 rounded-sm bg-indigo-500 flex items-center justify-center shadow-2xl animate-bounce">
                     <BarChart3 size={32} className="text-white" />
                   </div>
                   <p className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest animate-pulse">Sincronizando Inteligência Aminna...</p>
@@ -2965,13 +2965,88 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                   </div>
 
                   <div className="space-y-8">
-                    <section id="detalhamento-campanhas" className="scroll-mt-32">
-                      {renderCampaigns()}
+                    {/* Gráfico de Conversas Diárias */}
+                    <section id="conversas-diarias" className="scroll-mt-32">
+                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800">
+                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                                <MessageSquare size={16} className="text-indigo-600" /> Conversas Iniciadas por Dia
+                              </h3>
+                              <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Volume diário de novas conversas via Meta Ads</p>
+                            </div>
+                            <button 
+                              onClick={() => setMaximizedChart('conversas-diarias')}
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              title="Ver em tela cheia"
+                            >
+                              <Maximize2 size={13} />
+                            </button>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-3">
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-sm text-center">
+                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Total de Conversas</p>
+                                <p className="text-sm font-black text-indigo-600">{dailyConversations.reduce((sum, d) => sum + d.conversations, 0)}</p>
+                            </div>
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-sm text-center">
+                                <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
+                                <p className="text-sm font-black text-emerald-600">{fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0))}</p>
+                            </div>
+                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-sm text-center">
+                                <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Custo p/ Res.</p>
+                                <p className="text-sm font-black text-violet-600">
+                                  {dailyConversations.reduce((sum, d) => sum + d.conversations, 0) > 0 
+                                    ? fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0) / dailyConversations.reduce((sum, d) => sum + d.conversations, 0))
+                                    : '—'}
+                                </p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="h-64 mt-4">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ComposedChart data={dailyConversations}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
+                              <Tooltip 
+                                cursor={{ fill: '#f1f5f9' }}
+                                content={<ConversasTooltip campaignsList={campaignsList} appointments={appointments} services={services} customers={customers} />}
+                              />
+                              <Legend 
+                                verticalAlign="top" 
+                                height={36} 
+                                iconType="circle" 
+                                wrapperStyle={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', paddingBottom: 10 }} 
+                              />
+                              {campaignsList.map((campaignName, idx) => (
+                                <Bar 
+                                  key={campaignName}
+                                  dataKey={campaignName}
+                                  name={campaignName}
+                                  stackId="a"
+                                  fill={getColorForIndex(idx)}
+                                  barSize={24}
+                                />
+                              ))}
+                              <Line 
+                                type="monotone" 
+                                dataKey="conversations" 
+                                stroke="transparent" 
+                                activeDot={false} 
+                                dot={false}
+                              >
+                                <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={10} fontWeight={900} offset={6} />
+                              </Line>
+                            </ComposedChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
                     </section>
 
                     {/* Novo Gráfico: Conversão e Performance de Clientes */}
                     <section id="conversao-clientes" className="scroll-mt-32">
-                      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800">
                         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-8">
                           <div className="flex items-center gap-2">
                             <div>
@@ -2982,14 +3057,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             </div>
                             <button 
                               onClick={() => setMaximizedChart('novos-clientes')}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
                               title="Ver em tela cheia"
                             >
                               <Maximize2 size={13} />
                             </button>
                           </div>
                           <div className="flex flex-col xs:flex-row flex-wrap gap-2 sm:gap-4 w-full xs:w-auto">
-                            <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                            <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-sm sm:rounded-sm shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
                               <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
                                 <p className="text-[7px] sm:text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Base de Novos</p>
                                 <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
@@ -3043,7 +3118,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
                     {/* Novo Gráfico: Projeção de Clientes Novos (Próximos 60 dias) */}
                     <section id="conversao-clientes-projetados" className="scroll-mt-32">
-                      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                      <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800">
                         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-8">
                           <div className="flex items-center gap-2">
                             <div>
@@ -3054,14 +3129,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             </div>
                             <button 
                               onClick={() => setMaximizedChart('novos-clientes-projetados')}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
                               title="Ver em tela cheia"
                             >
                               <Maximize2 size={13} />
                             </button>
                           </div>
                           <div className="flex flex-col xs:flex-row flex-wrap gap-2 sm:gap-4 w-full xs:w-auto">
-                            <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                            <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-sm sm:rounded-sm shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
                               <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
                                 <p className="text-[7px] sm:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total Projetado</p>
                                 <p className="text-xs sm:text-sm font-black text-zinc-900 dark:text-white mt-0.5">
@@ -3099,88 +3174,9 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       </div>
                     </section>
 
-                    {/* Gráfico de Conversas Diárias */}
-                    <section id="conversas-diarias" className="scroll-mt-32">
-                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
-                        <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
-                          <div className="flex items-center gap-2">
-                            <div>
-                              <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                                <MessageSquare size={16} className="text-indigo-600" /> Conversas Iniciadas por Dia
-                              </h3>
-                              <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Volume diário de novas conversas via Meta Ads</p>
-                            </div>
-                            <button 
-                              onClick={() => setMaximizedChart('conversas-diarias')}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
-                              title="Ver em tela cheia"
-                            >
-                              <Maximize2 size={13} />
-                            </button>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-3">
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl text-center">
-                                <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Total de Conversas</p>
-                                <p className="text-sm font-black text-indigo-600">{dailyConversations.reduce((sum, d) => sum + d.conversations, 0)}</p>
-                            </div>
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-xl text-center">
-                                <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
-                                <p className="text-sm font-black text-emerald-600">{fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0))}</p>
-                            </div>
-                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-xl text-center">
-                                <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Custo p/ Res.</p>
-                                <p className="text-sm font-black text-violet-600">
-                                  {dailyConversations.reduce((sum, d) => sum + d.conversations, 0) > 0 
-                                    ? fmt.currency(dailyConversations.reduce((sum, d) => sum + d.spend, 0) / dailyConversations.reduce((sum, d) => sum + d.conversations, 0))
-                                    : '—'}
-                                </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="h-64 mt-4">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <ComposedChart data={dailyConversations}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                              <YAxis axisLine={false} tickLine={false} width={30} tick={{ fontSize: 10, fontWeight: 800, fill: '#64748b' }} />
-                              <Tooltip 
-                                cursor={{ fill: '#f1f5f9' }}
-                                content={<ConversasTooltip campaignsList={campaignsList} appointments={appointments} services={services} customers={customers} />}
-                              />
-                              <Legend 
-                                verticalAlign="top" 
-                                height={36} 
-                                iconType="circle" 
-                                wrapperStyle={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', paddingBottom: 10 }} 
-                              />
-                              {campaignsList.map((campaignName, idx) => (
-                                <Bar 
-                                  key={campaignName}
-                                  dataKey={campaignName}
-                                  name={campaignName}
-                                  stackId="a"
-                                  fill={getColorForIndex(idx)}
-                                  barSize={24}
-                                />
-                              ))}
-                              <Line 
-                                type="monotone" 
-                                dataKey="conversations" 
-                                stroke="transparent" 
-                                activeDot={false} 
-                                dot={false}
-                              >
-                                <LabelList dataKey="conversations" position="top" fill="#64748b" fontSize={10} fontWeight={900} offset={6} />
-                              </Line>
-                            </ComposedChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-                    </section>
-
                     {/* Gráfico Comparativo de Conversas com a Semana Anterior */}
                     <section id="comparativo-conversas" className="scroll-mt-32">
-                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800">
                         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
                           <div className="flex items-center gap-2">
                             <div>
@@ -3191,14 +3187,14 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             </div>
                             <button 
                               onClick={() => setMaximizedChart('comparativo-conversas')}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
                               title="Ver em tela cheia"
                             >
                               <Maximize2 size={13} />
                             </button>
                           </div>
                           <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-3">
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl text-center">
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-sm text-center">
                                 <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Média Período Atual</p>
                                 <p className="text-sm font-black text-indigo-600">
                                   {dailyConversations.length > 0 
@@ -3206,13 +3202,13 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                                     : '0.0'}
                                 </p>
                             </div>
-                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-xl text-center">
+                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-sm text-center">
                                 <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Custo p/ Resultado</p>
                                 <p className="text-sm font-black text-violet-600">
                                   {activeCostPerResult > 0 ? fmt.currency(activeCostPerResult) : '—'}
                                 </p>
                             </div>
-                            <div className="bg-slate-50 dark:bg-zinc-800/50 px-4 py-2 rounded-xl text-center">
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 px-4 py-2 rounded-sm text-center">
                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Média Semana Anterior</p>
                                 <p className="text-sm font-black text-slate-500">
                                   {dailyConversations.length > 0 
@@ -3227,7 +3223,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                               const pct = prevTotal > 0 ? (diff / prevTotal) * 100 : 0;
                               const isUp = diff >= 0;
                               return (
-                                <div className={`px-4 py-2 rounded-xl text-center flex flex-col justify-center ${
+                                <div className={`px-4 py-2 rounded-sm text-center flex flex-col justify-center ${
                                   isUp 
                                     ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' 
                                     : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600'
@@ -3269,7 +3265,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                                     const pct = prevVal > 0 ? (diff / prevVal) * 100 : 0;
                                     const isUp = diff >= 0;
                                     return (
-                                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-sm shadow-xl border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
                                         <div className="space-y-2">
                                           <p className="text-xs font-black text-indigo-600 flex items-center justify-between gap-6">
@@ -3315,7 +3311,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
                     {/* Gráfico de Consumo de Orçamento Diário vs Investimento */}
                     <section id="consumo-orcamento" className="scroll-mt-32">
-                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-100 dark:border-zinc-800">
+                      <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800">
                         <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8">
                           <div className="flex items-center gap-2">
                             <div>
@@ -3326,26 +3322,26 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             </div>
                             <button 
                               onClick={() => setMaximizedChart('consumo-orcamento')}
-                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
+                              className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors self-start md:self-center"
                               title="Ver em tela cheia"
                             >
                               <Maximize2 size={13} />
                             </button>
                           </div>
                           <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-3">
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-xl text-center">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 px-4 py-2 rounded-sm text-center">
                                 <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">Investimento Total</p>
                                 <p className="text-sm font-black text-emerald-600">{fmt.currency(budgetVsSpendMetrics.totalSpend)}</p>
                             </div>
-                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-xl text-center">
+                            <div className="bg-indigo-50 dark:bg-indigo-900/20 px-4 py-2 rounded-sm text-center">
                                 <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">Orçamento Programado</p>
                                 <p className="text-sm font-black text-indigo-600">{fmt.currency(budgetVsSpendMetrics.totalBudget)}</p>
                             </div>
-                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-xl text-center">
+                            <div className="bg-violet-50 dark:bg-violet-900/20 px-4 py-2 rounded-sm text-center">
                                 <p className="text-[8px] font-black text-violet-400 uppercase tracking-widest">Média Diária Gasta</p>
                                 <p className="text-sm font-black text-violet-600">{fmt.currency(budgetVsSpendMetrics.avgDailySpend)}</p>
                             </div>
-                            <div className={`px-4 py-2 rounded-xl text-center flex flex-col justify-center ${budgetVsSpendMetrics.statusColor}`}>
+                            <div className={`px-4 py-2 rounded-sm text-center flex flex-col justify-center ${budgetVsSpendMetrics.statusColor}`}>
                                 <p className="text-[8px] font-black uppercase tracking-widest opacity-80">Taxa de Consumo</p>
                                 <p className="text-sm font-black flex items-center justify-center gap-1">
                                   {budgetVsSpendMetrics.consumptionRate.toFixed(1)}%
@@ -3384,7 +3380,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                                     const costPerResultVal = conversationsVal > 0 ? (spendVal / conversationsVal) : 0;
                                     
                                     return (
-                                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                                      <div className="bg-white dark:bg-zinc-900 p-4 rounded-sm shadow-xl border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
                                         <div className="space-y-2">
                                           <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-6">
@@ -3430,7 +3426,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
 
                     <section id="conjuntos-anuncios" className="scroll-mt-32">
                       <SectionTitle sub="Interação por público, segmentação e posicionamento">👥 CONJUNTOS DE ANÚNCIOS</SectionTitle>
-                      <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 p-8 shadow-sm">
+                      <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-8 shadow-sm">
                         {renderAdSets()}
                       </div>
                     </section>
@@ -3439,6 +3435,9 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                       <GeoTrafficMap campaigns={campaigns} adSets={adSets} ads={ads} loading={loading} hasFetched={hasFetched} />
                     </section>
 
+                    <section id="detalhamento-campanhas" className="scroll-mt-32">
+                      {renderCampaigns()}
+                    </section>
 
                     <section id="anuncios-criativos" className="scroll-mt-32">
                       <SectionTitle sub="Melhores criativos e análise visual de anúncios">🖼️ ANÚNCIOS E CRIATIVOS EM DESTAQUE</SectionTitle>
@@ -3455,7 +3454,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       </div>
       {maximizedChart && (
         <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 sm:p-10 animate-fadeIn">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-6xl h-[85vh] rounded-[2.5rem] p-6 md:p-10 shadow-2xl border border-slate-100 dark:border-zinc-800 flex flex-col relative animate-scaleIn">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-6xl h-[85vh] rounded-sm p-6 md:p-10 shadow-2xl border border-slate-100 dark:border-zinc-800 flex flex-col relative animate-scaleIn">
             
             {/* Modal Header */}
             <div className="flex justify-between items-center pb-4 mb-4 border-b border-slate-100 dark:border-zinc-800 flex-shrink-0">
@@ -3576,7 +3575,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             const pct = prevVal > 0 ? (diff / prevVal) * 100 : 0;
                             const isUp = diff >= 0;
                             return (
-                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-sm shadow-xl border border-slate-100 dark:border-zinc-800">
                                 <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
                                 <div className="space-y-2">
                                   <p className="text-xs font-black text-indigo-600 flex items-center justify-between gap-6">
@@ -3640,7 +3639,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                             const isOk = pct >= 90 && pct <= 110;
                             const isOver = pct > 110;
                             return (
-                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800">
+                              <div className="bg-white dark:bg-zinc-900 p-4 rounded-sm shadow-xl border border-slate-100 dark:border-zinc-800">
                                 <p className="text-[10px] font-black text-slate-400 uppercase mb-2">{data.day}</p>
                                 <div className="space-y-2">
                                   <p className="text-xs font-black text-emerald-600 flex items-center justify-between gap-6">

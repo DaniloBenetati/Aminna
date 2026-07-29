@@ -252,7 +252,7 @@ export const PublicCatalog: React.FC = () => {
                 <div className="relative flex items-center gap-3">
                     <button 
                         onClick={() => fetchCatalog(true)}
-                        className="p-2 bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-xl transition-all"
+                        className="p-2 bg-slate-100 dark:bg-zinc-800 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-sm transition-all"
                         title="Atualizar Catálogo"
                     >
                         <RefreshCcw size={18} className={isLoading ? 'animate-spin' : ''} />
@@ -260,7 +260,7 @@ export const PublicCatalog: React.FC = () => {
                     <div className="relative">
                     <button 
                         onClick={() => setIsCartOpen(true)}
-                        className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-4 py-2 rounded-xl flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg"
+                        className="bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-4 py-2 rounded-sm flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg"
                     >
                         <ShoppingCart size={18} />
                         <span className="text-xs font-black tracking-wider uppercase">
@@ -349,7 +349,7 @@ export const PublicCatalog: React.FC = () => {
                         <span className="text-xs font-black uppercase tracking-widest text-[#947c4c]">Carregando Acervo</span>
                     </div>
                 ) : filteredCatalog.length === 0 ? (
-                    <div className="text-center py-20 px-8 bg-white dark:bg-zinc-900 rounded-3xl border-2 border-dashed border-slate-200">
+                    <div className="text-center py-20 px-8 bg-white dark:bg-zinc-900 rounded-sm border-2 border-dashed border-slate-200">
                         <Info size={32} className="mx-auto mb-4 text-slate-300" />
                         <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-2">Nenhuma peça encontrada</h3>
                         <p className="text-xs font-medium text-slate-500">Tente ajustar seus filtros de busca para encontrar peças disponíveis.</p>
@@ -363,10 +363,10 @@ export const PublicCatalog: React.FC = () => {
                                     setPreviewProduct(product);
                                     setActiveImageIndex(0);
                                 }}
-                                className="group bg-white dark:bg-zinc-800 rounded-lg border-2 p-2 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-2 relative overflow-hidden"
+                                className="group bg-white dark:bg-zinc-800 rounded-sm border-2 p-2 text-left hover:border-zinc-950 dark:hover:border-white transition-all shadow-sm hover:shadow-xl active:scale-[0.98] flex flex-col gap-2 relative overflow-hidden"
                                 style={{ borderColor: '#D9D9D6' }}
                             >
-                                <div className="aspect-square rounded-md bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
+                                <div className="aspect-square rounded-sm bg-slate-50 dark:bg-zinc-900 flex items-center justify-center overflow-hidden border border-slate-100 dark:border-zinc-800 shadow-inner">
                                     {product.imageUrl ? (
                                         <img 
                                             src={sanitizeImageUrl(product.imageUrl)} 
@@ -383,14 +383,14 @@ export const PublicCatalog: React.FC = () => {
                                                 e.stopPropagation();
                                                 addToCart(product);
                                             }}
-                                            className="p-2 rounded-xl shadow-lg transition-all bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:scale-110 active:scale-90"
+                                            className="p-2 rounded-sm shadow-lg transition-all bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 hover:scale-110 active:scale-90"
                                             title="Adicionar ao Carrinho"
                                         >
                                             <Plus size={16} />
                                         </button>
                                     </div>
                                     {cart.some(c => c.product.id === product.id) && (
-                                        <div className="absolute top-3 left-3 bg-[#947c4c] text-white text-[9px] px-2 py-1 rounded-lg font-black uppercase tracking-widest shadow-md">
+                                        <div className="absolute top-3 left-3 bg-[#947c4c] text-white text-[9px] px-2 py-1 rounded-sm font-black uppercase tracking-widest shadow-md">
                                             Na Reserva
                                         </div>
                                     )}
@@ -456,7 +456,7 @@ export const PublicCatalog: React.FC = () => {
                                             const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
                                             setActiveImageIndex(prev => prev > 0 ? prev - 1 : images.length - 1);
                                         }}
-                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
+                                        className="absolute left-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-sm transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
                                     >
                                         <ChevronLeft size={32} />
                                     </button>
@@ -466,7 +466,7 @@ export const PublicCatalog: React.FC = () => {
                                             const images = [previewProduct.imageUrl, ...(previewProduct.imageUrls || [])].filter(Boolean);
                                             setActiveImageIndex(prev => prev < images.length - 1 ? prev + 1 : 0);
                                         }}
-                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-[2rem] transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
+                                        className="absolute right-6 top-1/2 -translate-y-1/2 p-5 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-sm transition-all border border-white/10 active:scale-95 z-10 hidden lg:flex"
                                     >
                                         <ChevronRight size={32} />
                                     </button>
@@ -489,7 +489,7 @@ export const PublicCatalog: React.FC = () => {
                                         addToCart(previewProduct);
                                         setPreviewProduct(null);
                                     }}
-                                    className="bg-[#947c4c] text-white pl-8 pr-6 rounded-[2rem] h-20 flex items-center justify-center gap-4 hover:bg-[#867045] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#947c4c]/30 disabled:opacity-50"
+                                    className="bg-[#947c4c] text-white pl-8 pr-6 rounded-sm h-20 flex items-center justify-center gap-4 hover:bg-[#867045] hover:scale-105 active:scale-95 transition-all shadow-xl shadow-[#947c4c]/30 disabled:opacity-50"
                                 >
                                     <span className="text-base font-black tracking-widest uppercase">Reservar</span>
                                     <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-md">
@@ -500,7 +500,7 @@ export const PublicCatalog: React.FC = () => {
                         </div>
 
                         <div className="sm:hidden absolute bottom-6 left-6 right-6 flex items-center justify-between pointer-events-auto z-20">
-                            <div className="bg-black/40 backdrop-blur-md px-6 py-4 rounded-[2rem] border border-white/10 shadow-lg">
+                            <div className="bg-black/40 backdrop-blur-md px-6 py-4 rounded-sm border border-white/10 shadow-lg">
                                 <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Preço</p>
                                 <p className="text-2xl font-black text-white drop-shadow-sm">R$ {previewProduct.price?.toFixed(2) || '0.00'}</p>
                             </div>
@@ -510,7 +510,7 @@ export const PublicCatalog: React.FC = () => {
                                     addToCart(previewProduct);
                                     setPreviewProduct(null);
                                 }}
-                                className="bg-[#947c4c] text-white p-6 rounded-[2rem] hover:bg-[#867045] active:scale-90 transition-all shadow-xl border border-white/20"
+                                className="bg-[#947c4c] text-white p-6 rounded-sm hover:bg-[#867045] active:scale-90 transition-all shadow-xl border border-white/20"
                             >
                                 <Plus size={28} />
                             </button>
@@ -529,7 +529,7 @@ export const PublicCatalog: React.FC = () => {
                             <h2 className="text-sm font-black uppercase tracking-widest text-[#947c4c] flex items-center gap-2">
                                 <ShoppingCart size={20} /> Lista de Reserva
                             </h2>
-                            <button onClick={() => setIsCartOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 bg-white rounded-xl shadow-sm">
+                            <button onClick={() => setIsCartOpen(false)} className="p-2 text-slate-400 hover:text-slate-900 bg-white rounded-sm shadow-sm">
                                 <Minus size={20} className="rotate-45" /> {/* Use minus rotated to act as X intentionally or lucide X */}
                             </button>
                         </div>
@@ -543,8 +543,8 @@ export const PublicCatalog: React.FC = () => {
                                 </div>
                             ) : (
                                 cart.map(item => (
-                                    <div key={item.product.id} className="flex gap-4 p-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-2xl shadow-sm">
-                                        <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-50 flex-shrink-0 border border-slate-100">
+                                    <div key={item.product.id} className="flex gap-4 p-3 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-sm shadow-sm">
+                                        <div className="w-20 h-20 rounded-sm overflow-hidden bg-slate-50 flex-shrink-0 border border-slate-100">
                                              {item.product.imageUrl ? (
                                                  <img src={sanitizeImageUrl(item.product.imageUrl)} alt="" className="w-full h-full object-cover" />
                                              ) : (
@@ -554,16 +554,16 @@ export const PublicCatalog: React.FC = () => {
                                         <div className="flex-1 flex flex-col justify-between py-1">
                                             <div className="flex justify-between items-start">
                                                 <h3 className="text-xs font-black text-slate-900 uppercase leading-snug">{item.product.name}</h3>
-                                                <button onClick={() => removeFromCart(item.product.id)} className="text-rose-400 hover:text-rose-600 bg-rose-50 p-1.5 rounded-lg ml-2 active:scale-95 transition-all">
+                                                <button onClick={() => removeFromCart(item.product.id)} className="text-rose-400 hover:text-rose-600 bg-rose-50 p-1.5 rounded-sm ml-2 active:scale-95 transition-all">
                                                     <Trash2 size={14} />
                                                 </button>
                                             </div>
                                             
                                             <div className="flex justify-between items-end mt-2">
-                                                <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-1">
-                                                    <button onClick={() => updateQuantity(item.product.id, -1)} className="p-1 text-slate-500 hover:text-slate-900 bg-white rounded-md shadow-sm active:scale-95"><Minus size={14} /></button>
+                                                <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-sm p-1">
+                                                    <button onClick={() => updateQuantity(item.product.id, -1)} className="p-1 text-slate-500 hover:text-slate-900 bg-white rounded-sm shadow-sm active:scale-95"><Minus size={14} /></button>
                                                     <span className="text-[11px] font-black w-4 text-center">{item.quantity}</span>
-                                                    <button onClick={() => updateQuantity(item.product.id, 1)} className="p-1 text-slate-500 hover:text-slate-900 bg-white rounded-md shadow-sm active:scale-95"><Plus size={14} /></button>
+                                                    <button onClick={() => updateQuantity(item.product.id, 1)} className="p-1 text-slate-500 hover:text-slate-900 bg-white rounded-sm shadow-sm active:scale-95"><Plus size={14} /></button>
                                                 </div>
                                                 <span className="text-xs font-black text-[#947c4c]">R$ {((item.product.price || 0) * item.quantity).toFixed(2)}</span>
                                             </div>
@@ -583,7 +583,7 @@ export const PublicCatalog: React.FC = () => {
                                             type="text" 
                                             value={checkoutName}
                                             onChange={e => setCheckoutName(e.target.value)}
-                                            className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-xs font-black text-slate-900 outline-none focus:border-black uppercase transition-colors"
+                                            className="w-full bg-white border-2 border-slate-200 rounded-sm p-3 text-xs font-black text-slate-900 outline-none focus:border-black uppercase transition-colors"
                                             placeholder="MARIA SILVA"
                                         />
                                     </div>
@@ -600,7 +600,7 @@ export const PublicCatalog: React.FC = () => {
                                                 setCheckoutPhone(formatted);
                                             }}
                                             maxLength={15}
-                                            className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-xs font-black text-slate-900 outline-none focus:border-black uppercase transition-colors"
+                                            className="w-full bg-white border-2 border-slate-200 rounded-sm p-3 text-xs font-black text-slate-900 outline-none focus:border-black uppercase transition-colors"
                                             placeholder="(11) 90000-0000"
                                         />
                                     </div>
@@ -614,7 +614,7 @@ export const PublicCatalog: React.FC = () => {
                                 <button 
                                     onClick={handleCheckout}
                                     disabled={isSubmitting || cart.length === 0}
-                                    className="w-full bg-[#947c4c] text-white p-4 rounded-2xl flex items-center justify-center gap-3 text-xs font-black uppercase tracking-widest hover:bg-[#867045] active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-[#947c4c]/20"
+                                    className="w-full bg-[#947c4c] text-white p-4 rounded-sm flex items-center justify-center gap-3 text-xs font-black uppercase tracking-widest hover:bg-[#867045] active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-[#947c4c]/20"
                                 >
                                     {isSubmitting ? (
                                         <><Loader2 size={18} className="animate-spin" /> Concluindo...</>
@@ -651,7 +651,7 @@ export const PublicCatalog: React.FC = () => {
                                 window.location.href = finalWpLink;
                                 setIsSuccessModalOpen(false);
                             }}
-                            className="w-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 p-6 rounded-[2rem] text-sm font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center justify-center gap-3"
+                            className="w-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 p-6 rounded-sm text-sm font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl flex items-center justify-center gap-3"
                         >
                             Confirmar no WhatsApp <ArrowRight size={20} />
                         </button>

@@ -167,14 +167,14 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
         </div>
         <button
           onClick={handlePrint}
-          className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-widest rounded-xl hover:scale-105 transition-transform shadow-lg"
+          className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 dark:bg-white text-white dark:text-black font-black text-xs uppercase tracking-widest rounded-sm hover:scale-105 transition-transform shadow-lg"
         >
           <Printer size={16} /> Imprimir / Salvar PDF
         </button>
       </div>
 
       {/* --- REPORT PAGE (A4/Slide Layout) --- */}
-      <div className="w-full max-w-none mx-auto bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-[2.5rem] p-8 md:p-12 shadow-sm print:shadow-none print:border-none print:bg-transparent print:p-0">
+      <div className="w-full max-w-none mx-auto bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-sm p-8 md:p-12 shadow-sm print:shadow-none print:border-none print:bg-transparent print:p-0">
         
         {/* Slide Header */}
         <div className="flex items-end justify-between border-b-2 border-indigo-500 pb-6 mb-10">
@@ -192,7 +192,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
                   if(filterBtn) filterBtn.click();
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                }}
-               className="text-sm font-bold bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg hover:bg-indigo-100 hover:scale-105 transition-all print:bg-transparent print:px-0 flex items-center gap-1 cursor-pointer"
+               className="text-sm font-bold bg-indigo-50 text-indigo-700 px-3 py-1 rounded-sm hover:bg-indigo-100 hover:scale-105 transition-all print:bg-transparent print:px-0 flex items-center gap-1 cursor-pointer"
             >
                {dateLabel}
             </button>
@@ -201,40 +201,40 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
 
         {/* Executive Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6 mb-12">
-          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
-            <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-2">
+          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+            <div className="w-8 h-8 bg-indigo-100 text-indigo-600 rounded-sm flex items-center justify-center mb-2">
               <DollarSign size={16} />
             </div>
             <p className="text-[8px] xl:text-[9px] font-black text-slate-400 uppercase tracking-wider leading-tight">Total Investido</p>
             <p className="text-base xl:text-lg font-black tracking-tighter mt-1 text-slate-800 dark:text-white print:text-black">{fmt.currency(totalSpend)}</p>
           </div>
           
-          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
-            <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-2">
+          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+            <div className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-sm flex items-center justify-center mb-2">
               <TrendingUp size={16} />
             </div>
             <p className="text-[8px] xl:text-[9px] font-black text-slate-400 uppercase tracking-wider leading-tight">Faturamento CRM</p>
             <p className="text-base xl:text-lg font-black tracking-tighter mt-1 text-emerald-600">{fmt.currency(totalRevenue)}</p>
           </div>
 
-          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
-            <div className="w-8 h-8 bg-sky-100 text-sky-600 rounded-xl flex items-center justify-center mb-2">
+          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+            <div className="w-8 h-8 bg-sky-100 text-sky-600 rounded-sm flex items-center justify-center mb-2">
               <Target size={16} />
             </div>
             <p className="text-[8px] xl:text-[9px] font-black text-slate-400 uppercase tracking-wider leading-tight">ROI Geral</p>
             <p className="text-base xl:text-lg font-black tracking-tighter mt-1 text-sky-600">{totalROAS > 0 ? `${fmt.number(totalROAS, 1)}x` : '—'}</p>
           </div>
 
-          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
-            <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center mb-2">
+          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+            <div className="w-8 h-8 bg-amber-100 text-amber-600 rounded-sm flex items-center justify-center mb-2">
               <Users size={16} />
             </div>
             <p className="text-[8px] xl:text-[9px] font-black text-slate-400 uppercase tracking-wider leading-tight">Novos Clientes</p>
             <p className="text-base xl:text-lg font-black tracking-tighter mt-1 text-slate-800 dark:text-white print:text-black">{totalConversions}</p>
           </div>
 
-          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
-            <div className="w-8 h-8 bg-pink-100 text-pink-600 rounded-xl flex items-center justify-center mb-2">
+          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+            <div className="w-8 h-8 bg-pink-100 text-pink-600 rounded-sm flex items-center justify-center mb-2">
               <Instagram size={16} />
             </div>
             <p className="text-[8px] xl:text-[9px] font-black text-slate-400 uppercase tracking-wider leading-tight">Total Seguidores</p>
@@ -245,8 +245,8 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
             </div>
           </div>
 
-          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
-            <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-2">
+          <div className="bg-white dark:bg-zinc-950 p-3 xl:p-4 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+            <div className="w-8 h-8 bg-purple-100 text-purple-600 rounded-sm flex items-center justify-center mb-2">
               <Eye size={16} />
             </div>
             <p className="text-[8px] xl:text-[9px] font-black text-slate-400 uppercase tracking-wider leading-tight">Visualizações (30d)</p>
@@ -264,7 +264,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
           {/* Top Performers Table */}
-          <div className="bg-white dark:bg-zinc-950 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+          <div className="bg-white dark:bg-zinc-950 p-6 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white mb-6 flex items-center gap-2 print:text-black">
               <Award className="text-amber-500" /> Top Campanhas (Por ROI)
             </h3>
@@ -290,7 +290,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
           </div>
 
           {/* Spend vs Return Chart */}
-          <div className="bg-white dark:bg-zinc-950 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none flex flex-col">
+          <div className="bg-white dark:bg-zinc-950 p-6 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none flex flex-col">
             <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2 flex items-center gap-2 print:text-black">
               <BarChart3 className="text-indigo-500" /> Investimento vs Receita
             </h3>
@@ -333,7 +333,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
         </div>
 
         {/* Investment Evolution Chart */}
-        <div className="bg-white dark:bg-zinc-950 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 mb-8 print:border-slate-300 print:shadow-none print:break-inside-avoid">
+        <div className="bg-white dark:bg-zinc-950 p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 mb-8 print:border-slate-300 print:shadow-none print:break-inside-avoid">
            <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white mb-6 flex items-center gap-2 print:text-black">
               <TrendingUp className="text-indigo-500" /> Evolução de Investimento Diário
             </h3>
@@ -369,18 +369,18 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
 
         {/* Audience Growth Chart */}
         {followerSeries && followerSeries.length > 0 && (
-            <div className="bg-white dark:bg-zinc-950 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 mb-8 print:border-slate-300 print:shadow-none print:break-inside-avoid">
+            <div className="bg-white dark:bg-zinc-950 p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 mb-8 print:border-slate-300 print:shadow-none print:break-inside-avoid">
                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                   <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white flex items-center gap-2 print:text-black">
                      <Users className="text-emerald-500" /> Crescimento de Audiência
                      <span className="text-[10px] font-bold text-slate-400 normal-case tracking-normal ml-2">— Comparativo diário de novos seguidores vs perdas</span>
                   </h3>
                   <div className="flex items-center gap-3">
-                     <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg flex items-center gap-1">
+                     <div className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-sm flex items-center gap-1">
                         <TrendingUp size={14} />
                         <span className="text-xs font-black">+{fmt.compact(followerSeries.reduce((s:number, v:any) => s + (v.gain || 0), 0))} Seguidores</span>
                      </div>
-                     <div className="px-3 py-1 bg-rose-50 text-rose-600 rounded-lg flex items-center gap-1">
+                     <div className="px-3 py-1 bg-rose-50 text-rose-600 rounded-sm flex items-center gap-1">
                         <ArrowDownRight size={14} />
                         <span className="text-xs font-black">-{fmt.compact(followerSeries.reduce((s:number, v:any) => s + (v.loss || 0), 0))} Perdas</span>
                      </div>
@@ -403,7 +403,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
 
         {/* Organic Impact Series */}
         {organicData && organicData.reachSeries && organicData.reachSeries.length > 0 && (
-          <div className="bg-white dark:bg-zinc-950 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 mb-8 print:border-slate-300 print:shadow-none print:break-inside-avoid">
+          <div className="bg-white dark:bg-zinc-950 p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 mb-8 print:border-slate-300 print:shadow-none print:break-inside-avoid">
              <div className="flex justify-between items-start mb-6">
                 <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white flex items-center gap-2 print:text-black">
                    <Activity className="text-indigo-500" /> Tendência de Alcance e Crescimento
@@ -457,7 +457,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
         {/* Top Content & Collabs */}
         {organicData && organicData.posts && organicData.posts.length > 0 && (
            <div className="space-y-8 mb-8 print:break-inside-avoid">
-             <div className="bg-white dark:bg-zinc-950 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+             <div className="bg-white dark:bg-zinc-950 p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2 print:text-black">
                    Top Conteúdos Orgânicos
                  </h3>
@@ -468,7 +468,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
                       .sort((a, b) => (b.insights?.reach || 0) - (a.insights?.reach || 0))
                       .slice(0, 6)
                       .map((post: any, i: number) => (
-                     <div key={i} className="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm border border-slate-100 dark:border-zinc-800">
+                     <div key={i} className="group relative aspect-[4/5] rounded-sm overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm border border-slate-100 dark:border-zinc-800">
                        <img src={post.media_url} alt="" className="w-full h-full object-cover" />
                        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-full border border-white/20 flex items-center gap-1">
                           <p className="text-[10px] font-black text-white">{fmt.compact(post.insights?.reach || 0)}</p>
@@ -479,7 +479,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
              </div>
 
              {organicData.taggedPosts && organicData.taggedPosts.length > 0 && (
-                <div className="bg-white dark:bg-zinc-950 p-8 rounded-3xl shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
+                <div className="bg-white dark:bg-zinc-950 p-8 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 print:border-slate-300 print:shadow-none">
                     <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 dark:text-white mb-2 flex items-center gap-2 print:text-black">
                       <Users size={16} className="text-rose-500" /> Collabs & Menções
                     </h3>
@@ -494,7 +494,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
                           })
                           .slice(0, 6)
                           .map((tag: any, i: number) => (
-                             <div key={i} className="group relative aspect-[4/5] rounded-xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm border border-slate-100 dark:border-zinc-800">
+                             <div key={i} className="group relative aspect-[4/5] rounded-sm overflow-hidden bg-slate-200 dark:bg-zinc-800 shadow-sm border border-slate-100 dark:border-zinc-800">
                                 <img src={tag.media_url} alt="" className="w-full h-full object-cover" />
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-4 flex flex-col justify-end items-start opacity-100 mb-2">
                                    <div className="flex items-center gap-3">
@@ -515,7 +515,7 @@ export const MarketingReports: React.FC<MarketingReportsProps> = ({
         )}
 
         {/* Footer / Insights */}
-        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-3xl border border-indigo-100 dark:border-indigo-900/30 print:border-indigo-300 print:bg-white print:break-inside-avoid">
+        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 rounded-sm border border-indigo-100 dark:border-indigo-900/30 print:border-indigo-300 print:bg-white print:break-inside-avoid">
           <h3 className="text-xs font-black text-indigo-800 dark:text-indigo-400 uppercase tracking-widest mb-2">Resumo da Inteligência Analítica</h3>
           <p className="text-sm text-indigo-900 dark:text-indigo-300 leading-relaxed font-medium print:text-black">
             Neste período de <strong className="font-black">{dateLabel}</strong>, o investimento total em tráfego pago foi de <strong className="font-black">{fmt.currency(totalSpend)}</strong>. 

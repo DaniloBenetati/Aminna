@@ -874,38 +874,38 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de materiais e revenda</p>
                     </div>
                     <div className="flex flex-wrap gap-1.5 w-full md:w-auto">
-                        <button onClick={() => { setModalType('REPORT'); setReportFilter('ALL'); }} className="flex-1 md:flex-none px-3 py-2 bg-slate-800 dark:bg-zinc-800 text-white dark:text-white rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all border border-transparent dark:border-zinc-700"><FileText size={14} /> Relatórios</button>
-                        <button onClick={() => setModalType('CHOICE')} className="flex-1 md:flex-none px-3 py-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"><Tag size={14} /> Novo</button>
+                        <button onClick={() => { setModalType('REPORT'); setReportFilter('ALL'); }} className="flex-1 md:flex-none px-3 py-2 bg-slate-800 dark:bg-zinc-800 text-white dark:text-white rounded-sm text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all border border-transparent dark:border-zinc-700"><FileText size={14} /> Relatórios</button>
+                        <button onClick={() => setModalType('CHOICE')} className="flex-1 md:flex-none px-3 py-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm text-[10px] md:text-sm font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all"><Tag size={14} /> Novo</button>
                     </div>
                 </div>
 
                 {/* Action Quick Bar - Mobile Only */}
                 <div className="md:hidden flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
-                    <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><ClipboardList size={14} /> Inventário</button>
-                    <button onClick={() => { setModalType('BEST_SELLERS'); }} className="whitespace-nowrap px-4 py-2.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><TrendingUp size={14} /> Mais Vendidos</button>
-                    <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Plus size={14} /> Entrada</button>
-                    <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Minus size={14} /> Saída</button>
+                    <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><ClipboardList size={14} /> Inventário</button>
+                    <button onClick={() => { setModalType('BEST_SELLERS'); }} className="whitespace-nowrap px-4 py-2.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><TrendingUp size={14} /> Mais Vendidos</button>
+                    <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Plus size={14} /> Entrada</button>
+                    <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Minus size={14} /> Saída</button>
                 </div>
 
                 <div className="hidden lg:grid lg:grid-cols-5 gap-6">
-                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                        <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-400 rounded-xl"><Package size={20} className="md:w-6 md:h-6" /></div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-900 dark:text-blue-400 rounded-sm"><Package size={20} className="md:w-6 md:h-6" /></div>
                         <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">SKUs</p><p className="text-sm md:text-2xl font-black text-slate-950 dark:text-white">{stock.length}</p></div>
                     </div>
-                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                        <div className="p-2 md:p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 rounded-xl"><Layers size={20} className="md:w-6 md:h-6" /></div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 rounded-sm"><Layers size={20} className="md:w-6 md:h-6" /></div>
                         <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Volume</p><p className="text-sm md:text-2xl font-black text-indigo-600 dark:text-indigo-400">{totalVolume}</p></div>
                     </div>
-                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                        <div className="p-2 md:p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-400 rounded-xl"><AlertTriangle size={20} className="md:w-6 md:h-6" /></div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-amber-100 dark:bg-amber-900/30 text-amber-900 dark:text-amber-400 rounded-sm"><AlertTriangle size={20} className="md:w-6 md:h-6" /></div>
                         <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-tight">Crítico</p><p className="text-sm md:text-2xl font-black text-amber-600 dark:text-amber-400">{stock.filter(i => i.quantity <= i.minQuantity).length}</p></div>
                     </div>
-                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                        <div className="p-2 md:p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-400 rounded-xl"><DollarSign size={20} className="md:w-6 md:h-6" /></div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-purple-100 dark:bg-purple-900/30 text-purple-900 dark:text-purple-400 rounded-sm"><DollarSign size={20} className="md:w-6 md:h-6" /></div>
                         <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Custo</p><p className="text-sm md:text-2xl font-black text-purple-900 dark:text-purple-400">R${(totalStockValue / 1000).toFixed(1)}k</p></div>
                     </div>
-                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
-                        <div className="p-2 md:p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-400 rounded-xl"><ShoppingBag size={20} className="md:w-6 md:h-6" /></div>
+                    <div className="p-3 md:p-4 bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4">
+                        <div className="p-2 md:p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-900 dark:text-emerald-400 rounded-sm"><ShoppingBag size={20} className="md:w-6 md:h-6" /></div>
                         <div><p className="text-[8px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase">Venda</p><p className="text-sm md:text-2xl font-black text-emerald-900 dark:text-emerald-400">{stock.filter(i => i.category === 'Venda').length}</p></div>
                     </div>
                 </div>
@@ -916,7 +916,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     <input
                         type="text"
                         placeholder="Pesquisar por nome ou código..."
-                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs md:text-sm font-black text-slate-950 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all shadow-sm placeholder-slate-500 dark:placeholder-slate-400"
+                        className="w-full pl-11 pr-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs md:text-sm font-black text-slate-950 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all shadow-sm placeholder-slate-500 dark:placeholder-slate-400"
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
@@ -926,15 +926,15 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* Scrollable Content Area */}
             <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1 scrollbar-hide space-y-4 md:space-y-6 pb-24 md:pb-8">
                 {/* Desktop Table View */}
-                <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
+                <div className="hidden md:block bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
                     <div className="p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-800 flex justify-between items-center flex-wrap gap-2">
                         <div className="flex items-center gap-3">
                             <h3 className="font-bold text-slate-950 dark:text-white">Inventário Detalhado</h3>
                             {/* Filtro de Foto */}
-                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-700 p-1 rounded-lg">
+                            <div className="flex items-center gap-1 bg-slate-100 dark:bg-zinc-700 p-1 rounded-sm">
                                 <button
                                     onClick={() => setPhotoFilter('ALL')}
-                                    className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all ${
+                                    className={`px-2.5 py-1 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${
                                         photoFilter === 'ALL'
                                             ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm'
                                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
@@ -942,7 +942,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 >Todos</button>
                                 <button
                                     onClick={() => setPhotoFilter('WITH')}
-                                    className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 ${
+                                    className={`px-2.5 py-1 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 ${
                                         photoFilter === 'WITH'
                                             ? 'bg-emerald-500 text-white shadow-sm'
                                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
@@ -950,7 +950,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 ><Camera size={10} /> Com Foto</button>
                                 <button
                                     onClick={() => setPhotoFilter('WITHOUT')}
-                                    className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 ${
+                                    className={`px-2.5 py-1 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1 ${
                                         photoFilter === 'WITHOUT'
                                             ? 'bg-rose-500 text-white shadow-sm'
                                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
@@ -962,10 +962,10 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             )}
                         </div>
                         <div className="flex gap-2">
-                            <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all flex items-center gap-1.5 shadow-sm"><ClipboardList size={14} /> Inventário</button>
-                            <button onClick={() => { setModalType('BEST_SELLERS'); }} className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-lg text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all flex items-center gap-1.5 shadow-sm"><TrendingUp size={14} /> Mais Vendidos</button>
-                            <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Plus size={14} /> Entrada</button>
-                            <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-lg text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Minus size={14} /> Saída</button>
+                            <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-sm text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all flex items-center gap-1.5 shadow-sm"><ClipboardList size={14} /> Inventário</button>
+                            <button onClick={() => { setModalType('BEST_SELLERS'); }} className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-sm text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all flex items-center gap-1.5 shadow-sm"><TrendingUp size={14} /> Mais Vendidos</button>
+                            <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-sm text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Plus size={14} /> Entrada</button>
+                            <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-sm text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Minus size={14} /> Saída</button>
                         </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -990,7 +990,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50 group/row">
                                             <td className="px-6 py-3">
                                                 <div
-                                                    className="w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in relative"
+                                                    className="w-10 h-10 rounded-sm overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in relative"
                                                     onMouseEnter={(e) => {
                                                         if (!item.imageUrl) return;
                                                         const rect = e.currentTarget.getBoundingClientRect();
@@ -1057,10 +1057,10 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                     {filteredStock.map(item => {
                         const isLow = item.quantity <= item.minQuantity;
                         return (
-                            <div key={item.id} className="bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-3 active:scale-[0.98] transition-transform">
+                            <div key={item.id} className="bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-3 active:scale-[0.98] transition-transform">
                                 <div className="flex gap-4">
                                     <div
-                                        className="w-16 h-16 rounded-2xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center relative"
+                                        className="w-16 h-16 rounded-sm overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex-shrink-0 flex items-center justify-center relative"
                                         onMouseEnter={(e) => {
                                             if (!item.imageUrl) return;
                                             const rect = e.currentTarget.getBoundingClientRect();
@@ -1107,14 +1107,14 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     </div>
                                     <div className="grid grid-cols-1 gap-2">
                                         <div className="flex flex-wrap gap-1.5">
-                                            <button onClick={() => openEditProduct(item)} className="p-2.5 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-200 dark:active:bg-zinc-700"><Settings2 size={16} /><span className="text-[9px] font-black uppercase">Editar</span></button>
-                                            <button onClick={() => openHistory(item.id)} className="p-2.5 bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-100 dark:active:bg-zinc-700"><History size={16} /><span className="text-[9px] font-black uppercase">Histórico</span></button>
-                                            <button onClick={() => openEditPrice(item.id, item.price || 0)} className="p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-slate-900 dark:text-white rounded-2xl border border-indigo-200 dark:border-indigo-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-indigo-100 dark:active:bg-indigo-900/30"><Edit2 size={16} /><span className="text-[9px] font-black uppercase">Preço</span></button>
-                                            <button onClick={() => handleDeleteProduct(item.id)} className="p-2.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-2xl border border-rose-200 dark:border-rose-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-rose-100 dark:active:bg-rose-900/30"><Trash2 size={16} /><span className="text-[9px] font-black uppercase">Excluir</span></button>
+                                            <button onClick={() => openEditProduct(item)} className="p-2.5 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-sm border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-200 dark:active:bg-zinc-700"><Settings2 size={16} /><span className="text-[9px] font-black uppercase">Editar</span></button>
+                                            <button onClick={() => openHistory(item.id)} className="p-2.5 bg-slate-50 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-sm border border-slate-200 dark:border-zinc-700 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-slate-100 dark:active:bg-zinc-700"><History size={16} /><span className="text-[9px] font-black uppercase">Histórico</span></button>
+                                            <button onClick={() => openEditPrice(item.id, item.price || 0)} className="p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-slate-900 dark:text-white rounded-sm border border-indigo-200 dark:border-indigo-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-indigo-100 dark:active:bg-indigo-900/30"><Edit2 size={16} /><span className="text-[9px] font-black uppercase">Preço</span></button>
+                                            <button onClick={() => handleDeleteProduct(item.id)} className="p-2.5 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 rounded-sm border border-rose-200 dark:border-rose-800 flex-1 items-center justify-center gap-1.5 shadow-sm active:bg-rose-100 dark:active:bg-rose-900/30"><Trash2 size={16} /><span className="text-[9px] font-black uppercase">Excluir</span></button>
                                         </div>
                                         <div className="flex gap-1 justify-end items-end pt-2">
-                                            <button onClick={() => { setSelectedItemId(item.id); setModalType('ENTRY'); setEntryCost(item.costPrice.toString()); }} className="p-2.5 bg-emerald-600 text-white rounded-2xl shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Plus size={18} /></button>
-                                            <button onClick={() => { setSelectedItemId(item.id); setModalType('EXIT'); }} className="p-2.5 bg-rose-600 text-white rounded-2xl shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Minus size={18} /></button>
+                                            <button onClick={() => { setSelectedItemId(item.id); setModalType('ENTRY'); setEntryCost(item.costPrice.toString()); }} className="p-2.5 bg-emerald-600 text-white rounded-sm shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Plus size={18} /></button>
+                                            <button onClick={() => { setSelectedItemId(item.id); setModalType('EXIT'); }} className="p-2.5 bg-rose-600 text-white rounded-sm shadow-lg active:scale-90 transition-all flex-1 flex justify-center"><Minus size={18} /></button>
                                         </div>
                                     </div>
                                 </div>
@@ -1129,21 +1129,21 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* CHOICE MODAL */}
             {modalType === 'CHOICE' && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200 border-2 border-black dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in duration-200 border-2 border-black dark:border-zinc-700">
                         <div className="px-6 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-zinc-950 dark:bg-black text-white">
                             <h3 className="font-black text-base uppercase tracking-widest">Nova Ação</h3>
                             <button onClick={closeModal} className="text-white hover:text-slate-300"><X size={24} /></button>
                         </div>
                         <div className="p-6 grid grid-cols-1 gap-4">
-                            <button onClick={openNewProduct} className="flex flex-col items-center gap-3 p-6 border-2 border-slate-200 dark:border-zinc-700 rounded-3xl hover:border-black dark:hover:border-white hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all group">
-                                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={24} /></div>
+                            <button onClick={openNewProduct} className="flex flex-col items-center gap-3 p-6 border-2 border-slate-200 dark:border-zinc-700 rounded-sm hover:border-black dark:hover:border-white hover:bg-slate-50 dark:hover:bg-zinc-800 transition-all group">
+                                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform"><Plus size={24} /></div>
                                 <div className="text-center">
                                     <p className="font-black text-slate-950 dark:text-white uppercase text-sm">Cadastrar Novo Produto</p>
                                     <p className="text-[10px] text-slate-600 dark:text-slate-400 font-bold">Item novo no sistema</p>
                                 </div>
                             </button>
-                            <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="flex flex-col items-center gap-3 p-6 border-2 border-slate-200 dark:border-zinc-700 rounded-3xl hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all group">
-                                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"><RefreshCcw size={24} /></div>
+                            <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="flex flex-col items-center gap-3 p-6 border-2 border-slate-200 dark:border-zinc-700 rounded-sm hover:border-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-all group">
+                                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-sm flex items-center justify-center group-hover:scale-110 transition-transform"><RefreshCcw size={24} /></div>
                                 <div className="text-center">
                                     <p className="font-black text-slate-950 dark:text-white uppercase text-sm">Reposição de Estoque</p>
                                     <p className="text-[10px] text-slate-600 dark:text-slate-400 font-bold">Entrada em item já cadastrado</p>
@@ -1157,7 +1157,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* NEW/EDIT PRODUCT MODAL */}
             {(modalType === 'NEW_PRODUCT' || modalType === 'EDIT_PRODUCT') && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[90vh] border-2 border-black dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[90vh] border-2 border-black dark:border-zinc-700">
                         <div className="px-5 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-zinc-950 dark:bg-black text-white flex-shrink-0">
                             <h3 className="font-black text-base md:text-lg uppercase tracking-widest">{modalType === 'EDIT_PRODUCT' ? 'Editar Informações' : 'Cadastrar Produto'}</h3>
                             <button onClick={closeModal} className="text-white hover:text-zinc-300 p-1"><X size={24} /></button>
@@ -1165,11 +1165,11 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         <form onSubmit={handleCreateOrUpdateProduct} className="p-5 md:p-6 space-y-4 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Código de Barras / Ref</label>
-                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black uppercase focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: ESM-001" value={productFormData.code} onChange={e => setProductFormData({ ...productFormData, code: e.target.value })} />
+                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black uppercase focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: ESM-001" value={productFormData.code} onChange={e => setProductFormData({ ...productFormData, code: e.target.value })} />
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Nome do Produto</label>
-                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} />
+                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} />
                             </div>
                             <div>
                                 <div className="flex justify-between items-center mb-1.5 mt-4">
@@ -1180,14 +1180,14 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                 <button
                                                     type="button"
                                                     onClick={() => applyMagicEnhance(productFormData.imageUrl)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-xl text-[10px] font-black uppercase hover:bg-amber-100 transition-colors border border-amber-200"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 rounded-sm text-[10px] font-black uppercase hover:bg-amber-100 transition-colors border border-amber-200"
                                                 >
                                                     <Sparkles size={12} /> Ajuste IA
                                                 </button>
                                                 <button
                                                     type="button"
                                                     onClick={() => cleanBackground(productFormData.imageUrl)}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-xl text-[10px] font-black uppercase hover:bg-indigo-100 transition-colors border border-indigo-200"
+                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-sm text-[10px] font-black uppercase hover:bg-indigo-100 transition-colors border border-indigo-200"
                                                     title="Remove tons cinzas e deixa o fundo branco profissional"
                                                 >
                                                     <Eraser size={12} /> Limpeza IA
@@ -1227,7 +1227,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 )}
 
                                 {productFormData.imageUrl && (
-                                    <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-slate-200 dark:border-zinc-800 mb-4 bg-slate-50 dark:bg-zinc-950 flex items-center justify-center group/img">
+                                    <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-slate-200 dark:border-zinc-800 mb-4 bg-slate-50 dark:bg-zinc-950 flex items-center justify-center group/img">
                                         <img src={sanitizeImageUrl(productFormData.imageUrl)} className="max-w-full max-h-full object-contain" alt="Preview" />
                                         <button
                                             type="button"
@@ -1253,7 +1253,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     <div className="relative">
                                         <input
                                             type="url"
-                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
                                             placeholder="Ou cole a URL da foto principal..."
                                             value={productFormData.imageUrl}
                                             onChange={e => setProductFormData({ ...productFormData, imageUrl: e.target.value })}
@@ -1263,7 +1263,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         <div key={index} className="relative flex gap-2">
                                             <input
                                                 type="url"
-                                                className="flex-1 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-900 dark:text-white placeholder:text-slate-400"
+                                                className="flex-1 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-900 dark:text-white placeholder:text-slate-400"
                                                 placeholder="URL da foto adicional..."
                                                 value={url}
                                                 onChange={e => {
@@ -1275,7 +1275,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             <button
                                                 type="button"
                                                 onClick={() => setProductFormData({ ...productFormData, imageUrls: productFormData.imageUrls.filter((_, i) => i !== index) })}
-                                                className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl"
+                                                className="p-3 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-sm"
                                             >
                                                 <X size={20} />
                                             </button>
@@ -1329,7 +1329,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             key={cat}
                                             type="button"
                                             onClick={() => setProductFormData({ ...productFormData, category: cat })}
-                                            className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border-2 transition-all ${productFormData.category === cat ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-black dark:border-white shadow-md' : 'bg-white dark:bg-zinc-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600'}`}
+                                            className={`py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest border-2 transition-all ${productFormData.category === cat ? 'bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 border-black dark:border-white shadow-md' : 'bg-white dark:bg-zinc-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600'}`}
                                         >
                                             {cat}
                                         </button>
@@ -1343,7 +1343,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Grupo (Categoria)</label>
                                     {!isAddingNewGroup ? (
                                         <select
-                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
                                             value={productFormData.group}
                                             onChange={e => {
                                                 if (e.target.value === 'ADD_NEW') {
@@ -1364,7 +1364,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                 type="text"
                                                 autoFocus
                                                 required
-                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
                                                 placeholder="Nome do novo grupo"
                                                 value={productFormData.group}
                                                 onChange={e => setProductFormData({ ...productFormData, group: e.target.value })}
@@ -1377,7 +1377,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Subgrupo</label>
                                     {!isAddingNewSubGroup ? (
                                         <select
-                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
                                             value={productFormData.subGroup}
                                             onChange={e => {
                                                 if (e.target.value === 'ADD_NEW') {
@@ -1398,7 +1398,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                 type="text"
                                                 autoFocus
                                                 required
-                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
                                                 placeholder="Nome do novo subgrupo"
                                                 value={productFormData.subGroup}
                                                 onChange={e => setProductFormData({ ...productFormData, subGroup: e.target.value })}
@@ -1412,26 +1412,26 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Unid. Medida</label>
-                                    <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: frasco, ml, un" value={productFormData.unit} onChange={e => setProductFormData({ ...productFormData, unit: e.target.value })} />
+                                    <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: frasco, ml, un" value={productFormData.unit} onChange={e => setProductFormData({ ...productFormData, unit: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Estoque Mínimo</label>
-                                    <input type="number" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white" value={productFormData.minQuantity} onChange={e => setProductFormData({ ...productFormData, minQuantity: parseInt(e.target.value) || 0 })} />
+                                    <input type="number" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white" value={productFormData.minQuantity} onChange={e => setProductFormData({ ...productFormData, minQuantity: parseInt(e.target.value) || 0 })} />
                                 </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-3xl">
+                            <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm">
                                 <div>
                                     <label className="block text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest mb-1.5">Custo Pago (R$)</label>
-                                    <input type="number" step="0.01" required className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-600 dark:border-emerald-800 rounded-2xl p-3 text-sm md:text-base font-black outline-none text-slate-950 dark:text-white" value={productFormData.costPrice} onChange={e => setProductFormData({ ...productFormData, costPrice: parseFloat(e.target.value) })} />
+                                    <input type="number" step="0.01" required className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-600 dark:border-emerald-800 rounded-sm p-3 text-sm md:text-base font-black outline-none text-slate-950 dark:text-white" value={productFormData.costPrice} onChange={e => setProductFormData({ ...productFormData, costPrice: parseFloat(e.target.value) })} />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-indigo-800 dark:text-indigo-400 uppercase tracking-widest mb-1.5">Preço Venda (R$)</label>
-                                    <input type="number" step="0.01" required className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-600 dark:border-indigo-800 rounded-2xl p-3 text-sm md:text-base font-black outline-none text-slate-950 dark:text-white" value={productFormData.price} onChange={e => setProductFormData({ ...productFormData, price: parseFloat(e.target.value) })} />
+                                    <input type="number" step="0.01" required className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-600 dark:border-indigo-800 rounded-sm p-3 text-sm md:text-base font-black outline-none text-slate-950 dark:text-white" value={productFormData.price} onChange={e => setProductFormData({ ...productFormData, price: parseFloat(e.target.value) })} />
                                 </div>
                             </div>
                             <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={closeModal} className="flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-3xl transition-colors">Cancelar</button>
-                                <button type="submit" className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Salvar Dados</button>
+                                <button type="button" onClick={closeModal} className="flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors">Cancelar</button>
+                                <button type="submit" className="flex-[2] py-4 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Salvar Dados</button>
                             </div>
                         </form>
                     </div>
@@ -1443,7 +1443,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* INVENTORY (CONTRE FISICA) MODAL */}
             {modalType === 'INVENTORY' && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[95vh] border-2 border-black dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[95vh] border-2 border-black dark:border-zinc-700">
                         <div className="px-5 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-indigo-600 text-white flex-shrink-0">
                             <h3 className="font-black text-base uppercase tracking-tight">Inventário (Contagem Física)</h3>
                             <button onClick={closeModal} className="text-white hover:text-zinc-200 p-1"><X size={24} /></button>
@@ -1456,7 +1456,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         <input
                                             type="text"
                                             placeholder="Digite nome ou código..."
-                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-3 text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm md:rounded-sm p-3 text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
                                             value={productSearch}
                                             onChange={e => setProductSearch(e.target.value)}
                                         />
@@ -1464,7 +1464,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     </div>
 
                                     {productSearch && (
-                                        <div className="absolute z-20 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                        <div className="absolute z-20 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-sm shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                                             {filteredStockOptions.length > 0 ? filteredStockOptions.map(item => (
                                                 <button
                                                     key={item.id}
@@ -1488,31 +1488,31 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     )}
                                 </div>
                             ) : (
-                                <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
+                                <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-sm border-2 border-black dark:border-zinc-700 flex items-center justify-between">
                                     <div className="min-w-0 flex-1">
                                         <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Produto Selecionado</p>
                                         <p className="text-sm font-black text-slate-950 dark:text-white truncate">{getSelectedItem()?.name}</p>
                                         <p className="text-[10px] text-slate-800 dark:text-slate-300 font-bold">Saldo atual: {getSelectedItem()?.quantity} {getSelectedItem()?.unit}</p>
                                     </div>
-                                    <button type="button" onClick={() => setSelectedItemId('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-lg ml-2 border border-black dark:border-zinc-700 shadow-sm">Trocar</button>
+                                    <button type="button" onClick={() => setSelectedItemId('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-sm ml-2 border border-black dark:border-zinc-700 shadow-sm">Trocar</button>
                                 </div>
                             )}
 
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Contagem Real (Prateleira)</label>
-                                <input type="number" min="0" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl p-3 text-2xl font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" value={physicalCount} onChange={e => setPhysicalCount(e.target.value)} />
+                                <input type="number" min="0" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-2xl font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" value={physicalCount} onChange={e => setPhysicalCount(e.target.value)} />
                             </div>
 
                             {selectedItemId && physicalCount && parseInt(physicalCount) !== getSelectedItem()?.quantity && (
                                 <div className="animate-in fade-in slide-in-from-top-1">
                                     <label className="block text-[10px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><AlertTriangle size={12} /> Justificativa da Divergência</label>
-                                    <textarea required className="w-full border-2 border-rose-200 dark:border-rose-900 bg-rose-50/30 dark:bg-rose-900/10 rounded-xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-rose-500" rows={2} placeholder="Ex: Quebra de frasco, erro de lançamento, produto vencido..." value={inventoryJustification} onChange={e => setInventoryJustification(e.target.value)} />
+                                    <textarea required className="w-full border-2 border-rose-200 dark:border-rose-900 bg-rose-50/30 dark:bg-rose-900/10 rounded-sm p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-rose-500" rows={2} placeholder="Ex: Quebra de frasco, erro de lançamento, produto vencido..." value={inventoryJustification} onChange={e => setInventoryJustification(e.target.value)} />
                                 </div>
                             )}
 
                             <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={closeModal} className="flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Sincronizar Estoque</button>
+                                <button type="button" onClick={closeModal} className="flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors">Cancelar</button>
+                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Sincronizar Estoque</button>
                             </div>
                         </form>
                     </div>
@@ -1522,7 +1522,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* REPORT MODAL */}
             {modalType === 'REPORT' && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col h-[90vh] md:h-[80vh] border-2 border-black dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col h-[90vh] md:h-[80vh] border-2 border-black dark:border-zinc-700">
                         <div className="px-6 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-slate-900 dark:bg-black text-white flex-shrink-0">
                             <h3 className="font-black text-lg uppercase tracking-widest flex items-center gap-2"><FileText size={20} /> Relatório de Movimentações</h3>
                             <button onClick={closeModal} className="text-white hover:text-slate-300"><X size={24} /></button>
@@ -1531,9 +1531,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800 border-b border-black dark:border-zinc-700 flex flex-col md:flex-row gap-3">
                             <div className="flex-1">
                                 <label className="block text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase mb-1">Filtrar Tipo</label>
-                                <div className="flex p-1 bg-slate-200 dark:bg-zinc-900 rounded-xl border border-black/5 dark:border-zinc-700">
+                                <div className="flex p-1 bg-slate-200 dark:bg-zinc-900 rounded-sm border border-black/5 dark:border-zinc-700">
                                     {['ALL', 'ENTRY', 'EXIT', 'CORRECTION'].map(f => (
-                                        <button key={f} onClick={() => setReportFilter(f as any)} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${reportFilter === f ? 'bg-white dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}>{f === 'ALL' ? 'Tudo' : f === 'ENTRY' ? 'Entradas' : f === 'CORRECTION' ? 'Ajustes' : 'Saídas'}</button>
+                                        <button key={f} onClick={() => setReportFilter(f as any)} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-sm transition-all ${reportFilter === f ? 'bg-white dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}>{f === 'ALL' ? 'Tudo' : f === 'ENTRY' ? 'Entradas' : f === 'CORRECTION' ? 'Ajustes' : 'Saídas'}</button>
                                     ))}
                                 </div>
                             </div>
@@ -1541,12 +1541,12 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <div className="relative self-end">
                                 <button
                                     onClick={() => setShowReportExportMenu(!showReportExportMenu)}
-                                    className="bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-all text-slate-950 dark:text-white"
+                                    className="bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 px-4 py-2 rounded-sm text-[10px] font-black uppercase flex items-center gap-2 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-all text-slate-950 dark:text-white"
                                 >
                                     <Download size={14} /> Exportar
                                 </button>
                                 {showReportExportMenu && (
-                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-800 rounded-xl shadow-xl border-2 border-slate-200 dark:border-zinc-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white dark:bg-zinc-800 rounded-sm shadow-xl border-2 border-slate-200 dark:border-zinc-700 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
                                         <button onClick={handlePrintReport} className="w-full text-left px-4 py-3 text-[10px] font-black uppercase hover:bg-slate-50 dark:hover:bg-zinc-700 flex items-center gap-2 border-b border-slate-100 dark:border-zinc-700 text-slate-950 dark:text-white">
                                             <Printer size={14} /> Imprimir / PDF
                                         </button>
@@ -1600,7 +1600,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         </div>
                         <div className="p-4 bg-slate-900 dark:bg-black border-t border-black dark:border-zinc-700 text-white flex justify-between items-center flex-shrink-0">
                             <p className="text-[10px] font-black uppercase opacity-60">Total registros: {filteredMovements.length}</p>
-                            <button onClick={closeModal} className="px-6 py-2 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white rounded-lg text-[10px] font-black uppercase border-2 border-black dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-all">Fechar</button>
+                            <button onClick={closeModal} className="px-6 py-2 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white rounded-sm text-[10px] font-black uppercase border-2 border-black dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-all">Fechar</button>
                         </div>
                     </div>
                 </div>
@@ -1609,7 +1609,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* TRANSACTION MODAL (ENTRY & EXIT) */}
             {(modalType === 'ENTRY' || modalType === 'EXIT') && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[95vh] border-2 border-black dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[95vh] border-2 border-black dark:border-zinc-700">
                         <div className={`px-4 py-3 md:px-5 md:py-4 border-b border-white/10 flex justify-between items-center ${modalType === 'ENTRY' ? 'bg-emerald-600' : 'bg-rose-600'} text-white flex-shrink-0`}>
                             <h3 className="font-black text-sm md:text-base uppercase tracking-tight">{modalType === 'ENTRY' ? 'Entrada/Reposição' : 'Baixa (Saída)'}</h3>
                             <button onClick={closeModal} className="text-white hover:text-zinc-200 p-1 transition-colors"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
@@ -1621,7 +1621,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest">Selecionar Produto</label>
                                         <div className="flex items-center gap-2">
                                             {/* Mobile/Tablet Only: Take Photo */}
-                                            <label className="md:hidden cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-zinc-950 text-white rounded-lg text-[9px] font-black uppercase transition-all shadow-sm active:scale-95 border border-black">
+                                            <label className="md:hidden cursor-pointer flex items-center gap-1.5 px-2.5 py-1 bg-zinc-950 text-white rounded-sm text-[9px] font-black uppercase transition-all shadow-sm active:scale-95 border border-black">
                                                 {isScanning ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
                                                 {isScanning ? 'Lendo...' : 'Tirar Foto'}
                                                 <input type="file" className="hidden" accept="image/*" capture="environment" onChange={handleOCRField} disabled={isScanning} />
@@ -1630,7 +1630,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             <span className="text-slate-300 dark:text-zinc-700 md:hidden">|</span>
 
                                             {/* Upload from Gallery (Standard) */}
-                                            <label className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}>
+                                            <label className={`flex items-center gap-1.5 px-2.5 py-1 rounded-sm text-[9px] font-black uppercase transition-all cursor-pointer shadow-sm border ${isScanning ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-indigo-600 text-white border-indigo-700 active:scale-95'}`}>
                                                 {isScanning ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} className="md:hidden" />}
                                                 <Camera size={12} className="hidden md:block" />
                                                 {isScanning ? 'Lendo...' : (
@@ -1648,7 +1648,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         <input
                                             type="text"
                                             placeholder="Digite nome ou código..."
-                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-2.5 md:p-3 text-[12px] md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
+                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm md:rounded-sm p-2.5 md:p-3 text-[12px] md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
                                             value={productSearch}
                                             onChange={e => {
                                                 const val = e.target.value;
@@ -1666,7 +1666,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                         <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
 
                                         {productSearch && (
-                                            <div className="absolute z-20 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                            <div className="absolute z-20 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-sm shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                                                 {filteredStockOptions.length > 0 ? filteredStockOptions.map(item => (
                                                     <button
                                                         key={item.id}
@@ -1693,12 +1693,12 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     {ocrError && <p className="mt-1.5 text-[10px] font-bold text-rose-600 dark:text-rose-400 animate-in fade-in slide-in-from-top-1">{ocrError}</p>}
                                 </>
                             ) : (
-                                <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
+                                <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-sm border-2 border-black dark:border-zinc-700 flex items-center justify-between">
                                     <div className="min-w-0 flex-1">
                                         <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Produto Selecionado</p>
                                         <p className="text-[12px] font-black text-slate-950 dark:text-white truncate">{getSelectedItem()?.name}</p>
                                     </div>
-                                    <button type="button" onClick={() => setSelectedItemId('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-lg ml-2 border border-black dark:border-zinc-700 shadow-sm">Trocar</button>
+                                    <button type="button" onClick={() => setSelectedItemId('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-sm ml-2 border border-black dark:border-zinc-700 shadow-sm">Trocar</button>
                                 </div>
                             )}
 
@@ -1706,12 +1706,12 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Quantidade</label>
-                                        <input type="number" min="1" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-3 text-base font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} />
+                                        <input type="number" min="1" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm md:rounded-sm p-3 text-base font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="0" value={quantity} onChange={e => setQuantity(e.target.value)} />
                                     </div>
                                     {modalType === 'ENTRY' && (
                                         <div>
                                             <label className="block text-[10px] font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-widest mb-1.5">Custo Pago Un.</label>
-                                            <input type="number" step="0.01" required className="w-full bg-white dark:bg-zinc-800 border-2 border-emerald-600 dark:border-emerald-800 rounded-xl md:rounded-2xl p-3 text-base font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-950 dark:text-white" value={entryCost} onChange={e => setEntryCost(e.target.value)} />
+                                            <input type="number" step="0.01" required className="w-full bg-white dark:bg-zinc-800 border-2 border-emerald-600 dark:border-emerald-800 rounded-sm md:rounded-sm p-3 text-base font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-950 dark:text-white" value={entryCost} onChange={e => setEntryCost(e.target.value)} />
                                         </div>
                                     )}
                                 </div>
@@ -1722,11 +1722,11 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
                                         <div className="relative">
                                             {exitProviderId ? (
-                                                <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700 flex items-center justify-between">
+                                                <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-sm border-2 border-black dark:border-zinc-700 flex items-center justify-between">
                                                     <div className="min-w-0 flex-1">
                                                         <p className="text-[12px] font-black text-slate-950 dark:text-white truncate">{getProviderName(exitProviderId)}</p>
                                                     </div>
-                                                    <button type="button" onClick={() => setExitProviderId('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-lg ml-2 border border-black dark:border-zinc-700 shadow-sm">Trocar</button>
+                                                    <button type="button" onClick={() => setExitProviderId('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-sm ml-2 border border-black dark:border-zinc-700 shadow-sm">Trocar</button>
                                                 </div>
                                             ) : (
                                                 <>
@@ -1734,7 +1734,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                         <input
                                                             type="text"
                                                             placeholder="Buscar profissional..."
-                                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-xl md:rounded-2xl p-3 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-950 dark:text-white"
+                                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm md:rounded-sm p-3 text-sm font-black outline-none focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white text-slate-950 dark:text-white"
                                                             value={providerSearch}
                                                             onChange={e => setProviderSearch(e.target.value)}
                                                         />
@@ -1742,7 +1742,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                     </div>
 
                                                     {providerSearch && (
-                                                        <div className="absolute z-30 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                                                        <div className="absolute z-30 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-sm shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                                                             {filteredProviderOptions.length > 0 ? filteredProviderOptions.map(p => (
                                                                 <button
                                                                     key={p.id}
@@ -1769,8 +1769,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             </div>
 
                             <div className="flex flex-col-reverse md:flex-row gap-3 pt-4">
-                                <button type="button" onClick={closeModal} className="w-full md:flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[11px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-3xl transition-colors">Cancelar</button>
-                                <button type="submit" className={`w-full md:flex-[2] py-4 ${modalType === 'ENTRY' ? 'bg-emerald-600' : 'bg-rose-600'} text-white rounded-3xl font-black uppercase text-xs md:text-sm tracking-widest shadow-xl active:scale-95 transition-all`}>Confirmar {modalType === 'ENTRY' ? 'Entrada' : 'Baixa'}</button>
+                                <button type="button" onClick={closeModal} className="w-full md:flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[11px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors">Cancelar</button>
+                                <button type="submit" className={`w-full md:flex-[2] py-4 ${modalType === 'ENTRY' ? 'bg-emerald-600' : 'bg-rose-600'} text-white rounded-sm font-black uppercase text-xs md:text-sm tracking-widest shadow-xl active:scale-95 transition-all`}>Confirmar {modalType === 'ENTRY' ? 'Entrada' : 'Baixa'}</button>
                             </div>
                         </form>
                     </div>
@@ -1780,27 +1780,27 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* EDIT PRICE MODAL */}
             {modalType === 'EDIT_PRICE' && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700">
                         <div className="px-5 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-indigo-600 text-white flex-shrink-0">
                             <h3 className="font-black text-base uppercase tracking-tight">Ajustar Preço de Venda</h3>
                             <button onClick={closeModal} className="text-white hover:text-zinc-200 p-1"><X size={24} /></button>
                         </div>
                         <form onSubmit={handleUpdatePrice} className="p-5 md:p-6 space-y-4 bg-white dark:bg-zinc-900">
-                            <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-xl border-2 border-black dark:border-zinc-700">
+                            <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-sm border-2 border-black dark:border-zinc-700">
                                 <p className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase mb-1">Produto</p>
                                 <p className="text-sm font-black text-slate-950 dark:text-white">{getSelectedItem()?.name}</p>
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Novo Valor de Venda (R$)</label>
-                                <input type="number" step="0.01" required autoFocus className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-4 text-2xl font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" value={newPrice} onChange={e => setNewPrice(e.target.value)} />
+                                <input type="number" step="0.01" required autoFocus className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-4 text-2xl font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all" value={newPrice} onChange={e => setNewPrice(e.target.value)} />
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Motivo do Reajuste</label>
-                                <textarea className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-2xl p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" rows={2} placeholder="Ex: Atualização de mercado..." value={priceNote} onChange={e => setPriceNote(e.target.value)} />
+                                <textarea className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 placeholder:text-slate-400" rows={2} placeholder="Ex: Atualização de mercado..." value={priceNote} onChange={e => setPriceNote(e.target.value)} />
                             </div>
                             <div className="flex gap-3 pt-2 pb-2">
-                                <button type="button" onClick={closeModal} className="flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-3xl transition-colors">Voltar</button>
-                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Salvar Preço</button>
+                                <button type="button" onClick={closeModal} className="flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors">Voltar</button>
+                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Salvar Preço</button>
                             </div>
                         </form>
                     </div>
@@ -1810,23 +1810,23 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* HISTORY MODAL (SINGLE ITEM) */}
             {modalType === 'HISTORY' && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[85vh] border-2 border-black dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[85vh] border-2 border-black dark:border-zinc-700">
                         <div className="px-5 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-zinc-950 dark:bg-black text-white">
                             <h3 className="font-black text-base uppercase tracking-widest">Histórico do Produto</h3>
                             <button onClick={closeModal} className="text-white hover:text-zinc-200 p-1"><X size={24} /></button>
                         </div>
                         <div className="p-4 bg-slate-50 dark:bg-zinc-800 border-b border-black dark:border-zinc-700">
                             <h4 className="font-black text-slate-950 dark:text-white text-sm">{getSelectedItem()?.name}</h4>
-                            <div className="flex p-1 bg-slate-200 dark:bg-zinc-900 rounded-xl mt-3 border border-black/10 dark:border-zinc-700">
-                                <button onClick={() => setHistoryTab('USAGE')} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${historyTab === 'USAGE' ? 'bg-white dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}>Movimentações</button>
-                                <button onClick={() => setHistoryTab('PRICE')} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${historyTab === 'PRICE' ? 'bg-white dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}>Preços</button>
+                            <div className="flex p-1 bg-slate-200 dark:bg-zinc-900 rounded-sm mt-3 border border-black/10 dark:border-zinc-700">
+                                <button onClick={() => setHistoryTab('USAGE')} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-sm transition-all ${historyTab === 'USAGE' ? 'bg-white dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}>Movimentações</button>
+                                <button onClick={() => setHistoryTab('PRICE')} className={`flex-1 py-2 text-[10px] font-black uppercase rounded-sm transition-all ${historyTab === 'PRICE' ? 'bg-white dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-400'}`}>Preços</button>
                             </div>
                         </div>
                         <div className="p-4 overflow-y-auto flex-1 bg-white dark:bg-zinc-900 scrollbar-hide">
                             {historyTab === 'USAGE' && (
                                 <div className="space-y-2">
                                     {(getSelectedItem()?.usageHistory || []).slice().reverse().map((log, idx) => (
-                                        <div key={idx} className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-black/10 dark:border-zinc-700 flex justify-between items-center">
+                                        <div key={idx} className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-sm border border-black/10 dark:border-zinc-700 flex justify-between items-center">
                                             <div className="min-w-0 flex-1">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${log.type === 'AJUSTE_ENTRADA' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400' : 'bg-slate-200 dark:bg-zinc-700 text-slate-950 dark:text-white'}`}>{log.type.replace('_', ' ')}</span>
@@ -1841,12 +1841,12 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             )}
                             {historyTab === 'PRICE' && (
                                 <div className="space-y-3">
-                                    <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border-2 border-emerald-200 dark:border-emerald-800 flex justify-between items-center shadow-sm">
+                                    <div className="p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-sm border-2 border-emerald-200 dark:border-emerald-800 flex justify-between items-center shadow-sm">
                                         <div><p className="text-[10px] font-black text-slate-950 dark:text-white uppercase">Preço Atual</p><p className="text-xs text-slate-950 dark:text-white font-bold">Em vigor</p></div>
                                         <p className="text-lg font-black text-slate-950 dark:text-white">R$ {getSelectedItem()?.price?.toFixed(2)}</p>
                                     </div>
                                     {(getSelectedItem()?.priceHistory || []).slice().reverse().map((hist, idx) => (
-                                        <div key={idx} className="p-3 bg-white dark:bg-zinc-800 border border-black/10 dark:border-zinc-700 rounded-2xl flex justify-between items-center">
+                                        <div key={idx} className="p-3 bg-white dark:bg-zinc-800 border border-black/10 dark:border-zinc-700 rounded-sm flex justify-between items-center">
                                             <div><p className="text-xs font-black text-slate-950 dark:text-white">R$ {hist.price.toFixed(2)}</p><p className="text-[9px] text-slate-950 dark:text-white font-bold uppercase">Cadastrado em {new Date(hist.date).toLocaleDateString()}</p></div>
                                             <p className="text-[9px] font-black text-slate-950 dark:text-white italic">{hist.note}</p>
                                         </div>
@@ -1860,19 +1860,19 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             {/* BEST SELLERS MODAL */}
             {modalType === 'BEST_SELLERS' && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-black dark:border-zinc-700 flex flex-col max-h-[90vh]">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-black dark:border-zinc-700 flex flex-col max-h-[90vh]">
                         <div className="px-6 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-amber-500 text-black">
                             <div className="flex items-center gap-2">
                                 <TrendingUp size={24} />
                                 <h3 className="font-black text-base uppercase tracking-widest">Relatório: Mais Vendidos</h3>
                             </div>
                             <div className="flex items-center gap-4">
-                                <button onClick={handlePrintBestSellers} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 hover:bg-black/20 rounded-xl text-black font-black uppercase text-xs transition-colors"><Printer size={14} /> Imprimir</button>
+                                <button onClick={handlePrintBestSellers} className="flex items-center gap-1.5 px-3 py-1.5 bg-black/10 hover:bg-black/20 rounded-sm text-black font-black uppercase text-xs transition-colors"><Printer size={14} /> Imprimir</button>
                                 <button onClick={closeModal} className="text-black hover:text-black/70"><X size={24} /></button>
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto bg-white dark:bg-zinc-900 p-4 scrollbar-hide">
-                            <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-zinc-800">
+                            <div className="overflow-x-auto rounded-sm border border-slate-200 dark:border-zinc-800">
                                 <table className="w-full text-sm text-left">
                                     <thead className="text-[10px] text-slate-800 dark:text-slate-300 font-black uppercase bg-slate-50 dark:bg-zinc-800 border-b border-slate-200 dark:border-zinc-700 sticky top-0 z-10">
                                         <tr>

@@ -183,7 +183,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-bold transition-all relative group ${isActive
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-sm text-sm font-bold transition-all relative group ${isActive
                   ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white shadow-sm border border-slate-200 dark:border-zinc-700'
                   : 'hover:bg-slate-50 dark:hover:bg-zinc-800/50 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
                   } ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
@@ -205,7 +205,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="p-4 border-t border-slate-100 dark:border-zinc-800 space-y-1">
           <button
             onClick={toggleTheme}
-            className={`flex items-center gap-3 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all w-full rounded-xl ${isDarkMode ? 'text-yellow-400 hover:bg-zinc-800' : 'text-indigo-600 hover:bg-indigo-50'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+            className={`flex items-center gap-3 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all w-full rounded-sm ${isDarkMode ? 'text-yellow-400 hover:bg-zinc-800' : 'text-indigo-600 hover:bg-indigo-50'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
             title={isSidebarCollapsed ? (isDarkMode ? 'Modo Claro' : 'Modo Escuro') : ''}
           >
             {isDarkMode ? <Sun size={18} className="flex-shrink-0" /> : <Moon size={18} className="flex-shrink-0" />}
@@ -216,7 +216,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
           <button
             onClick={() => onNavigate(ViewState.SETTINGS)}
-            className={`flex items-center gap-3 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all w-full rounded-xl ${currentView === ViewState.SETTINGS ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+            className={`flex items-center gap-3 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all w-full rounded-sm ${currentView === ViewState.SETTINGS ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'} ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
             title={isSidebarCollapsed ? 'Ajustes' : ''}
           >
             <Settings size={18} className="flex-shrink-0" />
@@ -225,7 +225,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
           <button
             onClick={onLogout}
-            className={`flex items-center gap-3 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all w-full rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
+            className={`flex items-center gap-3 px-4 py-2 text-xs font-black uppercase tracking-widest transition-all w-full rounded-sm text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 ${isSidebarCollapsed ? 'justify-center px-0' : ''}`}
             title={isSidebarCollapsed ? 'Sair' : ''}
           >
             <LogOut size={18} className="flex-shrink-0" />
@@ -263,7 +263,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 key={item.id}
                 onClick={() => handleNavigate(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-base font-black transition-all ${isActive
+                className={`w-full flex items-center gap-3 px-4 py-4 rounded-sm text-base font-black transition-all ${isActive
                   ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
                   : 'text-slate-600 dark:text-slate-400 active:bg-slate-50 dark:active:bg-zinc-800'
                   }`}
@@ -278,7 +278,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
           <button
             onClick={toggleTheme}
-            className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-base font-black transition-all ${isDarkMode ? 'text-yellow-400 active:bg-zinc-800' : 'text-indigo-600 active:bg-indigo-50'}`}
+            className={`w-full flex items-center gap-3 px-4 py-4 rounded-sm text-base font-black transition-all ${isDarkMode ? 'text-yellow-400 active:bg-zinc-800' : 'text-indigo-600 active:bg-indigo-50'}`}
           >
             {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             {isDarkMode ? 'Modo Claro' : 'Modo Escuro'}
@@ -288,7 +288,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
           <button
             onClick={() => handleNavigate(ViewState.SETTINGS)}
-            className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-base font-black transition-all ${currentView === ViewState.SETTINGS
+            className={`w-full flex items-center gap-3 px-4 py-4 rounded-sm text-base font-black transition-all ${currentView === ViewState.SETTINGS
               ? 'bg-slate-100 dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700'
               : 'text-slate-600 dark:text-slate-400 active:bg-slate-50 dark:active:bg-zinc-800'
               }`}
@@ -299,7 +299,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
           <button
             onClick={onLogout}
-            className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl text-base font-black transition-all text-rose-500 active:bg-rose-50 dark:active:bg-rose-900/10"
+            className="w-full flex items-center gap-3 px-4 py-4 rounded-sm text-base font-black transition-all text-rose-500 active:bg-rose-50 dark:active:bg-rose-900/10"
           >
             <LogOut size={20} />
             Sair da Conta
@@ -313,7 +313,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-xl transition-colors border ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-yellow-400' : 'bg-slate-50 border-slate-100 text-indigo-600'}`}
+              className={`p-2 rounded-sm transition-colors border ${isDarkMode ? 'bg-zinc-800 border-zinc-700 text-yellow-400' : 'bg-slate-50 border-slate-100 text-indigo-600'}`}
             >
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
@@ -327,7 +327,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="flex justify-end">
           <button
             onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-xl transition-colors border border-slate-100 dark:border-zinc-700"
+            className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-sm transition-colors border border-slate-100 dark:border-zinc-700"
           >
             <Menu size={24} className="text-slate-700 dark:text-slate-300" />
           </button>
@@ -337,7 +337,7 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* Main Content */}
       <main className={`flex-1 ${[ViewState.AGENDA, ViewState.TRAFEGO_PAGO].includes(currentView) ? 'overflow-hidden p-0 pt-20 sm:pt-0' : 'overflow-y-auto overflow-x-hidden sm:overflow-auto sm:pt-6 sm:px-6 sm:pb-6 p-4 pt-20'}`}>
         {isSimulating && (
-          <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-2xl flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
+          <div className="mb-6 bg-indigo-600 dark:bg-indigo-500 text-white px-6 py-3 rounded-sm flex items-center justify-between shadow-lg animate-in slide-in-from-top duration-300">
             <div className="flex items-center gap-3">
               <Sparkles className="animate-pulse" size={20} />
               <p className="text-sm font-black uppercase tracking-widest">
@@ -346,7 +346,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
             <button
               onClick={onStopSimulation}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-xs font-black uppercase tracking-widest transition-colors"
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-sm text-xs font-black uppercase tracking-widest transition-colors"
             >
               Sair da Simulação
             </button>

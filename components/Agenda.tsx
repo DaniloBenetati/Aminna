@@ -1588,7 +1588,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         setDateRef(current);
                         setTimeView('day');
                     }}
-                    className={`w-6 h-6 flex items-center justify-center text-[8px] font-black rounded-lg transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300'}`}
+                    className={`w-6 h-6 flex items-center justify-center text-[8px] font-black rounded-sm transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-lg' : 'hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-slate-300'}`}
                 >
                     {d}
                 </button>
@@ -1603,11 +1603,11 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
 
         return (
-            <div className="p-2 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm animate-in fade-in duration-300">
+            <div className="p-2 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm animate-in fade-in duration-300">
                 <div className="flex justify-between items-center mb-2">
-                    <button onClick={() => navigateMonth('prev')} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronLeft size={16} /></button>
+                    <button onClick={() => navigateMonth('prev')} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors"><ChevronLeft size={16} /></button>
                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-white">{monthName}</span>
-                    <button onClick={() => navigateMonth('next')} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"><ChevronRight size={16} /></button>
+                    <button onClick={() => navigateMonth('next')} className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors"><ChevronRight size={16} /></button>
                 </div>
                 <div className="grid grid-cols-7 gap-1 text-center mb-2">
                     {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => <span key={`${d}-${i}`} className="text-[8px] font-black text-slate-400 uppercase">{d}</span>)}
@@ -1635,7 +1635,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
 
         return (
-            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-2 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-2 animate-in slide-in-from-bottom-4 duration-500">
                 <div className="px-5 py-3 border-b border-slate-100 dark:border-zinc-800">
                     <h3 className="text-[9px] font-black uppercase tracking-widest mb-2 text-slate-900 dark:text-white">Profissionais</h3>
                     <div className="relative">
@@ -1643,7 +1643,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <input
                             type="text"
                             placeholder="Pesquisar..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 text-slate-900 dark:text-white"
+                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm text-[10px] font-bold outline-none focus:border-indigo-500 text-slate-900 dark:text-white"
                             value={sidebarSearch}
                             onChange={e => setSidebarSearch(e.target.value)}
                         />
@@ -1816,7 +1816,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         };
 
         return (
-            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-2 animate-in slide-in-from-bottom-4 duration-500">
+            <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden mt-2 animate-in slide-in-from-bottom-4 duration-500">
                 <div className="px-5 py-3 border-b border-slate-100 dark:border-zinc-800">
                     <h3 className="text-[9px] font-black uppercase tracking-widest mb-2 text-slate-900 dark:text-white">Serviços</h3>
                     <div className="relative">
@@ -1824,7 +1824,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <input
                             type="text"
                             placeholder="Pesquisar..."
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-bold outline-none focus:border-indigo-500 text-slate-900 dark:text-white"
+                            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm text-[10px] font-bold outline-none focus:border-indigo-500 text-slate-900 dark:text-white"
                             value={serviceSidebarSearch}
                             onChange={e => setServiceSidebarSearch(e.target.value)}
                         />
@@ -1864,7 +1864,7 @@ export const Agenda: React.FC<AgendaProps> = ({
         <div className="flex h-full gap-4 p-4 pb-20 md:pb-0 font-sans">
             {isReloading && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[1000] flex items-center justify-center animate-in fade-in duration-300">
-                    <div className="bg-white dark:bg-zinc-900 px-8 py-6 rounded-[2.5rem] shadow-2xl border-2 border-indigo-500 flex flex-col items-center gap-4">
+                    <div className="bg-white dark:bg-zinc-900 px-8 py-6 rounded-sm shadow-2xl border-2 border-indigo-500 flex flex-col items-center gap-4">
                         <Loader2 size={40} className="text-indigo-600 animate-spin" />
                         <h2 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-widest">Atualizando...</h2>
                         <p className="text-[10px] font-bold text-slate-500 uppercase">Sincronizando com o banco de dados</p>
@@ -1876,9 +1876,9 @@ export const Agenda: React.FC<AgendaProps> = ({
                 <MiniCalendar />
 
                 {/* Controls below calendar */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm p-3 space-y-3 animate-in fade-in duration-300">
+                <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm p-3 space-y-3 animate-in fade-in duration-300">
                     {/* View selector: Dia / Mês / Ano / Período */}
-                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-xl border border-slate-200 dark:border-zinc-700">
+                    <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
                             <button
                                 key={v}
@@ -1890,7 +1890,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         if (v !== 'custom') setDateRef(new Date());
                                     }
                                 }}
-                                className={`flex-1 px-1 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-wider transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                className={`flex-1 px-1 py-1.5 rounded-sm text-[8px] font-black uppercase tracking-wider transition-all ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                             >
                                 {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Per.'}
                             </button>
@@ -1903,25 +1903,25 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <input
                             type="text"
                             placeholder="Filtrar cliente..."
-                            className="w-full pl-7 pr-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl text-[9px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                            className="w-full pl-7 pr-3 py-2 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm text-[9px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
 
                     {/* Zoom Controls */}
-                    <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-800 p-1 rounded-xl border border-slate-100 dark:border-zinc-700">
-                        <button onClick={() => setRowHeight(prev => Math.max(25, prev - 5))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Diminuir Altura"><ZoomOut size={14} /></button>
-                        <button onClick={() => setRowHeight(prev => Math.min(200, prev + 5))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Aumentar Altura"><ZoomIn size={14} /></button>
+                    <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-800 p-1 rounded-sm border border-slate-100 dark:border-zinc-700">
+                        <button onClick={() => setRowHeight(prev => Math.max(25, prev - 5))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Diminuir Altura"><ZoomOut size={14} /></button>
+                        <button onClick={() => setRowHeight(prev => Math.min(200, prev + 5))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Aumentar Altura"><ZoomIn size={14} /></button>
                         <div className="h-4 w-px bg-slate-200 dark:bg-zinc-700 mx-0.5"></div>
-                        <button onClick={() => setZoomLevel(prev => Math.max(0.3, prev - 0.05))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Estreitar Colunas"><ChevronLeft size={14} /></button>
-                        <button onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.05))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-lg text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Alargar Colunas"><ChevronRight size={14} /></button>
+                        <button onClick={() => setZoomLevel(prev => Math.max(0.3, prev - 0.05))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Estreitar Colunas"><ChevronLeft size={14} /></button>
+                        <button onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.05))} className="flex-1 flex items-center justify-center p-1.5 hover:bg-white dark:hover:bg-zinc-700 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all" title="Alargar Colunas"><ChevronRight size={14} /></button>
                     </div>
 
                     {/* Action Buttons */}
                     <button
                         onClick={() => setIsFinanceModalOpen(true)}
-                        className="w-full flex items-center justify-center gap-2 bg-slate-50 dark:bg-zinc-800 text-emerald-600 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm active:scale-95 transition-all text-[9px] font-black uppercase tracking-wider"
+                        className="w-full flex items-center justify-center gap-2 bg-slate-50 dark:bg-zinc-800 text-emerald-600 px-3 py-2.5 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm active:scale-95 transition-all text-[9px] font-black uppercase tracking-wider"
                         title="Resumo Financeiro"
                     >
                         <Wallet size={14} /> Financeiro
@@ -1929,14 +1929,14 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                     <button
                         onClick={() => setIsWhatsAppModalOpen(true)}
-                        className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+                        className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2.5 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
                     >
                         <MessageCircle size={14} /> Confirmações
                     </button>
                     
                     <button
                         onClick={() => setHideFullyBlocked(!hideFullyBlocked)}
-                        className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all border ${
+                        className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-sm active:scale-95 transition-all border ${
                             hideFullyBlocked 
                                 ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 border-indigo-200 dark:border-indigo-800' 
                                 : 'bg-slate-50 dark:bg-zinc-800 text-slate-500 border-slate-200 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700'
@@ -1951,7 +1951,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
             <div className="flex-1 flex flex-col space-y-0 min-w-0">
                 {/* Mobile Header Controls (visible only on mobile / small screens) */}
-                <div className="md:hidden flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-3 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors mb-4">
+                <div className="md:hidden flex items-center justify-between gap-2 bg-white dark:bg-zinc-900 p-3 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm transition-colors mb-4">
                     <button
                         onClick={() => setIsMobileDrawerOpen(true)}
                         className={`flex p-2.5 rounded-full transition-all border shadow-sm ${isMobileDrawerOpen ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
@@ -1959,7 +1959,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <Filter size={16} />
                     </button>
 
-                    <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-800 border border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-2xl flex-1 justify-between">
+                    <div className="flex items-center gap-1 bg-slate-50 dark:bg-zinc-800 border border-slate-100 dark:border-zinc-700 px-2 py-1.5 rounded-sm flex-1 justify-between">
                         <button onClick={() => navigateDate('prev')} className="p-1.5 text-slate-400"><ChevronLeft size={14} /></button>
                         <span className="text-[9px] font-black uppercase text-slate-900 dark:text-white tracking-widest whitespace-nowrap">{getDateLabel()}</span>
                         <button onClick={() => navigateDate('next')} className="p-1.5 text-slate-400"><ChevronRight size={14} /></button>
@@ -1975,21 +1975,21 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                     <button
                         onClick={() => setIsWhatsAppModalOpen(true)}
-                        className="flex items-center gap-1.5 bg-emerald-500 text-white px-3 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+                        className="flex items-center gap-1.5 bg-emerald-500 text-white px-3 py-2.5 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
                     >
                         <MessageCircle size={14} />
                     </button>
 
                     <button
                         onClick={() => handleNewAppointment()}
-                        className="flex items-center gap-1.5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-3 py-2.5 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
+                        className="flex items-center gap-1.5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 px-3 py-2.5 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-lg active:scale-95 transition-all"
                     >
                         <Plus size={14} />
                     </button>
                 </div>
 
                 {/* Agenda Grid */}
-                <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col relative transition-colors">
+                <div className="flex-1 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col relative transition-colors">
 
                     {/* Mobile Day List — visible only on < md (including mobile Portrait) */}
                     {timeView === 'day' && (
@@ -2014,7 +2014,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 const isOnVacation = isVacationPeriod || isDayOff;
 
                                 return (
-                                    <div key={p.id} className="rounded-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden">
+                                    <div key={p.id} className="rounded-sm border border-slate-200 dark:border-zinc-800 overflow-hidden">
                                         {/* Provider header */}
                                         <div className={`flex items-center gap-3 px-4 py-3 ${isOnVacation ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-slate-50 dark:bg-zinc-800'}`}>
                                             <Avatar src={p.avatar} name={p.name} size="w-8 h-8" />
@@ -2037,7 +2037,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 text-[9px] font-black px-2 py-0.5 rounded-full">{provAppts.length}</span>
                                             <button
                                                 onClick={() => handleNewAppointment({ providerId: p.id, date: gridDateStr })}
-                                                className="p-1.5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-lg shadow active:scale-95 transition-all"
+                                                className="p-1.5 bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 rounded-sm shadow active:scale-95 transition-all"
                                             >
                                                 <Plus size={14} />
                                             </button>
@@ -2049,7 +2049,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 {isDayOff ? (
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleRemoveDayOff(p.id, gridDateStr); }}
-                                                        className="mx-auto flex flex-col items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-all active:scale-95 p-2 rounded-xl bg-amber-100/40 dark:bg-amber-950/20"
+                                                        className="mx-auto flex flex-col items-center gap-1 text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 transition-all active:scale-95 p-2 rounded-sm bg-amber-100/40 dark:bg-amber-950/20"
                                                     >
                                                         <p className="text-[10px] font-black uppercase tracking-widest">
                                                             Folga neste dia
@@ -2083,7 +2083,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         <button
                                                             key={appt.id}
                                                             onClick={() => handleAppointmentClick(appt)}
-                                                            className="w-full text-left p-3.5 flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200/60 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all"
+                                                            className="w-full text-left p-3.5 flex items-center gap-3 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200/60 dark:border-zinc-800 shadow-sm active:scale-[0.98] transition-all"
                                                         >
                                                             <div className={`w-1.5 h-10 rounded-full flex-shrink-0 ${statusColor} shadow-lg shadow-${statusColor.split('[')[1]?.split(']')[0] || 'indigo'}/20`} />
                                                             <div className="flex-1 min-w-0">
@@ -2268,7 +2268,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             >
                                                                 {isFullDayBlock && hour === '12:00' && (
                                                                     <div className="absolute inset-x-0 top-0 bottom-[-1000px] flex items-start justify-center pt-20 pointer-events-none z-20">
-                                                                        <div className={`bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 ${isOnVacation ? 'border-amber-400' : 'border-slate-300 dark:border-zinc-700'} px-3 py-1.5 rounded-xl shadow-xl transform -rotate-12 border-dashed`}>
+                                                                        <div className={`bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-2 ${isOnVacation ? 'border-amber-400' : 'border-slate-300 dark:border-zinc-700'} px-3 py-1.5 rounded-sm shadow-xl transform -rotate-12 border-dashed`}>
                                                                             <p className={`text-[8px] font-black ${isOnVacation ? 'text-amber-600' : 'text-slate-500 dark:text-slate-400'} uppercase tracking-[0.2em]`}>
                                                                                 {isOnVacation ? (isDayOff ? 'Em Folga' : 'Em Férias') : 'Agenda Bloqueada'}
                                                                             </p>
@@ -2359,7 +2359,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                             <div
                                                                                 onClick={() => handleAppointmentClick(appt)}
                                                                                 className={`h-full w-full group text-left cursor-pointer transition-all active:scale-95 shadow-sm border
-                                                                    ${rowHeight < 50 ? 'p-0.5 rounded-md' : rowHeight < 75 ? 'p-1 rounded-lg' : 'p-1.5 rounded-xl'}
+                                                                    ${rowHeight < 50 ? 'p-0.5 rounded-sm' : rowHeight < 75 ? 'p-1 rounded-sm' : 'p-1.5 rounded-sm'}
                                                                     ${appt.whatsappResponseNeeded ? 'bg-amber-400 border-amber-500 text-amber-950' :
                                                                                     (appt.isRemake || appt.paymentMethod === 'Refazer') ? 'bg-fuchsia-600 border-fuchsia-600 text-white' :
                                                                                         localStatus === 'Concluído' ? 'bg-[#E66A6E] border-[#E66A6E] text-white' :
@@ -2418,7 +2418,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                 )}
 
                                                                                 {/* HOVER TOOLTIP */}
-                                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-[420px] bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-3xl shadow-2xl p-6 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
+                                                                                <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none z-[999] top-4 left-full ml-2 w-[420px] bg-white dark:bg-zinc-900 border-2 border-slate-900 dark:border-zinc-700 rounded-sm shadow-2xl p-6 animate-in fade-in slide-in-from-left-2 duration-200 hidden md:block">
                                                                                     <div className="flex items-center gap-3 mb-3 pb-3 border-b border-slate-100 dark:border-zinc-800">
                                                                                         <div className="w-1.5 h-10 rounded-full bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.4)]"></div>
                                                                                         <div className="flex flex-col">
@@ -2499,7 +2499,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                                                 </span>
                                                                                                             </div>
                                                                                                             {item.ca.observation && (
-                                                                                                                <div className="mt-2 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                                                                                <div className="mt-2 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                                                                                     <p className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">Justificativa:</p>
                                                                                                                     <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 leading-tight whitespace-pre-wrap">
                                                                                                                         {item.ca.observation}
@@ -2577,7 +2577,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     </div>
                                     <DragOverlay modifiers={[restrictToWindowEdges]}>
                                         {activeDragId ? (
-                                            <div className="w-40 h-20 bg-indigo-600/20 border-2 border-indigo-600 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                                            <div className="w-40 h-20 bg-indigo-600/20 border-2 border-indigo-600 rounded-sm flex items-center justify-center backdrop-blur-sm">
                                                 <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Movendo...</p>
                                             </div>
                                         ) : null}
@@ -2605,7 +2605,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                         // Empty slots for previous month
                                         for (let i = 0; i < firstDay; i++) {
-                                            days.push(<div key={`empty-${i}`} className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-2xl border border-transparent"></div>);
+                                            days.push(<div key={`empty-${i}`} className="bg-slate-50/50 dark:bg-zinc-800/30 rounded-sm border border-transparent"></div>);
                                         }
 
                                         // Days of month
@@ -2626,7 +2626,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         setDateRef(new Date(year, month, day));
                                                         setTimeView('day');
                                                     }}
-                                                    className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-lg md:rounded-2xl p-1 md:p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-0.5 md:gap-1 min-h-[50px] md:min-h-[80px]`}
+                                                    className={`relative group bg-white dark:bg-zinc-900 border ${isToday ? 'border-indigo-500 ring-1 ring-indigo-500 shadow-md shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-indigo-700'} rounded-sm md:rounded-sm p-1 md:p-2 transition-all cursor-pointer hover:shadow-md flex flex-col gap-0.5 md:gap-1 min-h-[50px] md:min-h-[80px]`}
                                                 >
                                                     <span className={`text-[9px] md:text-xs font-black ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-700 dark:text-slate-300'}`}>{day}</span>
 
@@ -2647,7 +2647,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                                                     {/* Hover Details Overlay */}
                                                     {dayApps.length > 0 && (
-                                                        <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto z-[150] bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border border-slate-700 rounded-3xl shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-200 hidden md:block">
+                                                        <div className="absolute opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto z-[150] bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 bg-slate-900/95 dark:bg-black/95 backdrop-blur-md border border-slate-700 rounded-sm shadow-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-200 hidden md:block">
                                                             <div className="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
                                                                 <span className="text-[10px] font-black text-white uppercase tracking-widest">{new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</span>
                                                                 <span className="bg-indigo-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">{dayApps.length} Atendimentos</span>
@@ -2726,7 +2726,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                     setDateRef(newDate);
                                                     setTimeView('month');
                                                 }}
-                                                className={`bg-white dark:bg-zinc-900 border ${isCurrentMonth ? 'border-indigo-500 shadow-lg shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-800'} rounded-3xl p-5 hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer transition-all group flex flex-col justify-between min-h-[160px]`}
+                                                className={`bg-white dark:bg-zinc-900 border ${isCurrentMonth ? 'border-indigo-500 shadow-lg shadow-indigo-500/10' : 'border-slate-200 dark:border-zinc-800'} rounded-sm p-5 hover:border-indigo-500 dark:hover:border-indigo-500 cursor-pointer transition-all group flex flex-col justify-between min-h-[160px]`}
                                             >
                                                 <div className="flex justify-between items-start">
                                                     <div>
@@ -2805,7 +2805,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             </h2>
                             <button
                                 onClick={() => setIsMobileDrawerOpen(false)}
-                                className="p-2 rounded-xl text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
+                                className="p-2 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
                             >
                                 <X size={18} />
                             </button>
@@ -2820,7 +2820,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <div className="p-4 border-t border-slate-100 dark:border-zinc-800">
                             <button
                                 onClick={() => setIsMobileDrawerOpen(false)}
-                                className="w-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                className="w-full bg-zinc-950 dark:bg-white text-white dark:text-zinc-950 py-3 rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                             >
                                 Aplicar Filtros
                             </button>
@@ -2833,7 +2833,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {
                 isCustomerSelectionOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[80vh]">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[80vh]">
                             <div className="px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                                 <h3 className="font-black text-base uppercase tracking-widest flex items-center gap-2">
                                     <User size={18} /> Selecione a Cliente
@@ -2848,7 +2848,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         type="text"
                                         autoFocus
                                         placeholder="Buscar por nome ou telefone..."
-                                        className="w-full pl-10 pr-4 py-3 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 bg-white dark:bg-zinc-900 uppercase placeholder:text-slate-400"
+                                        className="w-full pl-10 pr-4 py-3 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 bg-white dark:bg-zinc-900 uppercase placeholder:text-slate-400"
                                         value={customerSearchTerm}
                                         onChange={(e) => setCustomerSearchTerm(e.target.value)}
                                     />
@@ -2866,7 +2866,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <input
                                             type="text"
                                             placeholder="Nome Completo"
-                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
+                                            className="w-full px-3 py-2 rounded-sm border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
                                             value={quickRegisterData.name}
                                             onChange={e => setQuickRegisterData({ ...quickRegisterData, name: e.target.value })}
                                             autoFocus
@@ -2874,21 +2874,21 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <input
                                             type="tel"
                                             placeholder="Telefone / WhatsApp"
-                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
+                                            className="w-full px-3 py-2 rounded-sm border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
                                             value={quickRegisterData.phone}
                                             onChange={e => setQuickRegisterData({ ...quickRegisterData, phone: e.target.value })}
                                         />
                                         <input
                                             type="text"
                                             placeholder="CPF (Opcional)"
-                                            className="w-full px-3 py-2 rounded-xl border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
+                                            className="w-full px-3 py-2 rounded-sm border border-indigo-100 dark:border-zinc-700 text-xs font-bold focus:outline-none focus:border-indigo-500 uppercase text-slate-900 dark:text-white bg-white dark:bg-zinc-800"
                                             value={quickRegisterData.cpf || ''}
                                             onChange={e => setQuickRegisterData({ ...quickRegisterData, cpf: e.target.value })}
                                         />
                                         <button
                                             type="submit"
                                             disabled={!quickRegisterData.name || !quickRegisterData.phone || isRegisteringClient}
-                                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-sm text-xs font-black uppercase tracking-widest transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                         >
                                             {isRegisteringClient ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                                             {isRegisteringClient ? 'Salvando...' : 'Salvar e Agendar'}
@@ -2904,7 +2904,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 setQuickRegisterData(prev => ({ ...prev, name: customerSearchTerm }));
                                             }
                                         }}
-                                        className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-3 py-1.5 rounded-lg transition-colors"
+                                        className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 px-3 py-1.5 rounded-sm transition-colors"
                                     >
                                         <Plus size={12} /> Cadastrar Nova Cliente
                                     </button>
@@ -2917,7 +2917,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                         <button
                                             key={c.id}
                                             onClick={() => handleSelectCustomerForAppointment(c)}
-                                            className="w-full text-left p-4 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-2xl transition-all border-b border-slate-50 dark:border-zinc-800 last:border-none flex items-center justify-between group"
+                                            className="w-full text-left p-4 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-sm transition-all border-b border-slate-50 dark:border-zinc-800 last:border-none flex items-center justify-between group"
                                         >
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
@@ -2947,7 +2947,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {
                 isWhatsAppModalOpen && (
                     <div className="fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-                        <div className="bg-slate-100 dark:bg-zinc-900 rounded-3xl shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[85vh]">
+                        <div className="bg-slate-100 dark:bg-zinc-900 rounded-sm shadow-2xl w-full md:max-w-4xl overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 flex flex-col max-h-[85vh]">
                             <div className="px-6 py-4 bg-slate-950 dark:bg-black text-white flex justify-between items-center flex-shrink-0">
                                 <div>
                                     <h3 className="font-black text-sm uppercase tracking-widest flex items-center gap-2">
@@ -2967,11 +2967,11 @@ export const Agenda: React.FC<AgendaProps> = ({
                                     const sortedApps = (custApps as Appointment[]).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 
                                     return (
-                                        <div key={customerId} className="bg-white dark:bg-zinc-800 p-4 rounded-2xl shadow-sm border border-slate-200 dark:border-zinc-700">
+                                        <div key={customerId} className="bg-white dark:bg-zinc-800 p-4 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-700">
                                             <h4 className="font-black text-slate-900 dark:text-white uppercase text-xs mb-2">{customer.name}</h4>
                                             <div className="space-y-2 mb-4">
                                                 {sortedApps.map(app => (
-                                                    <div key={app.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-900/50 p-2 rounded-xl border border-slate-100 dark:border-zinc-700">
+                                                    <div key={app.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-900/50 p-2 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                         <div className="text-[10px] text-slate-600 dark:text-slate-400 font-bold uppercase flex items-center gap-1.5">
                                                             <span className="text-slate-900 dark:text-white font-black">{new Date(app.date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} {app.time}</span>
                                                             - {app.combinedServiceNames || services.find(s => s.id === app.serviceId)?.name}
@@ -2992,7 +2992,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                             showToast('Mensagem copiada com sucesso!');
                                                         });
                                                     }}
-                                                    className="flex-1 py-2 bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-600 transition-all flex items-center justify-center gap-2 active:scale-95"
+                                                    className="flex-1 py-2 bg-slate-100 dark:bg-zinc-700 text-slate-700 dark:text-slate-200 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-600 transition-all flex items-center justify-center gap-2 active:scale-95"
                                                 >
                                                     <Copy size={14} /> Copiar
                                                 </button>
@@ -3002,7 +3002,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                         const phone = customer.phone.replace(/\D/g, '');
                                                         window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
                                                     }}
-                                                    className="flex-[2] py-2 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
+                                                    className="flex-[2] py-2 bg-emerald-600 text-white rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
                                                 >
                                                     <MessageCircle size={14} /> Enviar
                                                 </button>
@@ -3049,21 +3049,21 @@ export const Agenda: React.FC<AgendaProps> = ({
             {
                 isFinanceModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm overflow-y-auto">
-                        <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl w-full max-w-6xl my-4 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
+                        <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-6xl my-4 overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700 modal-print-content">
                             <div className="px-4 md:px-6 py-4 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
                                 <div className="flex flex-wrap items-center gap-2 md:gap-6">
                                     <h3 className="font-black text-[10px] md:text-base uppercase tracking-widest flex items-center gap-2">
                                         <Wallet size={18} className="text-emerald-400" /> Resumo Financeiro <span className="hidden md:inline">- {dateRef.toLocaleDateString('pt-BR')}</span>
                                     </h3>
 
-                                    <div className="flex items-center gap-1 md:gap-2 bg-white/5 p-1 rounded-2xl border border-white/10">
+                                    <div className="flex items-center gap-1 md:gap-2 bg-white/5 p-1 rounded-sm border border-white/10">
                                         <button
                                             onClick={() => {
                                                 const newDate = new Date(dateRef);
                                                 newDate.setDate(dateRef.getDate() - 1);
                                                 setDateRef(newDate);
                                             }}
-                                            className="p-1 md:p-1.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 text-white/70 hover:text-white"
+                                            className="p-1 md:p-1.5 hover:bg-white/10 rounded-sm transition-all active:scale-90 text-white/70 hover:text-white"
                                             title="Dia Anterior"
                                         >
                                             <ChevronLeft size={16} />
@@ -3076,7 +3076,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                 newDate.setDate(dateRef.getDate() + 1);
                                                 setDateRef(newDate);
                                             }}
-                                            className="p-1 md:p-1.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 text-white/70 hover:text-white"
+                                            className="p-1 md:p-1.5 hover:bg-white/10 rounded-sm transition-all active:scale-90 text-white/70 hover:text-white"
                                             title="Próximo Dia"
                                         >
                                             <ChevronRight size={16} />
@@ -3113,7 +3113,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {/* Block Provider Modal */}
             {isBlockModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[120] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-200 border-2 border-slate-900 dark:border-zinc-700">
                         <div className="px-6 py-5 bg-slate-900 dark:bg-black text-white flex justify-between items-center">
                             <h3 className="font-black text-xs uppercase tracking-[0.2em] flex items-center gap-2">
                                 <Ban size={18} className="text-rose-500" /> Bloquear Agenda
@@ -3126,7 +3126,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                         <div className="p-8 space-y-6">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Profissional</label>
-                                <div className="px-4 py-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border-2 border-slate-100 dark:border-zinc-800 text-sm font-black text-slate-900 dark:text-white uppercase">
+                                <div className="px-4 py-3 bg-slate-50 dark:bg-zinc-800/50 rounded-sm border-2 border-slate-100 dark:border-zinc-800 text-sm font-black text-slate-900 dark:text-white uppercase">
                                     {blockingData.name}
                                 </div>
                             </div>
@@ -3136,7 +3136,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 <select
                                     value={blockingData.reason}
                                     onChange={(e) => setBlockingData({ ...blockingData, reason: e.target.value })}
-                                    className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-[11px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase transition-all"
+                                    className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[11px] font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 uppercase transition-all"
                                 >
                                     {["Doença", "Falta sem aviso", "Férias", "Motivo pessoal", "Treinamento", "Outros"].map(r => (
                                         <option key={r} value={r}>{r}</option>
@@ -3146,16 +3146,16 @@ export const Agenda: React.FC<AgendaProps> = ({
 
                             <div>
                                 <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Tipo de Bloqueio</label>
-                                <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 dark:bg-zinc-800/80 rounded-2xl border-2 border-slate-200 dark:border-zinc-800">
+                                <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-100 dark:bg-zinc-800/80 rounded-sm border-2 border-slate-200 dark:border-zinc-800">
                                     <button
                                         onClick={() => setBlockingData({ ...blockingData, type: 'full' })}
-                                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${blockingData.type === 'full' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                        className={`py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${blockingData.type === 'full' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                                     >
                                         Dia Inteiro
                                     </button>
                                     <button
                                         onClick={() => setBlockingData({ ...blockingData, type: 'partial' })}
-                                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${blockingData.type === 'partial' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                                        className={`py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${blockingData.type === 'partial' ? 'bg-white dark:bg-zinc-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                                     >
                                         Parcial
                                     </button>
@@ -3170,7 +3170,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             type="time"
                                             value={blockingData.startTime}
                                             onChange={(e) => setBlockingData({ ...blockingData, startTime: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
                                         />
                                     </div>
                                     <div>
@@ -3179,7 +3179,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             type="time"
                                             value={blockingData.endTime}
                                             onChange={(e) => setBlockingData({ ...blockingData, endTime: e.target.value })}
-                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                                            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-sm font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500"
                                         />
                                     </div>
                                 </div>
@@ -3189,7 +3189,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 <button
                                     onClick={handleConfirmBlock}
                                     disabled={isSubmittingBlock}
-                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
+                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-[0.98] transition-all disabled:opacity-50 flex items-center justify-center gap-3"
                                 >
                                     {isSubmittingBlock ? <Loader2 className="animate-spin" size={18} /> : <CircleCheck size={18} />}
                                     {isSubmittingBlock ? 'Salvando...' : 'Confirmar Bloqueio'}
@@ -3202,7 +3202,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {/* Custom Blocked Customer Alert Modal */}
             {blockedAlert.open && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-sm border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center">
                             <div className="w-20 h-20 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <Ban size={40} className="text-rose-600 dark:text-rose-400" />
@@ -3216,7 +3216,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 Cliente: <span className="text-rose-600 dark:text-rose-400 font-black">{blockedAlert.customerName}</span>
                             </p>
                             
-                            <div className="bg-rose-50/50 dark:bg-rose-950/10 rounded-2xl p-5 border border-rose-100/50 dark:border-rose-900/30 mb-6">
+                            <div className="bg-rose-50/50 dark:bg-rose-950/10 rounded-sm p-5 border border-rose-100/50 dark:border-rose-900/30 mb-6">
                                 <p className="text-[9px] font-black text-rose-500/70 dark:text-rose-400/70 uppercase tracking-widest mb-2">Motivo do Bloqueio:</p>
                                 <p className="text-xs font-black text-rose-950 dark:text-rose-200 italic leading-relaxed">
                                     "{blockedAlert.reason}"
@@ -3229,7 +3229,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             
                             <button
                                 onClick={() => setBlockedAlert({ ...blockedAlert, open: false })}
-                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
+                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
                             >
                                 Entendi
                             </button>
@@ -3240,7 +3240,7 @@ export const Agenda: React.FC<AgendaProps> = ({
             {/* Custom Restriction Alert Modal */}
             {restrictionAlert.open && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-sm border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center">
                             <div className="w-20 h-20 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <ShieldAlert size={40} className="text-amber-600 dark:text-amber-400" />
@@ -3254,14 +3254,14 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 Profissional: <span className="text-rose-600 dark:text-rose-400 font-black">{restrictionAlert.providerName}</span>
                             </p>
                             
-                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-2xl p-5 border border-slate-100 dark:border-zinc-800 mb-6">
+                            <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-sm p-5 border border-slate-100 dark:border-zinc-800 mb-6">
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Motivo da Restrição:</p>
                                 <p className="text-xs font-black text-slate-800 dark:text-slate-200 italic leading-relaxed">
                                     "{restrictionAlert.reason}"
                                 </p>
                             </div>
                             
-                            <div className="flex items-center gap-2 justify-center py-3 px-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl border border-emerald-100 dark:border-emerald-900/50 mb-8">
+                            <div className="flex items-center gap-2 justify-center py-3 px-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-sm border border-emerald-100 dark:border-emerald-900/50 mb-8">
                                 <Sparkles size={14} className="text-emerald-600" />
                                 <p className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest text-center leading-tight">
                                     Redirecionando para outra profissional disponível...
@@ -3270,7 +3270,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             
                             <button
                                 onClick={() => setRestrictionAlert({ ...restrictionAlert, open: false })}
-                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
+                                className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-950/10 active:scale-[0.98] transition-all"
                             >
                                 Prosseguir
                             </button>
@@ -3281,7 +3281,7 @@ export const Agenda: React.FC<AgendaProps> = ({
 
             {conflictAlert && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-md animate-in fade-in duration-300">
-                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-sm border border-white/20 dark:border-zinc-800 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className="p-8 text-center pt-10">
                             <div className="w-20 h-20 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50/50 dark:ring-amber-900/10">
                                 <AlertCircle size={40} className="animate-pulse" />
@@ -3316,7 +3316,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                 <div className="grid grid-cols-2 gap-3">
                                     <button
                                         onClick={() => setConflictAlert(null)}
-                                        className="py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95"
+                                        className="py-4 bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-white rounded-sm text-[10px] font-black uppercase tracking-[0.2em] transition-all active:scale-95"
                                     >
                                         Cancelar
                                     </button>
@@ -3325,7 +3325,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                             conflictAlert.onConfirm?.();
                                             setConflictAlert(null);
                                         }}
-                                        className="py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                                        className="py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
                                     >
                                         Prosseguir
                                     </button>
@@ -3333,7 +3333,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                             ) : (
                                 <button
                                     onClick={() => setConflictAlert(null)}
-                                    className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
+                                    className="w-full py-4 bg-slate-950 dark:bg-zinc-100 text-white dark:text-slate-950 rounded-sm text-[10px] font-black uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl transition-all active:scale-95"
                                 >
                                     OK
                                 </button>

@@ -48,7 +48,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "w-10 h-10", c
     if (!src || hasError) {
         return (
             <div
-                className={`${size} ${className} rounded-2xl flex items-center justify-center text-white font-bold shadow-sm ${getColorFromName(trimmedName)}`}
+                className={`${size} ${className} rounded-full flex items-center justify-center text-white font-bold shadow-sm ${getColorFromName(trimmedName)}`}
                 onClick={onClick}
                 title={trimmedName}
             >
@@ -61,7 +61,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, size = "w-10 h-10", c
         <img
             src={src}
             alt={name}
-            className={`${size} ${className} rounded-2xl object-cover shadow-sm`}
+            className={`${size} ${className} rounded-full object-cover shadow-sm`}
             onError={() => setHasError(true)}
             onClick={onClick}
         />

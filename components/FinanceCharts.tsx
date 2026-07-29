@@ -105,7 +105,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ transactions, expe
             {/* Row 1: Trend & Revenue Split */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Trend Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Fluxo de Caixa (Receita x Despesa)</h3>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -136,7 +136,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ transactions, expe
                 </div>
 
                 {/* Revenue Breakdown */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Origem da Receita</h3>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -166,7 +166,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ transactions, expe
             {/* Row 2: Expense Breakdown & Payment Methods */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Expense Breakdown */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Despesas por Categoria</h3>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -182,7 +182,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ transactions, expe
                 </div>
 
                 {/* Payment Methods */}
-                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6">Métodos de Pagamento (Receita)</h3>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">

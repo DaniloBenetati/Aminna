@@ -492,22 +492,22 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
         </div>
         
         {/* Main Tabs */}
-        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-2xl w-full sm:w-auto">
+        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm w-full sm:w-auto">
           <button 
             onClick={() => setActiveSubTab('INFLUENCERS')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeSubTab === 'INFLUENCERS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-xs font-black uppercase tracking-widest transition-all ${activeSubTab === 'INFLUENCERS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
           >
             <Users size={16} /> Influenciadores
           </button>
           <button 
             onClick={() => setActiveSubTab('PRODUCTS')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'PRODUCTS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'PRODUCTS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
           >
             <Gift size={16} /> Parceiros Produtos
           </button>
           <button 
             onClick={() => setActiveSubTab('ANALYSIS')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
           >
             <BarChart2 size={16} /> Análises
           </button>
@@ -518,29 +518,29 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 lg:gap-6">
-            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
-              <div className="p-3 md:p-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-2xl shadow-inner flex-shrink-0"><TrendingUp size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
+            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
+              <div className="p-3 md:p-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-sm shadow-inner flex-shrink-0"><TrendingUp size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
               <div className="min-w-0">
                 <p className="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 uppercase font-black tracking-widest">Receita Gerada</p>
                 <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white truncate">R$ {totalPartnerRevenue.toFixed(2)}</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
-              <div className="p-3 md:p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-2xl shadow-inner flex-shrink-0"><CircleCheck size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
+            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
+              <div className="p-3 md:p-4 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-sm shadow-inner flex-shrink-0"><CircleCheck size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
               <div className="min-w-0">
                 <p className="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 uppercase font-black tracking-widest">Atendimentos</p>
                 <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white truncate">{totalPartnerAppointments}</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
-              <div className="p-3 md:p-4 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-2xl shadow-inner flex-shrink-0"><DollarSign size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
+            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
+              <div className="p-3 md:p-4 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 rounded-sm shadow-inner flex-shrink-0"><DollarSign size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
               <div className="min-w-0">
                 <p className="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 uppercase font-black tracking-widest">Investimento Total</p>
                 <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white truncate">R$ {totalInvestment.toFixed(2)}</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
-              <div className="p-3 md:p-4 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-2xl shadow-inner flex-shrink-0"><Handshake size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
+            <div className="bg-white dark:bg-zinc-900 p-4 md:p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-3 md:gap-4 transition-all">
+              <div className="p-3 md:p-4 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-sm shadow-inner flex-shrink-0"><Handshake size={24} className="w-5 h-5 md:w-6 md:h-6" /></div>
               <div className="min-w-0">
                 <p className="text-[10px] md:text-xs text-slate-600 dark:text-slate-400 uppercase font-black tracking-widest">Top Parceiro</p>
                 <p className="text-base md:text-lg font-black text-slate-900 dark:text-white truncate">
@@ -552,50 +552,50 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
 
           <div className="grid grid-cols-1 gap-6">
             {/* Unified Partners & Coupons List */}
-            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col min-h-[400px]">
+            <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col min-h-[400px]">
               <div className="p-5 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50 flex flex-col sm:flex-row justify-between items-center gap-3">
                 <h3 className="font-black text-slate-800 dark:text-white uppercase text-xs tracking-widest flex items-center gap-2"><Users size={16} /> Parceiros e Campanhas</h3>
                 <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
                   {/* Status Filter Toggle */}
-                  <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border-2 border-slate-200 dark:border-zinc-700 shadow-sm overflow-hidden min-w-fit">
+                  <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-sm border-2 border-slate-200 dark:border-zinc-700 shadow-sm overflow-hidden min-w-fit">
                     <button
                       onClick={() => setStatusFilter('ACTIVE')}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-tight transition-all ${statusFilter === 'ACTIVE' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                      className={`px-3 py-1.5 rounded-sm text-[11px] font-black uppercase tracking-tight transition-all ${statusFilter === 'ACTIVE' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
                     >
                       Ativos
                     </button>
                     <button
                       onClick={() => setStatusFilter('INACTIVE')}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-tight transition-all ${statusFilter === 'INACTIVE' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                      className={`px-3 py-1.5 rounded-sm text-[11px] font-black uppercase tracking-tight transition-all ${statusFilter === 'INACTIVE' ? 'bg-rose-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
                     >
                       Inativos
                     </button>
                     <button
                       onClick={() => setStatusFilter('ALL')}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-tight transition-all ${statusFilter === 'ALL' ? 'bg-slate-900 dark:bg-white dark:text-black text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                      className={`px-3 py-1.5 rounded-sm text-[11px] font-black uppercase tracking-tight transition-all ${statusFilter === 'ALL' ? 'bg-slate-900 dark:bg-white dark:text-black text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
                     >
                       Todos
                     </button>
                   </div>
 
                   {/* Agenda Filter Toggle */}
-                  <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-xl border-2 border-slate-200 dark:border-zinc-700 shadow-sm overflow-hidden min-w-fit">
+                  <div className="flex bg-white dark:bg-zinc-800 p-1 rounded-sm border-2 border-slate-200 dark:border-zinc-700 shadow-sm overflow-hidden min-w-fit">
                     <span className="px-2 py-1.5 text-[10px] font-black text-slate-400 uppercase self-center border-r-2 border-slate-100 dark:border-zinc-700 mr-1">Agenda</span>
                     <button
                       onClick={() => setAgendaFilter('YES')}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'YES' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                      className={`px-3 py-1.5 rounded-sm text-[11px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'YES' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
                     >
                       Sim
                     </button>
                     <button
                       onClick={() => setAgendaFilter('NO')}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'NO' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                      className={`px-3 py-1.5 rounded-sm text-[11px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'NO' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
                     >
                       Não
                     </button>
                     <button
                       onClick={() => setAgendaFilter('ALL')}
-                      className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'ALL' ? 'bg-slate-200 dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
+                      className={`px-3 py-1.5 rounded-sm text-[11px] font-black uppercase tracking-tight transition-all ${agendaFilter === 'ALL' ? 'bg-slate-200 dark:bg-zinc-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-zinc-700'}`}
                     >
                       Ver todos
                     </button>
@@ -606,7 +606,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                     <input
                       type="text"
                       placeholder="Buscar parceiro..."
-                      className="w-full sm:w-48 pl-9 pr-3 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-xs font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all placeholder:text-slate-500"
+                      className="w-full sm:w-48 pl-9 pr-3 py-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none transition-all placeholder:text-slate-500"
                       value={searchTerm}
                       onChange={e => setSearchTerm(e.target.value)}
                     />
@@ -617,24 +617,24 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                     <button
                       onClick={handleWhatsappReport}
                       title="Enviar por WhatsApp"
-                      className="p-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-slate-600 dark:text-slate-400 hover:text-green-600 hover:border-green-600 transition-all flex items-center gap-2"
+                      className="p-2 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-slate-600 dark:text-slate-400 hover:text-green-600 hover:border-green-600 transition-all flex items-center gap-2"
                     >
                       <Share2 size={18} />
                       <span className="text-[11px] font-black uppercase hidden lg:inline">Relatório WhatsApp</span>
                     </button>
                   </div>
 
-                  <button onClick={() => handleOpenPartnerModal()} className="p-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl hover:scale-105 transition-all shadow-md"><Plus size={18} /></button>
+                  <button onClick={() => handleOpenPartnerModal()} className="p-2 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm hover:scale-105 transition-all shadow-md"><Plus size={18} /></button>
                 </div>
               </div>
               <div className="overflow-y-auto divide-y divide-slate-100 dark:divide-zinc-800 p-2">
                 {filteredPartners.filter(p => !p.partnerType || p.partnerType === 'Influenciador').map(p => {
                   const partnerCampaigns = campaignsWithStats.filter(c => c.partnerId === p.id);
                   return (
-                    <div key={p.id} className={`p-2 rounded-[2rem] transition-all flex flex-col ${!p.active ? 'opacity-40 grayscale' : ''}`}>
-                      <div className="p-4 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group bg-slate-50/30 dark:bg-zinc-800/20 border border-slate-100 dark:border-zinc-800/50">
+                    <div key={p.id} className={`p-2 rounded-sm transition-all flex flex-col ${!p.active ? 'opacity-40 grayscale' : ''}`}>
+                      <div className="p-4 rounded-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group bg-slate-50/30 dark:bg-zinc-800/20 border border-slate-100 dark:border-zinc-800/50">
                         <div className="flex gap-4 items-center min-w-0 w-full sm:w-auto">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-slate-600 flex-shrink-0 border-2 ${p.active ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800 text-indigo-700' : 'bg-slate-100 border-slate-200'}`}>
+                          <div className={`w-12 h-12 rounded-sm flex items-center justify-center text-slate-600 flex-shrink-0 border-2 ${p.active ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800 text-indigo-700' : 'bg-slate-100 border-slate-200'}`}>
                             <Smartphone size={24} />
                           </div>
                           <div className="min-w-0 flex-1">
@@ -694,8 +694,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                                   const srv = services.find(s => s.id === appt.serviceId);
                                   const dateObj = new Date(appt.date + 'T12:00:00');
                                   return (
-                                    <div key={appt.id} className="inline-flex items-center gap-2 p-1.5 bg-white dark:bg-zinc-800/40 rounded-xl border border-slate-100 dark:border-zinc-700/50 shadow-sm relative pr-3">
-                                      <div className="flex flex-col items-center justify-center w-8 h-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                                    <div key={appt.id} className="inline-flex items-center gap-2 p-1.5 bg-white dark:bg-zinc-800/40 rounded-sm border border-slate-100 dark:border-zinc-700/50 shadow-sm relative pr-3">
+                                      <div className="flex flex-col items-center justify-center w-8 h-8 bg-indigo-50 dark:bg-indigo-900/20 rounded-sm">
                                         <span className="text-[8px] font-black leading-none text-indigo-400">{dateObj.toLocaleDateString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '')}</span>
                                         <span className="text-sm font-black leading-none text-indigo-700 dark:text-indigo-300">{dateObj.getDate()}</span>
                                       </div>
@@ -715,9 +715,9 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                         )}
 
                         <div className="flex items-center gap-2">
-                          <button onClick={() => togglePartnerStatus(p.id)} className={`p-2 rounded-xl transition-all ${p.active ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 bg-slate-100'}`}><ToggleRight size={24} /></button>
-                          <button onClick={() => handleOpenPartnerModal(p)} className="p-2 text-slate-500 hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-all"><Edit2 size={18} /></button>
-                          <button onClick={() => handleDeletePartner(p.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"><Trash2 size={18} /></button>
+                          <button onClick={() => togglePartnerStatus(p.id)} className={`p-2 rounded-sm transition-all ${p.active ? 'text-emerald-600 bg-emerald-50' : 'text-slate-500 bg-slate-100'}`}><ToggleRight size={24} /></button>
+                          <button onClick={() => handleOpenPartnerModal(p)} className="p-2 text-slate-500 hover:text-indigo-800 hover:bg-indigo-50 rounded-sm transition-all"><Edit2 size={18} /></button>
+                          <button onClick={() => handleDeletePartner(p.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-sm transition-all"><Trash2 size={18} /></button>
                         </div>
                       </div>
                       
@@ -725,11 +725,11 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                       <div className="mt-2 ml-4 sm:ml-12 space-y-2 pb-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                           {partnerCampaigns.map(c => (
-                            <div key={c.id} className="bg-white dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-700 shadow-sm flex flex-col gap-3 group/coupon">
+                            <div key={c.id} className="bg-white dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-700 shadow-sm flex flex-col gap-3 group/coupon">
                               <div className="flex justify-between items-start">
                                 <div className="min-w-0">
                                   <h4 className="font-black text-slate-900 dark:text-white text-xs uppercase truncate">{c.name}</h4>
-                                  <div className="mt-1 inline-flex px-2 py-1 rounded-lg bg-indigo-50 text-indigo-800 font-mono font-black text-[12px] border border-indigo-200 uppercase">{c.couponCode}</div>
+                                  <div className="mt-1 inline-flex px-2 py-1 rounded-sm bg-indigo-50 text-indigo-800 font-mono font-black text-[12px] border border-indigo-200 uppercase">{c.couponCode}</div>
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover/coupon:opacity-100 transition-opacity">
                                   <button onClick={() => handleOpenCampaignModal(c)} className="p-1 text-slate-400 hover:text-indigo-600"><Edit2 size={16} /></button>
@@ -737,24 +737,24 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                                 </div>
                               </div>
                               <div className="flex flex-wrap gap-2">
-                                <div className="px-2 py-1 bg-slate-50 dark:bg-zinc-800 rounded-lg text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Usos: {c.useCount}/{c.maxUses}</div>
+                                <div className="px-2 py-1 bg-slate-50 dark:bg-zinc-800 rounded-sm text-[10px] font-black uppercase text-slate-500 whitespace-nowrap">Usos: {c.useCount}/{c.maxUses}</div>
                                 <div 
                                   onClick={() => {
                                     setSelectedCouponForDrilldown(c.couponCode);
                                     setIsDrilldownModalOpen(true);
                                   }}
-                                  className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 rounded-lg text-[11px] font-black uppercase text-emerald-700 dark:text-emerald-400 whitespace-nowrap cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-800/40 transition-all hover:scale-105" 
+                                  className="px-2 py-1 bg-emerald-50 dark:bg-emerald-900/30 rounded-sm text-[11px] font-black uppercase text-emerald-700 dark:text-emerald-400 whitespace-nowrap cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-800/40 transition-all hover:scale-105" 
                                   title="Clique para ver clientes (Faturamento Gerado)"
                                 >
                                   Fat: R$ {c.totalRevenueGenerated.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
                                 </div>
-                                <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/30 rounded-lg text-[11px] font-black uppercase text-rose-700 dark:text-rose-400 whitespace-nowrap" title="Investimento (Fixo + Permuta)">Inv: R$ {( (c.investmentValue || 0) + (c.linkedInvestment || 0) ).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
+                                <div className="px-2 py-1 bg-rose-50 dark:bg-rose-900/30 rounded-sm text-[11px] font-black uppercase text-rose-700 dark:text-rose-400 whitespace-nowrap" title="Investimento (Fixo + Permuta)">Inv: R$ {( (c.investmentValue || 0) + (c.linkedInvestment || 0) ).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</div>
                               </div>
                             </div>
                           ))}
                           <button 
                             onClick={() => { setEditingCampaign({ partnerId: p.id }); setIsCampaignModalOpen(true); }}
-                            className="border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-2xl p-4 flex items-center justify-center gap-2 text-slate-400 hover:border-indigo-500 hover:text-indigo-500 transition-all group"
+                            className="border-2 border-dashed border-slate-200 dark:border-zinc-700 rounded-sm p-4 flex items-center justify-center gap-2 text-slate-400 hover:border-indigo-500 hover:text-indigo-500 transition-all group"
                           >
                             <Plus size={16} /> <span className="text-xs font-black uppercase tracking-widest">Novo Cupom</span>
                           </button>
@@ -770,7 +770,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       ) : activeSubTab === 'ANALYSIS' ? (
         <div className="space-y-6 animate-in fade-in duration-500">
           {/* Filters Row */}
-          <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-sm">
+          <div className="flex flex-wrap items-center gap-4 bg-white dark:bg-zinc-900 p-4 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
              <div className="flex items-center gap-2 px-2">
                <Calendar size={18} className="text-indigo-600" />
                <input 
@@ -795,8 +795,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
 
           {/* Analysis KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 mb-3">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="w-10 h-10 rounded-sm bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 mb-3">
                 <TrendingUp size={20} />
               </div>
               <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Faturamento Campanha</p>
@@ -806,8 +806,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 mb-3">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="w-10 h-10 rounded-sm bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 mb-3">
                 <Users size={20} />
               </div>
               <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Clientes Únicos</p>
@@ -817,8 +817,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 mb-3">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="w-10 h-10 rounded-sm bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center text-rose-600 mb-3">
                 <Calendar size={20} />
               </div>
               <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Impacto Mensal</p>
@@ -828,8 +828,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 mb-3">
+            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="w-10 h-10 rounded-sm bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 mb-3">
                 <ArrowUpRight size={20} />
               </div>
               <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">ROI Real</p>
@@ -844,22 +844,22 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
 
           {/* New row for more metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded-xl"><Smartphone size={20} /></div>
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded-sm"><Smartphone size={20} /></div>
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">CPA (Custo Aquisição)</p>
                 <p className="text-sm font-black text-slate-900 dark:text-white">R$ {totalPartnerAppointments > 0 ? (totalInvestment / totalPartnerAppointments).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
-              <div className="p-3 bg-purple-50 dark:bg-purple-900/30 text-purple-600 rounded-xl"><DollarSign size={20} /></div>
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
+              <div className="p-3 bg-purple-50 dark:bg-purple-900/30 text-purple-600 rounded-sm"><DollarSign size={20} /></div>
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Investimento Total</p>
                 <p className="text-sm font-black text-slate-900 dark:text-white">R$ {totalInvestment.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
               </div>
             </div>
-            <div className="bg-white dark:bg-zinc-900 p-5 rounded-3xl border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
-              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-xl"><BarChart2 size={20} /></div>
+            <div className="bg-white dark:bg-zinc-900 p-5 rounded-sm border border-slate-200 dark:border-zinc-800 flex items-center gap-4">
+              <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 rounded-sm"><BarChart2 size={20} /></div>
               <div>
                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">Ticket Médio Geral</p>
                 <p className="text-sm font-black text-slate-900 dark:text-white">R$ {totalPartnerAppointments > 0 ? (totalPartnerRevenue / totalPartnerAppointments).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}</p>
@@ -868,7 +868,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
           </div>
 
           {/* Detailed Performance List */}
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-800/50">
               <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest flex items-center gap-2">
                 <BarChart2 size={16} className="text-indigo-600" /> Desempenho por Campanha
@@ -950,7 +950,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       {/* MODALS (INFLUENCER) */}
       {isPartnerModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border-2 border-black">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-2xl overflow-hidden border-2 border-black">
             <div className="px-6 py-4 bg-zinc-950 text-white flex justify-between items-center">
               <h3 className="font-black uppercase tracking-tight flex items-center gap-2"><Users size={20} /> {editingPartner ? 'Editar Influenciador' : 'Novo Cadastro'}</h3>
               <button onClick={() => setIsPartnerModalOpen(false)}><X size={24} /></button>
@@ -959,24 +959,24 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Nome Completo</label>
-                  <input name="name" required defaultValue={editingPartner?.name || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="name" required defaultValue={editingPartner?.name || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Redes Sociais (Separe por vírgula)</label>
                   <input 
                     defaultValue={socialMediaInputs.join(', ')} 
                     onChange={(e) => setSocialMediaInputs(e.target.value.split(',').map(s => s.trim()))}
-                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" 
                     placeholder="@perfil1, @perfil2"
                   />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">WhatsApp</label>
-                  <input name="phone" required defaultValue={editingPartner?.phone || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="phone" required defaultValue={editingPartner?.phone || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Tipo de Parceria</label>
-                  <select name="partnershipType" defaultValue={editingPartner?.partnershipType || 'PERMUTA'} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600">
+                  <select name="partnershipType" defaultValue={editingPartner?.partnershipType || 'PERMUTA'} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600">
                     <option value="PERMUTA">Permuta</option>
                     <option value="PAGO">Pago</option>
                   </select>
@@ -989,7 +989,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                         key={value}
                         type="button"
                         onClick={() => setThermometerValue(value)}
-                        className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${
+                        className={`flex-1 py-3 rounded-sm text-[10px] font-black uppercase transition-all border-2 ${
                           thermometerValue === value 
                             ? (value === 'QUENTE' ? 'bg-orange-50 border-orange-600 text-orange-600' : value === 'MORNO' ? 'bg-amber-50 border-amber-600 text-amber-600' : 'bg-blue-50 border-blue-600 text-blue-600')
                             : 'bg-slate-50 border-slate-200 text-slate-400'
@@ -1014,12 +1014,12 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                           setCustomerSearch(e.target.value);
                           setIsCustomerDropdownOpen(true);
                         }}
-                        className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 transition-all shadow-sm"
+                        className="w-full pl-10 pr-4 py-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600 transition-all shadow-sm"
                       />
                     </div>
                     
                     {isCustomerDropdownOpen && customerSearch.length > 0 && (
-                      <div className="absolute z-[110] left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border-2 border-black rounded-2xl shadow-2xl max-h-60 overflow-y-auto animate-in slide-in-from-top-2 duration-200">
+                      <div className="absolute z-[110] left-0 right-0 mt-2 bg-white dark:bg-zinc-900 border-2 border-black rounded-sm shadow-2xl max-h-60 overflow-y-auto animate-in slide-in-from-top-2 duration-200">
                         <div className="sticky top-0 bg-slate-50 dark:bg-zinc-800 p-2 border-b border-slate-100 dark:border-zinc-700 text-[8px] font-black uppercase text-slate-400 tracking-widest flex justify-between items-center">
                           <span>Resultados da busca</span>
                           <button type="button" onClick={() => setIsCustomerDropdownOpen(false)} className="text-rose-500 hover:text-rose-600"><X size={12} /></button>
@@ -1063,7 +1063,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                     {(!isCustomerDropdownOpen || !customerSearch) && (
                       <div className="mt-2 flex flex-col gap-2">
                         {localSelectedCustomerId ? (
-                          <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                          <div className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-sm border border-indigo-100 dark:border-indigo-800">
                             <CircleCheck size={14} className="text-indigo-600" />
                             <span className="text-[10px] font-black text-indigo-700 dark:text-indigo-400 uppercase tracking-tight">
                               Vinculado: {customers.find(c => c.id === localSelectedCustomerId)?.name || 'Cliente Selecionado'}
@@ -1088,24 +1088,24 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Categoria (Influenciadora, Atleta, etc)</label>
-                  <input name="category" defaultValue={editingPartner?.category || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="category" defaultValue={editingPartner?.category || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Escopo do Contrato</label>
-                  <textarea name="contractScope" rows={2} defaultValue={editingPartner?.contractScope || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 resize-none" placeholder="O que foi acordado? (Ex: 2 Stories/semana)" />
+                  <textarea name="contractScope" rows={2} defaultValue={editingPartner?.contractScope || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600 resize-none" placeholder="O que foi acordado? (Ex: 2 Stories/semana)" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Link do Contrato (Drive)</label>
-                  <input name="contractUrl" defaultValue={editingPartner?.contractUrl || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" placeholder="https://drive.google.com/..." />
+                  <input name="contractUrl" defaultValue={editingPartner?.contractUrl || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" placeholder="https://drive.google.com/..." />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1">Observações Gerais</label>
-                  <textarea name="notes" rows={2} defaultValue={editingPartner?.notes || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 resize-none" />
+                  <textarea name="notes" rows={2} defaultValue={editingPartner?.notes || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600 resize-none" />
                 </div>
               </div>
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setIsPartnerModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest">Cancelar</button>
-                <button type="submit" className="flex-[2] py-4 bg-zinc-950 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all">Salvar Parceiro</button>
+                <button type="submit" className="flex-[2] py-4 bg-zinc-950 text-white rounded-sm font-black uppercase text-xs tracking-widest hover:bg-black transition-all">Salvar Parceiro</button>
               </div>
             </form>
           </div>
@@ -1114,7 +1114,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
 
       {isCampaignModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden border-2 border-black">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-xl overflow-hidden border-2 border-black">
             <div className="px-6 py-4 bg-zinc-950 text-white flex justify-between items-center">
               <h3 className="font-black uppercase tracking-tight flex items-center gap-2"><Tag size={20} /> {editingCampaign?.id ? 'Editar Cupom' : 'Novo Cupom'}</h3>
               <button onClick={() => setIsCampaignModalOpen(false)}><X size={24} /></button>
@@ -1126,7 +1126,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   name="partnerId" 
                   required 
                   defaultValue={editingCampaign?.partnerId || ''} 
-                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600"
+                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600"
                 >
                   <option value="">Selecione um parceiro...</option>
                   {partners.map(p => (
@@ -1141,7 +1141,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   name="name" 
                   required 
                   defaultValue={editingCampaign?.name || ''} 
-                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" 
                   placeholder="Ex: Primavera 2024"
                 />
               </div>
@@ -1153,7 +1153,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                     name="couponCode" 
                     required 
                     defaultValue={editingCampaign?.couponCode || ''} 
-                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 uppercase" 
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600 uppercase" 
                     placeholder="EX: AMINNA10"
                   />
                 </div>
@@ -1164,7 +1164,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                     type="number" 
                     required 
                     defaultValue={editingCampaign?.maxUses || 100} 
-                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" 
                   />
                 </div>
               </div>
@@ -1175,7 +1175,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   <select 
                     name="discountType" 
                     defaultValue={editingCampaign?.discountType || 'PERCENTAGE'} 
-                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600"
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600"
                   >
                     <option value="PERCENTAGE">Porcentagem (%)</option>
                     <option value="FIXED">Valor Fixo (R$)</option>
@@ -1189,7 +1189,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                     step="0.01" 
                     required 
                     defaultValue={editingCampaign?.discountValue || ''} 
-                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                    className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" 
                   />
                 </div>
               </div>
@@ -1201,7 +1201,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   type="number" 
                   step="0.01" 
                   defaultValue={editingCampaign?.investmentValue || 0} 
-                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" 
+                  className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" 
                   placeholder="Ex: 50.00"
                 />
                 <p className="mt-1 text-[8px] text-slate-400 font-bold uppercase tracking-tight italic">Além do custo das permutas vinculadas ao parceiro.</p>
@@ -1209,7 +1209,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
 
               <div className="flex gap-3 pt-4">
                 <button type="button" onClick={() => setIsCampaignModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest">Cancelar</button>
-                <button type="submit" className="flex-[2] py-4 bg-zinc-950 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-lg">Salvar Cupom</button>
+                <button type="submit" className="flex-[2] py-4 bg-zinc-950 text-white rounded-sm font-black uppercase text-xs tracking-widest hover:bg-black transition-all shadow-lg">Salvar Cupom</button>
               </div>
             </form>
           </div>
@@ -1218,7 +1218,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
 
       {isDrilldownModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/80 z-[110] flex items-center justify-center p-4 backdrop-blur-sm transition-all animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2rem] shadow-[0_40px_80px_-15px_rgba(0,0,0,0.2)] w-full max-w-6xl overflow-hidden border border-slate-200 dark:border-zinc-800 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-300">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-[0_40px_80px_-15px_rgba(0,0,0,0.2)] w-full max-w-6xl overflow-hidden border border-slate-200 dark:border-zinc-800 flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-300">
             {/* Clean Header */}
             <div className="px-10 py-10 bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-start flex-shrink-0">
               <div>
@@ -1229,7 +1229,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                 <div className="flex items-center gap-6 mt-4">
                   <div className="flex flex-col">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Campanha Ativa</span>
-                    <span className="text-xs font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-800 flex items-center gap-2">
+                    <span className="text-xs font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1.5 rounded-sm border border-indigo-100 dark:border-indigo-800 flex items-center gap-2">
                        <Tag size={12} /> {selectedCouponForDrilldown}
                     </span>
                   </div>
@@ -1243,14 +1243,14 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                         type="date"
                         value={drilldownDateRange.start}
                         onChange={(e) => setDrilldownDateRange(prev => ({ ...prev, start: e.target.value }))}
-                        className="text-[11px] font-bold text-slate-600 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="text-[11px] font-bold text-slate-600 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       />
                       <span className="text-slate-300">/</span>
                       <input 
                         type="date"
                         value={drilldownDateRange.end}
                         onChange={(e) => setDrilldownDateRange(prev => ({ ...prev, end: e.target.value }))}
-                        className="text-[11px] font-bold text-slate-600 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                        className="text-[11px] font-bold text-slate-600 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                       />
                       {(drilldownDateRange.start || drilldownDateRange.end) && (
                         <button 
@@ -1269,7 +1269,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   setIsDrilldownModalOpen(false);
                   setSelectedCouponForDrilldown(null);
                 }}
-                className="p-3 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-950 dark:hover:text-white rounded-2xl transition-all border border-slate-100 dark:border-zinc-700 hover:shadow-sm"
+                className="p-3 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-slate-950 dark:hover:text-white rounded-sm transition-all border border-slate-100 dark:border-zinc-700 hover:shadow-sm"
               >
                 <X size={24} />
               </button>
@@ -1349,7 +1349,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                                 </p>
                               </td>
                               <td className="py-6 px-2">
-                                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-lg">
+                                <span className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase bg-slate-100 dark:bg-zinc-800 px-3 py-1.5 rounded-sm">
                                   {provider?.nickname || provider?.name || '---'}
                                 </span>
                               </td>
@@ -1417,11 +1417,11 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       {/* Histórico da Cliente Modal */}
       {isHistoryModalOpen && selectedCustomerForHistory && (
         <div className="fixed inset-0 bg-black/80 z-[150] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white dark:bg-zinc-950 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-900 dark:border-zinc-800">
+          <div className="bg-white dark:bg-zinc-950 w-full max-w-2xl rounded-sm shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-300 border-2 border-slate-900 dark:border-zinc-800">
             {/* Header */}
             <div className="p-8 border-b border-slate-100 dark:border-zinc-900 flex justify-between items-center bg-slate-50/50 dark:bg-zinc-900/50">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-2xl shadow-inner">
+                <div className="p-3 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-sm shadow-inner">
                   <History size={24} />
                 </div>
                 <div>
@@ -1434,7 +1434,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   setIsHistoryModalOpen(false);
                   setSelectedCustomerForHistory(null);
                 }} 
-                className="p-3 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-all"
+                className="p-3 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-all"
               >
                 <X size={20} className="text-slate-400" />
               </button>
@@ -1449,8 +1449,8 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
 
                 if (clientAppointments.length === 0) {
                   return (
-                    <div className="text-center py-20 bg-slate-50/50 dark:bg-zinc-900/10 rounded-[2.5rem] border-2 border-dashed border-slate-100 dark:border-zinc-800">
-                      <div className="w-16 h-16 bg-white dark:bg-zinc-900 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm">
+                    <div className="text-center py-20 bg-slate-50/50 dark:bg-zinc-900/10 rounded-sm border-2 border-dashed border-slate-100 dark:border-zinc-800">
+                      <div className="w-16 h-16 bg-white dark:bg-zinc-900 rounded-sm flex items-center justify-center mx-auto mb-4 text-slate-300 shadow-sm">
                         <Calendar size={32} />
                       </div>
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhum atendimento realizado ainda</p>
@@ -1483,7 +1483,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                           </div>
 
                           {/* Card */}
-                          <div className="flex-1 ml-12 p-6 rounded-[2rem] border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group-hover:shadow-md">
+                          <div className="flex-1 ml-12 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 hover:border-indigo-100 dark:hover:border-indigo-900/50 transition-all duration-300 shadow-sm group-hover:shadow-md">
                             <div className="flex justify-between items-start mb-4">
                               <div className="space-y-1">
                                 <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">
@@ -1491,7 +1491,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                                 </p>
                                 <h4 className="text-[13px] font-black text-slate-950 dark:text-white uppercase leading-tight">{svc?.name || 'Serviço'}</h4>
                               </div>
-                              <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-lg uppercase shadow-sm">SISTEMA</span>
+                              <span className="text-[8px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 px-2 py-1 rounded-sm uppercase shadow-sm">SISTEMA</span>
                             </div>
 
                             <div className="flex flex-wrap gap-4 text-[10px] font-bold text-slate-500 mb-4">
@@ -1506,7 +1506,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
 
                             {/* Coupon Tracking */}
                             {appt.appliedCoupon && (
-                              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-3 py-2 rounded-xl w-fit mt-2">
+                              <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800 px-3 py-2 rounded-sm w-fit mt-2">
                                 <Tag size={12} className="text-emerald-600 dark:text-emerald-400" />
                                 <span className="text-[11px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">CUPOM UTILIZADO: {appt.appliedCoupon}</span>
                               </div>
@@ -1538,7 +1538,7 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
                   setSelectedCustomerForHistory(null);
                   setIsDrilldownModalOpen(false);
                 }}
-                className="w-full py-5 bg-slate-950 dark:bg-white text-white dark:text-black rounded-3xl text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl hover:bg-slate-900 dark:hover:bg-zinc-700"
+                className="w-full py-5 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 active:scale-95 transition-all shadow-xl hover:bg-slate-900 dark:hover:bg-zinc-700"
               >
                 <Users size={18} /> Gerenciar Cliente Completo
               </button>

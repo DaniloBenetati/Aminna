@@ -67,7 +67,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isSidebar = false 
   };
 
   return (
-    <div className={`flex flex-col h-full bg-white ${!isSidebar ? 'rounded-xl shadow-lg border border-slate-200' : ''}`}>
+    <div className={`flex flex-col h-full bg-white ${!isSidebar ? 'rounded-sm shadow-lg border border-slate-200' : ''}`}>
       {/* Header */}
       <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white rounded-t-xl">
         <div className="flex items-center gap-2">
@@ -87,7 +87,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isSidebar = false 
               <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-600' : 'bg-violet-100 text-violet-600'}`}>
                 {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
               </div>
-              <div className={`p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none shadow-sm'}`}>
+              <div className={`p-3 rounded-sm text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none shadow-sm'}`}>
                 <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
                 <span className={`text-[10px] block mt-1 opacity-70 ${msg.role === 'user' ? 'text-indigo-100' : 'text-slate-400'}`}>
                   {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -98,7 +98,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isSidebar = false 
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none shadow-sm flex items-center gap-2">
+            <div className="bg-white border border-slate-200 p-3 rounded-sm rounded-tl-none shadow-sm flex items-center gap-2">
               <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
               <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
               <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
@@ -110,7 +110,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isSidebar = false 
 
       {/* Input */}
       <div className="p-3 bg-white border-t border-slate-100">
-        <div className="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-lg p-2 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
+        <div className="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-sm p-2 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -123,7 +123,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ isSidebar = false 
           <button 
             onClick={handleSend}
             disabled={isLoading || !input.trim()}
-            className="p-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 bg-indigo-600 text-white rounded-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Send size={18} />
           </button>

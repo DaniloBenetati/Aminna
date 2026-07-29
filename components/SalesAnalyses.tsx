@@ -189,9 +189,9 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
             {/* Header Analytics Cards - KPIs from Sales view */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl">
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-sm">
                             <DollarSign size={20} />
                         </div>
                         <TrendingUp size={16} className="text-emerald-500" />
@@ -200,9 +200,9 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                     <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">R$ {stats.totalRevenue.toFixed(2)}</p>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-xl">
+                        <div className="p-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded-sm">
                             <TrendingUp size={20} />
                         </div>
                     </div>
@@ -210,9 +210,9 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                     <p className="text-lg md:text-xl font-black text-emerald-700 dark:text-emerald-400">R$ {stats.netRevenue.toFixed(2)}</p>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className={`p-2 ${stats.profitMargin >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'} rounded-xl`}>
+                        <div className={`p-2 ${stats.profitMargin >= 0 ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'} rounded-sm`}>
                             <Percent size={20} />
                         </div>
                     </div>
@@ -222,9 +222,9 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                     </p>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-xl">
+                        <div className="p-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-sm">
                             <Package size={20} />
                         </div>
                     </div>
@@ -232,9 +232,9 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                     <p className="text-lg md:text-xl font-black text-slate-950 dark:text-white">{stats.totalItems} un</p>
                 </div>
 
-                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-4 md:p-5 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-start mb-2">
-                        <div className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-700 dark:text-slate-400 rounded-xl">
+                        <div className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-700 dark:text-slate-400 rounded-sm">
                             <BarChart3 size={20} />
                         </div>
                     </div>
@@ -247,7 +247,7 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                 
                 {/* 1. Daily Performance Area Chart */}
-                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Performance Diária</h3>
@@ -278,7 +278,7 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                 </div>
 
                 {/* 2. Top Products Bar Chart */}
-                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Faturamento por Subcategoria</h3>
@@ -303,7 +303,7 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                 </div>
 
                 {/* 3. Top Spending Customers (Converted from Pie to Bar) */}
-                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Maiores Compradores</h3>
@@ -332,7 +332,7 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                 </div>
 
                 {/* 4. Sales by Day of Week */}
-                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Faturamento por Dia da Semana</h3>
@@ -358,7 +358,7 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 {/* 5. Linear Projection Chart */}
-                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-8">
                         <div>
                             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">Projeção de Vendas</h3>
@@ -391,19 +391,19 @@ export const SalesAnalyses: React.FC<SalesAnalysesProps> = ({ sales: propSales, 
                 </div>
 
                 {/* 6. Smart Buy Suggestions */}
-                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-3xl md:rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                <div className="bg-white dark:bg-zinc-900 p-5 md:p-8 rounded-sm md:rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-widest">O que comprar?</h3>
                         <AlertCircle size={18} className="text-amber-500" />
                     </div>
                     <div className="space-y-4">
                         {buySuggestions.length > 0 ? buySuggestions.map((p, idx) => (
-                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                            <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-sm border border-slate-100 dark:border-zinc-800">
                                 <div className="min-w-0">
                                     <p className="text-[11px] font-black text-slate-900 dark:text-white truncate uppercase">{p.name}</p>
                                     <p className="text-[9px] font-bold text-slate-400 mt-0.5">Estoque: {p.quantity} {p.unit}</p>
                                 </div>
-                                <span className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase ${p.status === 'Urgent' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'}`}>
+                                <span className={`px-2 py-1 rounded-sm text-[8px] font-black uppercase ${p.status === 'Urgent' ? 'bg-rose-500 text-white' : 'bg-amber-500 text-white'}`}>
                                     {p.status === 'Urgent' ? 'Esgotado' : 'Repor'}
                                 </span>
                             </div>

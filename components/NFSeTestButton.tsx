@@ -88,7 +88,7 @@ export const NFSeTestButton: React.FC = () => {
             {/* Result Modal */}
             {showResult && result && (
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto p-6">
+                    <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2">
                                 <TestTube className="text-purple-600" />
@@ -104,7 +104,7 @@ export const NFSeTestButton: React.FC = () => {
 
                         {/* Errors */}
                         {result.errors.length > 0 && (
-                            <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4 mb-4">
+                            <div className="bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-sm p-4 mb-4">
                                 <h3 className="font-black text-red-800 dark:text-red-400 mb-2">❌ Erros Encontrados:</h3>
                                 {result.errors.map((err: string, idx: number) => (
                                     <p key={idx} className="text-sm text-red-700 dark:text-red-300">• {err}</p>
@@ -114,7 +114,7 @@ export const NFSeTestButton: React.FC = () => {
 
                         {/* Fiscal Config */}
                         {result.fiscalConfig && (
-                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl p-4 mb-4">
+                            <div className="bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-sm p-4 mb-4">
                                 <h3 className="font-black text-emerald-800 dark:text-emerald-400 mb-2">✅ Configuração Fiscal do Salão:</h3>
                                 <div className="space-y-1 text-sm">
                                     <p><strong>Nome:</strong> {result.fiscalConfig.salonName}</p>
@@ -128,7 +128,7 @@ export const NFSeTestButton: React.FC = () => {
 
                         {/* Professional */}
                         {result.professional && (
-                            <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-4">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-sm p-4 mb-4">
                                 <h3 className="font-black text-blue-800 dark:text-blue-400 mb-2">✅ Dados Fiscais do Profissional:</h3>
                                 <div className="space-y-1 text-sm">
                                     <p><strong>Nome:</strong> {result.professional.name}</p>
@@ -141,7 +141,7 @@ export const NFSeTestButton: React.FC = () => {
 
                         {/* Summary */}
                         {result.fiscalConfig && result.professional && result.errors.length === 0 && (
-                            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-xl p-4">
+                            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-sm p-4">
                                 <h3 className="font-black text-purple-800 dark:text-purple-400 mb-2">🎯 Sistema Pronto para NFSe!</h3>
                                 <p className="text-sm text-purple-700 dark:text-purple-300">
                                     <strong>Segregação de valores (exemplo R$ 100,00):</strong>

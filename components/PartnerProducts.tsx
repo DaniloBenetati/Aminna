@@ -187,23 +187,23 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
   return (
     <div className="space-y-6">
       {/* Sub-navigation */}
-      <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+      <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm w-fit">
         <button 
           onClick={() => setActiveView('PARTNERS')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${activeView === 'PARTNERS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[11px] font-black uppercase tracking-wider transition-all ${activeView === 'PARTNERS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
         >
           <Gift size={16} /> Cadastro de Parceiros
         </button>
         <button 
           onClick={() => setActiveView('EXCHANGES')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${activeView === 'EXCHANGES' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[11px] font-black uppercase tracking-wider transition-all ${activeView === 'EXCHANGES' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
         >
           <Package size={16} /> Controle de Permutas
         </button>
       </div>
 
       {/* Main Content Area */}
-      <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col min-h-[500px]">
+      <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col min-h-[500px]">
         {/* Toolbar */}
         <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="relative w-full sm:w-80">
@@ -211,7 +211,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
             <input 
               type="text" 
               placeholder={activeView === 'PARTNERS' ? "Buscar parceiro ou cidade..." : "Buscar item ou parceiro..."}
-              className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 transition-all"
+              className="w-full pl-12 pr-4 py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600 transition-all"
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
             />
@@ -219,7 +219,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
           
           <button 
             onClick={() => activeView === 'PARTNERS' ? (setEditingPartner(null), setIsPartnerModalOpen(true)) : (setEditingExchange({}), setIsExchangeModalOpen(true))}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 active:scale-95 transition-all w-full sm:w-auto"
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-sm text-[11px] font-black uppercase tracking-[0.1em] shadow-lg shadow-indigo-200 dark:shadow-none hover:bg-indigo-700 active:scale-95 transition-all w-full sm:w-auto"
           >
             <Plus size={18} /> {activeView === 'PARTNERS' ? 'Novo Parceiro' : 'Nova Permuta'}
           </button>
@@ -271,8 +271,8 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => {setEditingPartner(p); setIsPartnerModalOpen(true);}} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all"><Edit2 size={16} /></button>
-                        <button onClick={() => handleDeletePartner(p.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"><Trash2 size={16} /></button>
+                        <button onClick={() => {setEditingPartner(p); setIsPartnerModalOpen(true);}} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-sm transition-all"><Edit2 size={16} /></button>
+                        <button onClick={() => handleDeletePartner(p.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-sm transition-all"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>
@@ -338,8 +338,8 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => {setEditingExchange(e); setIsExchangeModalOpen(true);}} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-xl transition-all"><Edit2 size={16} /></button>
-                          <button onClick={() => handleDeleteExchange(e.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-xl transition-all"><Trash2 size={16} /></button>
+                          <button onClick={() => {setEditingExchange(e); setIsExchangeModalOpen(true);}} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-sm transition-all"><Edit2 size={16} /></button>
+                          <button onClick={() => handleDeleteExchange(e.id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-sm transition-all"><Trash2 size={16} /></button>
                         </div>
                       </td>
                     </tr>
@@ -358,7 +358,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
       {/* MODAL: PARCEIRO */}
       {isPartnerModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
             <div className="px-8 py-5 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
               <h3 className="font-black uppercase tracking-tight flex items-center gap-2">
                 <Gift size={20} className="text-indigo-400" />
@@ -370,23 +370,23 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Nome da Empresa / Marca</label>
-                  <input name="name" required defaultValue={editingPartner?.name || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="name" required defaultValue={editingPartner?.name || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Responsável</label>
-                  <input name="contactPerson" defaultValue={editingPartner?.contactPerson || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="contactPerson" defaultValue={editingPartner?.contactPerson || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Zap / Telefone</label>
-                  <input name="phone" required defaultValue={editingPartner?.phone || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="phone" required defaultValue={editingPartner?.phone || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Rede Social / Site</label>
-                  <input name="socialMedia" required defaultValue={editingPartner?.socialMedia || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="socialMedia" required defaultValue={editingPartner?.socialMedia || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Cidade</label>
-                  <input name="city" defaultValue={editingPartner?.city || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="city" defaultValue={editingPartner?.city || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Tipo de Parceiro</label>
@@ -400,7 +400,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                           defaultChecked={editingPartner?.partnerType === type || (type === 'Produto' && !editingPartner)}
                           className="sr-only peer"
                         />
-                        <div className="text-center py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl text-[10px] font-black uppercase cursor-pointer peer-checked:bg-indigo-50 peer-checked:border-indigo-600 peer-checked:text-indigo-600 transition-all">
+                        <div className="text-center py-3 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-[10px] font-black uppercase cursor-pointer peer-checked:bg-indigo-50 peer-checked:border-indigo-600 peer-checked:text-indigo-600 transition-all">
                           {type}
                         </div>
                       </label>
@@ -409,12 +409,12 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Observações</label>
-                  <textarea name="notes" defaultValue={editingPartner?.notes || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 h-24 resize-none" />
+                  <textarea name="notes" defaultValue={editingPartner?.notes || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600 h-24 resize-none" />
                 </div>
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setIsPartnerModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-2xl">Cancelar</button>
-                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700">Salvar Cadastro</button>
+                <button type="button" onClick={() => setIsPartnerModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm">Cancelar</button>
+                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-[11px] tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-700">Salvar Cadastro</button>
               </div>
             </form>
           </div>
@@ -424,7 +424,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
       {/* MODAL: PERMUTA */}
       {isExchangeModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] shadow-2xl w-full max-w-xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm shadow-2xl w-full max-w-xl overflow-hidden border-2 border-black dark:border-zinc-700 animate-in zoom-in duration-200">
             <div className="px-8 py-5 bg-indigo-700 text-white flex justify-between items-center">
               <h3 className="font-black uppercase tracking-tight flex items-center gap-2">
                 <Package size={20} />
@@ -436,7 +436,7 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Selecionar Parceiro</label>
-                  <select name="partnerId" required defaultValue={editingExchange?.partnerId || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600">
+                  <select name="partnerId" required defaultValue={editingExchange?.partnerId || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600">
                     <option value="">Selecione um parceiro produto...</option>
                     {partners.filter(p => p.partnerType).map(p => (
                       <option key={p.id} value={p.id}>{p.name} ({p.partnerType})</option>
@@ -445,27 +445,27 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Produto/Serviço Recebido</label>
-                  <input name="receivedItem" required defaultValue={editingExchange?.receivedItem || ''} className="w-full p-4 bg-emerald-50/30 dark:bg-emerald-900/10 border-2 border-emerald-100 dark:border-emerald-900/50 rounded-2xl text-xs font-black outline-none focus:border-emerald-500" placeholder="Ex: 50 Amaciantes" />
+                  <input name="receivedItem" required defaultValue={editingExchange?.receivedItem || ''} className="w-full p-4 bg-emerald-50/30 dark:bg-emerald-900/10 border-2 border-emerald-100 dark:border-emerald-900/50 rounded-sm text-xs font-black outline-none focus:border-emerald-500" placeholder="Ex: 50 Amaciantes" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Contrapartida Oferecida</label>
-                  <input name="offeredItem" required defaultValue={editingExchange?.offeredItem || ''} className="w-full p-4 bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-900/50 rounded-2xl text-xs font-black outline-none focus:border-indigo-500" placeholder="Ex: 2 Stories + 1 Feed" />
+                  <input name="offeredItem" required defaultValue={editingExchange?.offeredItem || ''} className="w-full p-4 bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-900/50 rounded-sm text-xs font-black outline-none focus:border-indigo-500" placeholder="Ex: 2 Stories + 1 Feed" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Valor Estimado (R$)</label>
-                  <input name="estimatedValue" type="number" step="0.01" required defaultValue={editingExchange?.estimatedValue || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="estimatedValue" type="number" step="0.01" required defaultValue={editingExchange?.estimatedValue || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Data da Parceria</label>
-                  <input name="exchangeDate" type="date" required defaultValue={editingExchange?.exchangeDate || new Date().toISOString().split('T')[0]} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" />
+                  <input name="exchangeDate" type="date" required defaultValue={editingExchange?.exchangeDate || new Date().toISOString().split('T')[0]} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Evento ou Campanha Vinculada</label>
-                  <input name="eventName" defaultValue={editingExchange?.eventName || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600" placeholder="Ex: Campanha de Inverno" />
+                  <input name="eventName" defaultValue={editingExchange?.eventName || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600" placeholder="Ex: Campanha de Inverno" />
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Status da Permuta</label>
-                  <select name="status" defaultValue={editingExchange?.status || 'Pendente'} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600">
+                  <select name="status" defaultValue={editingExchange?.status || 'Pendente'} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600">
                     <option>Pendente</option>
                     <option>Em Negociação</option>
                     <option>Concluído</option>
@@ -474,12 +474,12 @@ export const PartnerProducts: React.FC<PartnerProductsProps> = ({
                 </div>
                 <div className="col-span-2">
                   <label className="block text-[10px] font-black uppercase text-slate-500 mb-1.5">Observações Adicionais</label>
-                  <textarea name="notes" defaultValue={editingExchange?.notes || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl text-xs font-black outline-none focus:border-indigo-600 h-20 resize-none" />
+                  <textarea name="notes" defaultValue={editingExchange?.notes || ''} className="w-full p-4 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm text-xs font-black outline-none focus:border-indigo-600 h-20 resize-none" />
                 </div>
               </div>
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setIsExchangeModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-2xl">Descartar</button>
-                <button type="submit" className="flex-[2] py-4 bg-indigo-700 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-800">Registrar Permuta</button>
+                <button type="button" onClick={() => setIsExchangeModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-50 dark:hover:bg-zinc-800 rounded-sm">Descartar</button>
+                <button type="submit" className="flex-[2] py-4 bg-indigo-700 text-white rounded-sm font-black uppercase text-[11px] tracking-widest shadow-xl shadow-indigo-200 hover:bg-indigo-800">Registrar Permuta</button>
               </div>
             </form>
           </div>

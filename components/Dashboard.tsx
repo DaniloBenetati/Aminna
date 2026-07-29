@@ -18,7 +18,7 @@ const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize, 
     return (
         <div 
             onClick={onClick}
-            className={`bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'} gap-0.5 h-full`}
+            className={`bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-sm shadow-sm border border-slate-100 dark:border-zinc-800 flex flex-col justify-between hover:shadow-md transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]' : 'cursor-default'} gap-0.5 h-full`}
         >
             <div className="flex justify-between items-start min-w-0">
                 <div className="flex-1 min-w-0">
@@ -28,7 +28,7 @@ const KPICard = ({ title, value, sub, icon: Icon, color, lightColor, valueSize, 
                         {onClick && <ChevronRight size={12} className="text-slate-400 mt-0.5" />}
                     </div>
                 </div>
-                <div className={`p-1 md:p-1.5 rounded-lg flex-shrink-0 w-fit ${lightColor} dark:bg-opacity-20`}>
+                <div className={`p-1 md:p-1.5 rounded-sm flex-shrink-0 w-fit ${lightColor} dark:bg-opacity-20`}>
                     <Icon className={`w-3 h-3 md:w-4 md:h-4 ${color} dark:text-current`} />
                 </div>
             </div>
@@ -1853,7 +1853,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const CurrencyTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm">
                     <p className="font-black text-slate-900 dark:text-white text-xs uppercase">{label}</p>
                     <p className="text-emerald-700 dark:text-emerald-400 font-bold text-sm">
                         R$ {payload[0].value.toFixed(2)}
@@ -1868,7 +1868,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         if (active && payload && payload.length) {
             const data = payload[0].payload;
             return (
-                <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[200px]">
+                <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm min-w-[200px]">
                     <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">{label}</p>
                     
                     <div className="space-y-3">
@@ -1915,7 +1915,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const CouponsModal = () => {
         return (
             <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-5xl h-full md:h-[80vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+                <div className="bg-white dark:bg-zinc-900 md:rounded-sm shadow-2xl w-full max-w-5xl h-full md:h-[80vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
                     <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                         <div>
                             <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
@@ -1932,7 +1932,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                     <div className="flex-1 overflow-hidden flex flex-col bg-slate-50/50 dark:bg-zinc-900/50">
                         <div className="flex-1 overflow-auto p-4 md:p-8">
-                            <div className="bg-white dark:bg-zinc-950 rounded-[2rem] border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden">
+                            <div className="bg-white dark:bg-zinc-950 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm overflow-hidden">
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left border-collapse">
                                         <thead>
@@ -1960,7 +1960,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                         <span className="text-[10px] font-bold text-slate-500">{new Date(row.date).toLocaleDateString('pt-BR')}</span>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
-                                                        <span className="bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-100 dark:border-amber-900/30 text-[10px] font-black text-amber-600 dark:text-amber-400">
+                                                        <span className="bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-sm border border-amber-100 dark:border-amber-900/30 text-[10px] font-black text-amber-600 dark:text-amber-400">
                                                             {row.couponCode}
                                                         </span>
                                                     </td>
@@ -1997,7 +1997,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const CountTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm">
                     <p className="font-black text-slate-900 dark:text-white text-xs uppercase">{label}</p>
                     <p className="text-indigo-700 dark:text-indigo-400 font-bold text-sm">
                         {payload[0].value} Clientes
@@ -2020,7 +2020,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             else if (timeView === 'year') prefix = 'Mês:';
 
             return (
-                <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-2xl min-w-[150px]">
+                <div className="bg-white dark:bg-zinc-800 p-4 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm min-w-[150px]">
                     <p className="font-black text-slate-900 dark:text-white text-xs uppercase mb-3 border-b border-slate-50 dark:border-zinc-700 pb-2">
                         {prefix} {label}
                     </p>
@@ -2080,7 +2080,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const CountTooltipAgendamentos = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm">
                     <p className="font-black text-slate-900 dark:text-white text-xs uppercase">{label}</p>
                     <p className="text-indigo-700 dark:text-indigo-400 font-bold text-sm">
                         {payload[0].value} Agendamentos
@@ -2095,7 +2095,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
     const PreferenceTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             return (
-                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm">
                     <p className="font-black text-slate-900 dark:text-white text-xs uppercase">{label}</p>
                     <p className="text-rose-700 dark:text-rose-400 font-bold text-sm">
                         {payload[0].value} {payload[0].value === 1 ? 'Preferência' : 'Preferências'}
@@ -2110,7 +2110,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
         <div className="space-y-6 relative pb-20 md:pb-0 w-full max-w-full overflow-x-hidden">
 
             {/* --- CONTROL BAR UNIFICADO --- */}
-            <div className="bg-white dark:bg-zinc-900 py-0.5 px-2 md:py-1.5 md:px-4 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-2 md:gap-3 sticky top-0 z-20">
+            <div className="bg-white dark:bg-zinc-900 py-0.5 px-2 md:py-1.5 md:px-4 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex items-center justify-between gap-2 md:gap-3 sticky top-0 z-20">
                 
                 {/* Header Title (Desktop only) */}
                 <div className="hidden xl:flex flex-col justify-between items-start gap-0.5 flex-shrink-0">
@@ -2122,12 +2122,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                 <div className="flex flex-row items-center justify-between lg:justify-end gap-1 sm:gap-2.5 w-full xl:w-auto">
                     
                     {/* Tabs */}
-                    <div className="flex gap-0.5 bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-lg border border-slate-200 dark:border-zinc-700 overflow-x-auto no-scrollbar flex-shrink-0">
+                    <div className="flex gap-0.5 bg-slate-100 dark:bg-zinc-800 p-0.5 rounded-sm border border-slate-200 dark:border-zinc-700 overflow-x-auto no-scrollbar flex-shrink-0">
                         {(['day', 'month', 'year', 'custom'] as const).map(v => (
                             <button
                                 key={v}
                                 onClick={() => { setTimeView(v); if (v !== 'custom') setDateRef(new Date()); }}
-                                className={`px-1 min-[320px]:px-2 py-0.5 rounded-md text-[7.5px] min-[320px]:text-[8px] sm:text-[9px] md:text-[9.5px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                                className={`px-1 min-[320px]:px-2 py-0.5 rounded-sm text-[7.5px] min-[320px]:text-[8px] sm:text-[9px] md:text-[9.5px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${timeView === v ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                             >
                                 {v === 'day' ? 'Dia' : v === 'month' ? 'Mês' : v === 'year' ? 'Ano' : 'Período'}
                             </button>
@@ -2144,12 +2144,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         </div>
                     ) : (
                         <div className="flex items-center gap-0.5 bg-transparent px-0.5 py-0 justify-between flex-shrink-0">
-                            <button onClick={() => navigateDate('prev')} className="p-0.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={10} /></button>
+                            <button onClick={() => navigateDate('prev')} className="p-0.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronLeft size={10} /></button>
                             <div className="flex flex-col items-center min-w-[45px] min-[320px]:min-w-[70px] sm:min-w-[90px]">
                                 <span className="text-[7px] min-[320px]:text-[7.5px] sm:text-[9.5px] md:text-[10.5px] font-black text-slate-955 dark:text-white uppercase tracking-tight leading-none">{getDateLabel()}</span>
                                 <span className="hidden md:block text-[6.5px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 leading-none">Período Selecionado</span>
                             </div>
-                            <button onClick={() => navigateDate('next')} className="p-0.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-md text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={10} /></button>
+                            <button onClick={() => navigateDate('next')} className="p-0.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"><ChevronRight size={10} /></button>
                         </div>
                     )}
 
@@ -2159,7 +2159,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     {/* Botão Filtros Unificado */}
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className={`flex items-center gap-1 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md text-[7.5px] md:text-[9px] font-bold uppercase tracking-wider transition-all flex-shrink-0 ${showFilters || activeFiltersCount > 0 ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100'}`}
+                        className={`flex items-center gap-1 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-sm text-[7.5px] md:text-[9px] font-bold uppercase tracking-wider transition-all flex-shrink-0 ${showFilters || activeFiltersCount > 0 ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-zinc-700 hover:bg-slate-100'}`}
                     >
                         <Filter size={10} className="md:w-3 md:h-3" />
                         <span className="hidden min-[400px]:inline">Filtros</span>
@@ -2170,45 +2170,45 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
             {/* --- EXPANDABLE FILTERS --- */}
             {showFilters && (
-                <div className="bg-white dark:bg-zinc-900 p-5 rounded-[2rem] shadow-lg border border-slate-200 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 animate-in slide-in-from-top-4 relative z-10">
+                <div className="bg-white dark:bg-zinc-900 p-5 rounded-sm shadow-lg border border-slate-200 dark:border-zinc-800 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 animate-in slide-in-from-top-4 relative z-10">
                     <div>
                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">Profissional</label>
-                        <select value={filterProvider} onChange={e => setFilterProvider(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
+                        <select value={filterProvider} onChange={e => setFilterProvider(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
                             <option value="all">Todas</option>
                             {providers.sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">Serviço</label>
-                        <select value={filterService} onChange={e => setFilterService(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
+                        <select value={filterService} onChange={e => setFilterService(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
                             <option value="all">Todos</option>
                             {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">Campanha</label>
-                        <select value={filterCampaign} onChange={e => setFilterCampaign(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
+                        <select value={filterCampaign} onChange={e => setFilterCampaign(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
                             <option value="all">Todas</option>
                             {campaigns.map(c => <option key={c.id} value={c.id}>{c.name} ({c.couponCode})</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">Parceiro</label>
-                        <select value={filterPartner} onChange={e => setFilterPartner(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
+                        <select value={filterPartner} onChange={e => setFilterPartner(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
                             <option value="all">Todos</option>
                             {PARTNERS.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">Produto</label>
-                        <select value={filterProduct} onChange={e => setFilterProduct(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
+                        <select value={filterProduct} onChange={e => setFilterProduct(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
                             <option value="all">Todos</option>
                             {stock.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2 ml-1">Canal de Entrada</label>
-                        <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-2xl p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
+                        <select value={filterChannel} onChange={e => setFilterChannel(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm p-3 text-xs font-black text-slate-900 dark:text-white outline-none focus:border-slate-300 uppercase">
                             <option value="all">Todos</option>
                             {['Instagram', 'Facebook', 'TikTok', 'Google', 'Indicação', 'WhatsApp', 'Passante'].map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -2249,16 +2249,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             {dashboardTab === 'geral' ? (
                 <div className="space-y-6">
                     {/* Sub-tabs for Global View */}
-                    <div className="flex flex-col sm:flex-row gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-full sm:w-fit">
+                    <div className="flex flex-col sm:flex-row gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm w-full sm:w-fit">
                         <button 
                             onClick={() => setActiveSubTab('charts')}
-                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BarChart2 size={14} /> Visão Executiva
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BrainCircuit size={14} /> IA de Negócios
                         </button>
@@ -2322,7 +2322,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
 
                             {/* 2. Fluxo Dinâmico (Big Chart) */}
-                            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-6 md:p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                                     <div>
                                         <h3 className="text-[11px] min-[350px]:text-sm sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-1.5">
@@ -2333,15 +2333,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     
                                     {/* Indicadores do período */}
                                     <div className="grid grid-cols-3 gap-1.5 w-full sm:flex sm:w-auto sm:gap-2">
-                                        <div className="bg-slate-50 dark:bg-zinc-800/50 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-zinc-800/80 text-center sm:text-left">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-sm sm:rounded-sm border border-slate-100 dark:border-zinc-800/80 text-center sm:text-left">
                                             <p className="text-[7px] sm:text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none">Projetado</p>
                                             <p className="text-[9px] sm:text-[11px] font-black text-slate-700 dark:text-slate-200 mt-1 sm:mt-1.5">{fmt.currency(totalsFlow.projetado)}</p>
                                         </div>
-                                        <div className="bg-indigo-50/50 dark:bg-indigo-950/20 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl border border-indigo-100/50 dark:border-indigo-900/30 text-center sm:text-left">
+                                        <div className="bg-indigo-50/50 dark:bg-indigo-950/20 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-sm sm:rounded-sm border border-indigo-100/50 dark:border-indigo-900/30 text-center sm:text-left">
                                             <p className="text-[7px] sm:text-[8px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest leading-none">Realizado</p>
                                             <p className="text-[9px] sm:text-[11px] font-black text-indigo-600 dark:text-indigo-400 mt-1 sm:mt-1.5">{fmt.currency(totalsFlow.realizado)}</p>
                                         </div>
-                                        <div className="bg-rose-50/50 dark:bg-rose-950/20 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-xl sm:rounded-2xl border border-rose-100/50 dark:border-rose-900/30 text-center sm:text-left">
+                                        <div className="bg-rose-50/50 dark:bg-rose-950/20 px-2 py-1.5 sm:px-3.5 sm:py-2 rounded-sm sm:rounded-sm border border-rose-100/50 dark:border-rose-900/30 text-center sm:text-left">
                                             <p className="text-[7px] sm:text-[8px] font-black text-rose-500 dark:text-rose-400 uppercase tracking-widest leading-none">Cancelado</p>
                                             <p className="text-[9px] sm:text-[11px] font-black text-rose-600 dark:text-rose-400 mt-1 sm:mt-1.5">{fmt.currency(totalsFlow.cancelado)}</p>
                                         </div>
@@ -2365,19 +2365,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                             {/* 4. Aniversariantes */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
                                         <Gift size={20} className="text-indigo-600 dark:text-indigo-400" /> Clientes Aniversariantes ({displayMonthName})
                                     </h3>
                                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
                                         {customerBirthdays.length > 0 ? customerBirthdays.map(c => (
-                                            <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                            <div key={c.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                 <div>
                                                     <p className="font-black text-sm text-slate-900 dark:text-white">{c.name}</p>
                                                     <p className="text-[10px] font-bold opacity-70 uppercase text-slate-600 dark:text-slate-400">{c.phone}</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{c.birthDate?.split('-').reverse().join('/')}</span>
+                                                    <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-sm">{c.birthDate?.split('-').reverse().join('/')}</span>
                                                 </div>
                                             </div>
                                         )) : (
@@ -2386,13 +2386,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     </div>
                                 </div>
 
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
                                         <Gift size={20} className="text-rose-600 dark:text-rose-400" /> Equipe Aniversariante ({displayMonthName})
                                     </h3>
                                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
                                         {providerBirthdays.length > 0 ? providerBirthdays.map(p => (
-                                            <div key={p.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                            <div key={p.id} className="flex justify-between items-center bg-slate-50 dark:bg-zinc-800 p-3 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                 <div className="flex items-center gap-3">
                                                     <img src={p.avatar} alt={p.name} className="w-8 h-8 rounded-full border border-slate-200 dark:border-zinc-600" />
                                                     <div>
@@ -2401,7 +2401,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-lg">{p.birthDate?.split('-').reverse().join('/')}</span>
+                                                    <span className="text-xs font-black bg-white dark:bg-zinc-700 border border-slate-200 dark:border-zinc-600 text-slate-700 dark:text-slate-200 px-2 py-1 rounded-sm">{p.birthDate?.split('-').reverse().join('/')}</span>
                                                 </div>
                                             </div>
                                         )) : (
@@ -2414,8 +2414,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
                             {/* General Insight 1: Saúde Financeira */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-sm flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                                     <TrendingUp size={24} />
                                 </div>
                                 <div className="space-y-1">
@@ -2423,13 +2423,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Visão Macro de Receita</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Taxa de Conversão</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             A conversão de <span className="text-slate-900 dark:text-white font-black">Serviços para Venda de Produtos</span> está em <span className="text-slate-900 dark:text-white font-black">18%</span>. A meta de mercado para salões premium é 25%.
                                         </p>
                                     </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-sm border border-blue-100 dark:border-blue-900/30">
                                         <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Ticket Médio Geral</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Seu ticket médio atual cresceu 5% em relação ao mês anterior.
@@ -2439,8 +2439,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* General Insight 2: Retenção */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-sm flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                     <Users size={24} />
                                 </div>
                                 <div className="space-y-1">
@@ -2448,13 +2448,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Equilíbrio da Base</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Novos Clientes</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Você atraiu novos clientes neste período, representando uma boa fatia da frequência total.
                                         </p>
                                     </div>
-                                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-sm border border-indigo-100 dark:border-indigo-900/30">
                                         <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">LTV (Lifetime Value)</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Clientes recorrentes gastam em média 2.4x mais que clientes de primeira visita.
@@ -2464,8 +2464,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* General Insight 3: Alerta */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-sm flex items-center justify-center text-rose-600 dark:text-rose-400">
                                     <AlertCircle size={24} />
                                 </div>
                                 <div className="space-y-1">
@@ -2473,13 +2473,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase">Riscos e Oportunidades</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-sm border border-rose-100 dark:border-rose-900/30">
                                         <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Clientes Inativos</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Detectamos clientes de alto valor que não retornam há +45 dias.
                                         </p>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Capacidade</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Sua ocupação média permite crescer sem aumentar custos fixos.
@@ -2495,16 +2495,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             {dashboardTab === 'ocupacao' ? (
                 <div className="space-y-6">
                     {/* Sub-tabs for Occupancy */}
-                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm w-fit">
                         <button 
                             onClick={() => setActiveSubTab('charts')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BarChart2 size={14} /> Gráficos de Fluxo
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BrainCircuit size={14} /> Inteligência & Insights
                         </button>
@@ -2513,7 +2513,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     {activeSubTab === 'charts' ? (
                         <>
                             {/* Top Horários de Pico */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Clock size={16} className="text-indigo-600 dark:text-indigo-400" /> Horários de Pico
                                 </h3>
@@ -2534,7 +2534,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                                 {/* Top Dias da Semana */}
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                         <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico (Total)
                                     </h3>
@@ -2554,7 +2554,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Média de Agendamentos por Dia */}
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                         <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-400" /> Média de Agendamentos / Dia
                                     </h3>
@@ -2569,7 +2569,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                     content={({ active, payload, label }: any) => {
                                                         if (active && payload && payload.length) {
                                                             return (
-                                                                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-xl">
+                                                                <div className="bg-white dark:bg-zinc-800 p-3 border border-slate-100 dark:border-zinc-700 shadow-xl rounded-sm">
                                                                     <p className="font-black text-slate-900 dark:text-white text-xs uppercase">{label}</p>
                                                                     <p className="text-indigo-700 dark:text-indigo-400 font-bold text-sm">
                                                                         {payload[0].value.toFixed(1)} Agendamentos / Dia
@@ -2589,7 +2589,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Tempo Médio no Salão */}
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                         <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio no Salão (Minutos)
                                     </h3>
@@ -2622,8 +2622,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
                             {/* Insight: Horários */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-sm flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                     <TrendingUp size={24} />
                                 </div>
                                 <div>
@@ -2631,13 +2631,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Ondas de Demanda</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Picos Principais</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             O fluxo concentra-se em ondas às <span className="text-slate-900 dark:text-white font-black">13h, 15h e 17h</span>. O pico absoluto ocorre às 13h.
                                         </p>
                                     </div>
-                                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-2xl border border-amber-100 dark:border-amber-900/30">
+                                    <div className="bg-amber-50 dark:bg-amber-900/10 p-4 rounded-sm border border-amber-100 dark:border-amber-900/30">
                                         <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Oportunidade (Vale)</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Identificado um "Vale de Fluxo" às <span className="text-slate-900 dark:text-white font-black">12h</span>. Ideal para ações de preenchimento ou promoções "Express".
@@ -2647,8 +2647,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Insight: Eventos */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-sm flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                                     <Target size={24} />
                                 </div>
                                 <div>
@@ -2656,13 +2656,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Foco em Público e Performance</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Visibilidade Máxima</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Para máximo público: <span className="text-slate-900 dark:text-white font-black">Sábados entre 13h e 15h</span>. Aproveite o fluxo orgânico para lançamentos.
                                         </p>
                                     </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-sm border border-blue-100 dark:border-blue-900/30">
                                         <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Produção de Conteúdo</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Para eventos com influenciadores/foto: <span className="text-slate-900 dark:text-white font-black">Segundas ou Terças</span>. Mais espaço e foco da equipe.
@@ -2672,8 +2672,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Insight: Retenção */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-sm flex items-center justify-center text-rose-600 dark:text-rose-400">
                                     <Zap size={24} />
                                 </div>
                                 <div>
@@ -2681,13 +2681,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Tempo Médio de Atendimento</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Permanência Média</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             O cliente permanece no salão por <span className="text-slate-900 dark:text-white font-black">124 minutos</span>. 
                                         </p>
                                     </div>
-                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                                    <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-sm border border-rose-100 dark:border-rose-900/30">
                                         <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Estratégia</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Janela ideal para degustação de produtos de Home-Care enquanto aguardam a ação química dos serviços.
@@ -2703,28 +2703,28 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             {dashboardTab === 'profissionais' ? (
                 <div className="space-y-6">
                     {/* Sub-tabs for Professionals */}
-                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm w-fit">
                         <button 
                             onClick={() => setActiveSubTab('charts')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BarChart2 size={14} /> Rankings & Metas
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('ausencias')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'ausencias' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'ausencias' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <AlertCircle size={14} /> Ausências
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('high_performance')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'high_performance' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'high_performance' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <Zap size={14} /> High Performance
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BrainCircuit size={14} /> Análise de Performance
                         </button>
@@ -2733,7 +2733,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     {activeSubTab === 'charts' ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                             {/* Profissionais por Volume */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Users size={16} className="text-sky-600 dark:text-sky-400" /> Profissionais por Volume
                                 </h3>
@@ -2752,7 +2752,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Faturamento por Profissional */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Faturamento
                                 </h3>
@@ -2771,7 +2771,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Ticket Médio por Profissional */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
                                 </h3>
@@ -2790,7 +2790,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Preferências por Profissional */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Heart size={16} className="text-rose-600 dark:text-rose-400" /> Preferência dos Clientes
                                 </h3>
@@ -2857,7 +2857,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 {/* Motivos de Ausência */}
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                         <PieChart size={16} className="text-rose-600" /> Motivos de Ausência
                                     </h3>
@@ -2876,7 +2876,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Ausências por Dia */}
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                         <Calendar size={16} className="text-amber-600 dark:text-amber-400" /> Ausências por Dia
                                     </h3>
@@ -2896,7 +2896,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Simulador de Recuperação */}
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                     <div>
                                         <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1 flex items-center gap-2">
                                             <BrainCircuit size={16} className="text-indigo-600 dark:text-indigo-400" /> Simulador de Recuperação
@@ -2905,13 +2905,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     </div>
                                     <div className="space-y-4 mt-6">
                                         {[10, 20, 30].map(pct => (
-                                            <div key={pct} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                            <div key={pct} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-zinc-800 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                 <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">{pct}% Redução</span>
                                                 <span className="text-xs font-black text-slate-900 dark:text-white">+ R$ {(absenceMetrics.totalLoss * (pct / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="mt-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                    <div className="mt-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-sm border border-indigo-100 dark:border-indigo-900/30">
                                         <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 leading-tight">
                                             Ações Sugeridas: Rever políticas de folgas e implementar sistema de banco de horas para reduzir ausências não planejadas.
                                         </p>
@@ -2920,7 +2920,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Ranking de Risco por Profissional */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Target size={16} className="text-rose-600" /> Ranking de Impacto (Risco de Agenda)
                                 </h3>
@@ -3009,7 +3009,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                 {/* Diferença p/ Profissional */}
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-2">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-2">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                         <TrendingUp size={16} className="text-emerald-600 dark:text-emerald-400" /> Gap p/ Meta de Excelência (R$)
                                     </h3>
@@ -3028,7 +3028,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Simulador de Performance */}
-                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between h-full">
+                                <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between h-full">
                                     <div>
                                         <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1 flex items-center gap-2">
                                             <BrainCircuit size={16} className="text-indigo-600 dark:text-indigo-400" /> Simulador de Performance
@@ -3037,7 +3037,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     </div>
                                     <div className="space-y-4 mt-6">
                                         {[25, 50, 75, 100].map(pct => (
-                                            <div key={pct} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-zinc-800 rounded-2xl border border-slate-100 dark:border-zinc-700 transition-all hover:border-emerald-200 dark:hover:border-emerald-800">
+                                            <div key={pct} className="flex justify-between items-center p-4 bg-slate-50 dark:bg-zinc-800 rounded-sm border border-slate-100 dark:border-zinc-700 transition-all hover:border-emerald-200 dark:hover:border-emerald-800">
                                                 <span className="text-xs font-black text-emerald-700 dark:text-emerald-400">{pct}% Do Gap</span>
                                                 <span className="text-xs font-black text-slate-900 dark:text-white">+ R$ {((highPerformanceMetrics?.impact || 0) * (pct / 100)).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                                             </div>
@@ -3045,7 +3045,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     </div>
                                      <div className="space-y-3 mt-6">
                                         {(highPerformanceMetrics?.top3 || []).map((p, idx) => (
-                                            <div key={idx} className={`p-4 rounded-2xl border ${idx === 0 ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-100 dark:border-zinc-700'}`}>
+                                            <div key={idx} className={`p-4 rounded-sm border ${idx === 0 ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-100 dark:border-indigo-800' : 'bg-slate-50 dark:bg-zinc-800 border-slate-100 dark:border-zinc-700'}`}>
                                                 <p className={`text-[10px] font-black uppercase flex items-center gap-1 ${idx === 0 ? 'text-indigo-700 dark:text-indigo-400' : 'text-slate-500 dark:text-slate-400'}`}>
                                                     {idx === 0 ? <Sparkles size={12} /> : idx === 1 ? <Target size={12} /> : <Award size={12} />} 
                                                     Benchmark #{idx + 1}: {p.name}
@@ -3062,8 +3062,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500">
                                 {/* Professional Insight 1: Liderança */}
-                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                    <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400">
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 rounded-sm flex items-center justify-center text-sky-600 dark:text-sky-400">
                                         <Award size={24} />
                                     </div>
                                     <div>
@@ -3071,13 +3071,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Consistência de Performance</p>
                                     </div>
                                     <div className="space-y-3 mt-2">
-                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                             <p className="text-[10px] font-black text-sky-600 uppercase mb-1">Top Performer</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 <span className="text-slate-900 dark:text-white font-black">{providerMetrics.revenue[0]?.name}</span> lidera o faturamento este mês com R$ {providerMetrics.revenue[0]?.faturamento.toLocaleString('pt-BR')}.
                                             </p>
                                         </div>
-                                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-sm border border-emerald-100 dark:border-emerald-900/30">
                                             <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Destaque de Produtividade</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 A equipe realizou um total de {filteredAppointments.length} atendimentos, mantendo a qualidade e o tempo médio esperado.
@@ -3087,8 +3087,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Professional Insight 2: Upselling */}
-                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                    <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-sm flex items-center justify-center text-amber-600 dark:text-amber-400">
                                         <TrendingUp size={24} />
                                     </div>
                                     <div>
@@ -3096,13 +3096,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Potencial de Ticket Médio</p>
                                     </div>
                                     <div className="space-y-3 mt-2">
-                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                             <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Maior Ticket Médio</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 <span className="text-slate-900 dark:text-white font-black">{providerMetrics.ticket[0]?.name}</span> possui o maior ticket médio (R$ {providerMetrics.ticket[0]?.ticketMedio.toLocaleString('pt-BR')}), indicando excelente oferta de serviços adicionais.
                                             </p>
                                         </div>
-                                        <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                        <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-sm border border-blue-100 dark:border-blue-900/30">
                                             <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Mix de Serviços</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 Profissionais com foco em tratamentos químicos apresentam 40% mais faturamento por hora que os generalistas.
@@ -3112,8 +3112,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Professional Insight 3: Treinamento */}
-                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-sm flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                         <CircleCheck size={24} />
                                     </div>
                                     <div>
@@ -3121,13 +3121,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Capacitação e Metas</p>
                                     </div>
                                     <div className="space-y-3 mt-2">
-                                        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-sm border border-indigo-100 dark:border-indigo-900/30">
                                             <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Oportunidade de Treinamento</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 Identificamos profissionais com alta retenção de clientes por indicação, ideais para mentorar novos talentos.
                                             </p>
                                         </div>
-                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                             <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Metas de Equipe</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 O atingimento das metas de faturamento está em 85% para o grupo. Faltam R$ 12k para o bônus coletivo.
@@ -3137,8 +3137,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Professional Insight 4: Gestão de Ausências */}
-                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                    <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-2xl flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-rose-50 dark:bg-rose-900/20 rounded-sm flex items-center justify-center text-rose-600 dark:text-rose-400">
                                         <AlertTriangle size={24} />
                                     </div>
                                     <div>
@@ -3146,13 +3146,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Impacto e Disponibilidade</p>
                                     </div>
                                     <div className="space-y-3 mt-2">
-                                        <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-2xl border border-rose-100 dark:border-rose-900/30">
+                                        <div className="bg-rose-50 dark:bg-rose-900/10 p-4 rounded-sm border border-rose-100 dark:border-rose-900/30">
                                             <p className="text-[10px] font-black text-rose-600 uppercase mb-1">Impacto Financeiro</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 As ausências representam uma perda estimada de <span className="text-rose-600 font-black">R$ {absenceMetrics.totalLoss.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span> em faturamento não realizado este período.
                                             </p>
                                         </div>
-                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                        <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                             <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Profissional Crítico</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 {absenceMetrics.topImpactProvider ? (
@@ -3166,8 +3166,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
 
                                 {/* Professional Insight 5: High Performance */}
-                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                    <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                                <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                    <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-900/20 rounded-sm flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                                         <Zap size={24} />
                                     </div>
                                     <div>
@@ -3175,7 +3175,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Excelência Operacional</p>
                                     </div>
                                     <div className="space-y-3 mt-2">
-                                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                                        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-sm border border-emerald-100 dark:border-emerald-900/30">
                                             <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Oportunidade de Ganho</p>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                                 Se todos atingissem o nível de <span className="text-emerald-600 font-black">{highPerformanceMetrics?.topPerformer?.name}</span>, teríamos um aumento de <span className="text-emerald-600 font-black">R$ {highPerformanceMetrics?.impact.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>.
@@ -3183,7 +3183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         </div>
                                         <button 
                                             onClick={() => setActiveSubTab('high_performance')}
-                                            className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-2xl hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-colors flex items-center justify-center gap-2 mt-4"
+                                            className="w-full py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-indigo-600 dark:hover:bg-indigo-400 transition-colors flex items-center justify-center gap-2 mt-4"
                                         >
                                             Ver Detalhes da Meta <ChevronRight size={14} />
                                         </button>
@@ -3197,16 +3197,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             {dashboardTab === 'servicos' ? (
                 <div className="space-y-6">
                     {/* Sub-tabs for Services */}
-                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-fit">
+                    <div className="flex gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm w-fit">
                         <button 
                             onClick={() => setActiveSubTab('charts')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BarChart2 size={14} /> Mix de Serviços
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center gap-2 px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BrainCircuit size={14} /> Inteligência de Mix
                         </button>
@@ -3215,7 +3215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     {activeSubTab === 'charts' ? (
                         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Serviços por Volume */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <TrendingUp size={16} className="text-pink-600 dark:text-pink-400" /> Serviços por Volume
                                 </h3>
@@ -3234,7 +3234,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Faturamento por Serviço */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Faturamento
                                 </h3>
@@ -3253,7 +3253,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                              {/* Ticket Médio por Serviço */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
                                 </h3>
@@ -3272,7 +3272,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Faturamento por Categoria */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Package size={16} className="text-indigo-600 dark:text-indigo-400" /> Faturamento por Categoria
                                 </h3>
@@ -3293,8 +3293,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
                             {/* Service Insight 1: Mix de Receita */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-pink-50 dark:bg-pink-900/20 rounded-2xl flex items-center justify-center text-pink-600 dark:text-pink-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-pink-50 dark:bg-pink-900/20 rounded-sm flex items-center justify-center text-pink-600 dark:text-pink-400">
                                     <PieChart size={24} />
                                 </div>
                                 <div>
@@ -3302,13 +3302,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Rentabilidade e Volume</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-pink-600 uppercase mb-1">Carro-Chefe</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             O serviço <span className="text-slate-900 dark:text-white font-black">{serviceMetrics.revenue[0]?.name}</span> é sua maior fonte de receita direta. Ele ancora 32% do faturamento total de serviços.
                                         </p>
                                     </div>
-                                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                                    <div className="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-sm border border-emerald-100 dark:border-emerald-900/30">
                                         <p className="text-[10px] font-black text-emerald-600 uppercase mb-1">Serviço de Entrada</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Identificamos que 65% dos novos clientes iniciam sua jornada com <span className="text-slate-900 dark:text-white font-black">Escova ou Design de Sobrancelha</span>.
@@ -3318,8 +3318,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Service Insight 2: Oportunidade de Ticket */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-amber-50 dark:bg-amber-900/20 rounded-sm flex items-center justify-center text-amber-600 dark:text-amber-400">
                                     <TrendingUp size={24} />
                                 </div>
                                 <div>
@@ -3327,13 +3327,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Potencial de Faturamento</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-amber-600 uppercase mb-1">Combo Sugerido</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Clientes que fazem Mechas têm 85% de chance de aceitar um Tratamento Reconstrutor se oferecido na cadeira.
                                         </p>
                                     </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-sm border border-blue-100 dark:border-blue-900/30">
                                         <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Gargalo de Agenda</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Serviços longos (mais de 3h) estão concentrados nos sábados. Oferecer 10% de desconto para esses serviços nas terças liberaria espaço nobre.
@@ -3343,8 +3343,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Service Insight 3: Margem Liquida */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-sm flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                     <Sparkles size={24} />
                                 </div>
                                 <div>
@@ -3352,13 +3352,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Serviços Estrela</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
+                                    <div className="bg-indigo-50 dark:bg-indigo-900/10 p-4 rounded-sm border border-indigo-100 dark:border-indigo-900/30">
                                         <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Baixo Consumo / Alta Margem</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Penteados e Maquiagens possuem o menor custo de insumo relativo. Focar em eventos sociais para alavancar margem do mês.
                                         </p>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Alerta de Insumo</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             O custo de coloração subiu 8% este trimestre. Recomenda-se ajuste de tabela ou revisão de desperdício técnico.
@@ -3373,16 +3373,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             {dashboardTab === 'clientes' ? (
                 <div className="space-y-6">
                     {/* Sub-tabs for Customers */}
-                    <div className="flex flex-col sm:flex-row gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-2xl w-full sm:w-fit">
+                    <div className="flex flex-col sm:flex-row gap-2 p-1 bg-slate-100 dark:bg-zinc-800 rounded-sm w-full sm:w-fit">
                         <button 
                             onClick={() => setActiveSubTab('charts')}
-                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <Users size={14} /> Base de Clientes
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
-                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
+                            className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
                             <BrainCircuit size={14} /> CRM Inteligente
                         </button>
@@ -3457,7 +3457,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 />
                             </div>
                             {/* Tráfego de Novos Clientes */}
-                            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-3">
+                            <div className="bg-white dark:bg-zinc-900 p-4 sm:p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-3">
                                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-8">
                                     <div>
                                         <h3 className="text-[10px] min-[350px]:text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
@@ -3467,7 +3467,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     </div>
                                     <div className="flex flex-col xs:flex-row flex-wrap gap-2 sm:gap-4 w-full xs:w-auto">
                                         {/* Unified Novos Clientes Card */}
-                                        <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
+                                        <div className="bg-zinc-100 dark:bg-zinc-800 p-0.5 sm:p-1 rounded-sm sm:rounded-sm shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden border border-zinc-200 dark:border-zinc-700">
                                             <div 
                                                 className="px-1.5 py-1.5 sm:px-5 sm:py-2 cursor-pointer hover:bg-zinc-200 dark:hover:bg-zinc-700/50 transition-colors group/new flex-1 xs:flex-none text-center xs:text-left"
                                                 onClick={() => setIsNewCustomersModalOpen(true)}
@@ -3507,7 +3507,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         </div>
 
                                         {/* Unified Recorrentes Card */}
-                                        <div className="bg-white dark:bg-zinc-800 p-0.5 sm:p-1 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden">
+                                        <div className="bg-white dark:bg-zinc-800 p-0.5 sm:p-1 rounded-sm sm:rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm flex items-center justify-between w-full xs:w-auto overflow-hidden">
                                             <div className="px-1.5 py-1.5 sm:px-5 sm:py-2 flex-1 xs:flex-none text-center xs:text-left">
                                                 <p className="text-[7px] sm:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Recorrentes</p>
                                                 <p className="text-xs sm:text-sm font-black text-slate-900 dark:text-white mt-0.5">
@@ -3563,7 +3563,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                             {/* Frequência Clientes */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <ShoppingBag size={16} className="text-indigo-600 dark:text-indigo-400" /> Frequência
                                 </h3>
@@ -3582,7 +3582,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Top Clientes Gasto */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Gasto Total (R$)
                                 </h3>
@@ -3601,7 +3601,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Ticket Médio Clientes */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
                                 </h3>
@@ -3622,7 +3622,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
 
                             {/* Ticket Médio Dia Semana */}
-                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-[2rem] shadow-sm border border-slate-200 dark:border-zinc-800">
+                            <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
                                     <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-400" /> Ticket Médio Semanal
                                 </h3>
@@ -3643,8 +3643,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
                             {/* Customer Insight 1: RFM */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/20 rounded-sm flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                     <Target size={24} />
                                 </div>
                                 <div>
@@ -3653,7 +3653,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 </div>
                                 <div className="space-y-3 mt-2">
                                     <div 
-                                        className="bg-rose-50/25 dark:bg-rose-900/5 p-5 rounded-3xl border border-rose-100/50 dark:border-zinc-800 cursor-pointer hover:bg-rose-50/50 hover:border-rose-200 dark:hover:border-rose-900/10 transition-all group relative"
+                                        className="bg-rose-50/25 dark:bg-rose-900/5 p-5 rounded-sm border border-rose-100/50 dark:border-zinc-800 cursor-pointer hover:bg-rose-50/50 hover:border-rose-200 dark:hover:border-rose-900/10 transition-all group relative"
                                         onClick={() => {
                                             setChurnModalTab('loyal');
                                             setIsChurnModalOpen(true);
@@ -3666,7 +3666,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         <div className="space-y-4">
                                             {/* 1. Base Geral */}
                                             <div className="flex items-start gap-2.5 pb-3 border-b border-rose-100/40 dark:border-zinc-800/80">
-                                                <div className="bg-indigo-50 dark:bg-indigo-950 p-1.5 rounded-xl text-indigo-700 dark:text-indigo-400 font-black text-[9px] w-12 text-center shrink-0">
+                                                <div className="bg-indigo-50 dark:bg-indigo-950 p-1.5 rounded-sm text-indigo-700 dark:text-indigo-400 font-black text-[9px] w-12 text-center shrink-0">
                                                     Base
                                                 </div>
                                                 <div>
@@ -3677,7 +3677,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                                             {/* 2. Conversão / Fidelização */}
                                             <div className="flex items-start gap-2.5 pb-3 border-b border-rose-100/40 dark:border-zinc-800/80">
-                                                <div className="bg-emerald-100 dark:bg-emerald-950 p-1.5 rounded-xl text-emerald-700 dark:text-emerald-400 font-black text-[9px] w-12 text-center shrink-0">
+                                                <div className="bg-emerald-100 dark:bg-emerald-950 p-1.5 rounded-sm text-emerald-700 dark:text-emerald-400 font-black text-[9px] w-12 text-center shrink-0">
                                                     {recurringStats.conversionToLoyalRate.toFixed(1)}%
                                                 </div>
                                                 <div>
@@ -3690,7 +3690,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                                             {/* 3. Churn Fiéis */}
                                             <div className="flex items-start gap-2.5 pb-3 border-b border-rose-100/40 dark:border-zinc-800/80">
-                                                <div className="bg-rose-100 dark:bg-rose-950 p-1.5 rounded-xl text-rose-700 dark:text-rose-400 font-black text-[9px] w-12 text-center shrink-0">
+                                                <div className="bg-rose-100 dark:bg-rose-950 p-1.5 rounded-sm text-rose-700 dark:text-rose-400 font-black text-[9px] w-12 text-center shrink-0">
                                                     {recurringStats.realChurnRate.toFixed(1)}%
                                                 </div>
                                                 <div>
@@ -3703,7 +3703,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                                             {/* 4. Churn Novos */}
                                             <div className="flex items-start gap-2.5">
-                                                <div className="bg-sky-100 dark:bg-sky-950 p-1.5 rounded-xl text-sky-700 dark:text-sky-400 font-black text-[9px] w-12 text-center shrink-0">
+                                                <div className="bg-sky-100 dark:bg-sky-950 p-1.5 rounded-sm text-sky-700 dark:text-sky-400 font-black text-[9px] w-12 text-center shrink-0">
                                                     {recurringStats.newChurnRate.toFixed(1)}%
                                                 </div>
                                                 <div>
@@ -3724,8 +3724,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Customer Insight 2: Comportamento */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-sky-50 dark:bg-sky-900/20 rounded-sm flex items-center justify-center text-sky-600 dark:text-sky-400">
                                     <ShoppingBag size={24} />
                                 </div>
                                 <div>
@@ -3733,13 +3733,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Preferências de Compra</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-sky-600 uppercase mb-1">Cross-Selling</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Apenas 12% dos clientes de serviços compram produtos. Há uma oportunidade de R$4.5k/mês em vendas não realizadas.
                                         </p>
                                     </div>
-                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/30">
+                                    <div className="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-sm border border-blue-100 dark:border-blue-900/30">
                                         <p className="text-[10px] font-black text-blue-600 uppercase mb-1">Indicação (MGM)</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Seu canal "Indicação" tem o maior LTV. Clientes indicados tendem a gastar 30% mais que os vindos do Instagram.
@@ -3749,8 +3749,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
 
                             {/* Customer Insight 3: Calendario */}
-                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
-                                <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-2xl flex items-center justify-center text-purple-600 dark:text-purple-400">
+                            <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col gap-4">
+                                <div className="w-12 h-12 bg-purple-50 dark:bg-purple-900/20 rounded-sm flex items-center justify-center text-purple-600 dark:text-purple-400">
                                     <Calendar size={24} />
                                 </div>
                                 <div>
@@ -3758,13 +3758,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-1">Ciclo de Vida</p>
                                 </div>
                                 <div className="space-y-3 mt-2">
-                                    <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-2xl border border-purple-100 dark:border-purple-900/30">
+                                    <div className="bg-purple-50 dark:bg-purple-900/10 p-4 rounded-sm border border-purple-100 dark:border-purple-900/30">
                                         <p className="text-[10px] font-black text-purple-600 uppercase mb-1">Ciclo Médio</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             O ciclo médio de retorno é de 28 dias. Clientes que quebram esse ciclo para mais de 35 dias têm 60% de chance de churn.
                                         </p>
                                     </div>
-                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-2xl border border-slate-100 dark:border-zinc-800">
+                                    <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100 dark:border-zinc-800">
                                         <p className="text-[10px] font-black text-slate-600 uppercase mb-1">Aniversariantes</p>
                                         <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                             Campanhas automáticas de aniversário geram um boost médio de 15% no faturamento mensal da categoria 'Mimos'.
@@ -3781,7 +3781,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
             {/* Churn Action Modal */}
             {isChurnModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-7xl h-full md:h-[85vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-zinc-900 md:rounded-sm shadow-2xl w-full max-w-7xl h-full md:h-[85vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
                         {/* Header */}
                         <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                             <div>
@@ -3830,7 +3830,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                         {/* Content */}
                         <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/50 dark:bg-zinc-900/50">
-                            <div className="mb-6 bg-white dark:bg-zinc-800/80 p-4 md:p-6 rounded-3xl border border-slate-200 dark:border-zinc-700 shadow-sm">
+                            <div className="mb-6 bg-white dark:bg-zinc-800/80 p-4 md:p-6 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm">
                                 <h4 className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
                                     <BrainCircuit size={14} className="text-indigo-500" /> Estratégia Sugerida
                                 </h4>
@@ -3852,7 +3852,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                             new Date(client.lastMarketingContact).toDateString() === new Date().toDateString();
                                         
                                         return (
-                                            <div key={client.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-3xl border shadow-sm transition-all relative overflow-hidden ${isAlreadyMessaged ? 'border-emerald-500 dark:border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-slate-100 dark:border-zinc-800'}`}>
+                                            <div key={client.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-sm border shadow-sm transition-all relative overflow-hidden ${isAlreadyMessaged ? 'border-emerald-500 dark:border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-slate-100 dark:border-zinc-800'}`}>
                                                 {isAlreadyMessaged && (
                                                     <div className="absolute top-0 right-0 bg-emerald-500 text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-bl-2xl flex items-center gap-1 shadow-sm animate-in slide-in-from-top-2">
                                                         <CircleCheck size={10} /> Contatado Hoje
@@ -3873,7 +3873,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                     )}
                                                 </div>
 
-                                                <div className="grid grid-cols-2 gap-4 mb-5 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl">
+                                                <div className="grid grid-cols-2 gap-4 mb-5 p-3 bg-slate-50 dark:bg-zinc-800/50 rounded-sm">
                                                     <div>
                                                         <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Última Visita</p>
                                                         <p className="text-[10px] font-black text-slate-700 dark:text-zinc-300">
@@ -3900,14 +3900,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                             window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
                                                             handleMarkAsMessaged(client.id);
                                                         }}
-                                                        className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isAlreadyMessaged ? 'bg-emerald-500 text-white' : 'bg-zinc-950 dark:bg-white text-white dark:text-black shadow-sm'}`}
+                                                        className={`flex-1 py-3 rounded-sm font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isAlreadyMessaged ? 'bg-emerald-500 text-white' : 'bg-zinc-950 dark:bg-white text-white dark:text-black shadow-sm'}`}
                                                     >
                                                         <MessageCircle size={14} />
                                                         {isAlreadyMessaged ? 'Reenviar' : 'WhatsApp'}
                                                     </button>
                                                     <button 
                                                         onClick={() => handleMarkAsMessaged(client.id)}
-                                                        className={`p-3 rounded-2xl border transition-all ${isAlreadyMessaged ? 'bg-emerald-100 border-emerald-300 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'} shadow-sm flex items-center justify-center`}
+                                                        className={`p-3 rounded-sm border transition-all ${isAlreadyMessaged ? 'bg-emerald-100 border-emerald-300 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'} shadow-sm flex items-center justify-center`}
                                                         title="Marcar como enviado manualmente"
                                                     >
                                                         <CircleCheck size={18} />
@@ -3922,7 +3922,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                             handleMarkAsMessaged(client.id);
                                                             alert('Copiado!');
                                                         }}
-                                                        className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-slate-200 shadow-sm"
+                                                        className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm hover:bg-slate-200 shadow-sm"
                                                     >
                                                         <Copy size={16} />
                                                     </button>
@@ -3932,7 +3932,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                     })}
                             </div>
 
-                            <div className="hidden lg:block overflow-x-auto bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                            <div className="hidden lg:block overflow-x-auto bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-slate-50/80 dark:bg-zinc-800/50 border-b border-slate-100 dark:border-zinc-800">
@@ -3988,13 +3988,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                                                         window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
                                                                         handleMarkAsMessaged(client.id);
                                                                     }}
-                                                                    className="p-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                                                    className="p-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm hover:scale-110 active:scale-95 transition-all shadow-sm"
                                                                 >
                                                                     <MessageCircle size={16} />
                                                                 </button>
                                                                 <button 
                                                                     onClick={() => handleMarkAsMessaged(client.id)}
-                                                                    className={`p-2.5 rounded-xl border transition-all ${isAlreadyMessaged ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'}`}
+                                                                    className={`p-2.5 rounded-sm border transition-all ${isAlreadyMessaged ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'}`}
                                                                     title="Marcar como enviado manualmente"
                                                                 >
                                                                     <CircleCheck size={16} />
@@ -4027,7 +4027,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
             {isNewCustomersModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center md:p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-zinc-900 md:rounded-[2.5rem] shadow-2xl w-full max-w-7xl h-full md:h-[85vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
+                    <div className="bg-white dark:bg-zinc-900 md:rounded-sm shadow-2xl w-full max-w-7xl h-full md:h-[85vh] overflow-hidden border-black dark:border-zinc-700 flex flex-col animate-in zoom-in-95 duration-200">
                         {/* Header */}
                         <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                             <div>
@@ -4055,7 +4055,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                         new Date(row.lastMarketingContact).toDateString() === new Date().toDateString();
 
                                     return (
-                                        <div key={row.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-3xl border shadow-sm transition-all relative overflow-hidden ${isAlreadyMessaged ? 'border-emerald-500 dark:border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-slate-100 dark:border-zinc-800'}`}>
+                                        <div key={row.id} className={`bg-white dark:bg-zinc-900 p-5 rounded-sm border shadow-sm transition-all relative overflow-hidden ${isAlreadyMessaged ? 'border-emerald-500 dark:border-emerald-500/50 bg-emerald-50/30 dark:bg-emerald-900/10' : 'border-slate-100 dark:border-zinc-800'}`}>
                                             {isAlreadyMessaged && (
                                                 <div className="absolute top-0 right-0 bg-emerald-500 text-white px-3 py-1 text-[8px] font-black uppercase tracking-widest rounded-bl-2xl flex items-center gap-1 shadow-sm animate-in slide-in-from-top-2">
                                                     <CircleCheck size={10} /> Contatado Hoje
@@ -4102,14 +4102,14 @@ Sua opinião é muito importante pra gente :)`;
                                                         window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
                                                         handleMarkAsMessaged(row.id);
                                                     }}
-                                                    className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isAlreadyMessaged ? 'bg-emerald-500 text-white' : 'bg-zinc-950 dark:bg-white text-white dark:text-black shadow-sm'}`}
+                                                    className={`flex-1 py-3 rounded-sm font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${isAlreadyMessaged ? 'bg-emerald-500 text-white' : 'bg-zinc-950 dark:bg-white text-white dark:text-black shadow-sm'}`}
                                                 >
                                                     <MessageCircle size={14} />
                                                     {isAlreadyMessaged ? 'Reenviar' : 'WhatsApp'}
                                                 </button>
                                                 <button 
                                                     onClick={() => handleMarkAsMessaged(row.id)}
-                                                    className={`p-3 rounded-2xl border transition-all ${isAlreadyMessaged ? 'bg-emerald-100 border-emerald-300 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'} shadow-sm flex items-center justify-center`}
+                                                    className={`p-3 rounded-sm border transition-all ${isAlreadyMessaged ? 'bg-emerald-100 border-emerald-300 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'} shadow-sm flex items-center justify-center`}
                                                     title="Marcar como enviado manualmente"
                                                 >
                                                     <CircleCheck size={18} />
@@ -4128,7 +4128,7 @@ Sua opinião é muito importante pra gente :)`;
                                                         handleMarkAsMessaged(row.id);
                                                         alert('Mensagem copiada!');
                                                     }}
-                                                    className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-2xl hover:bg-slate-200 shadow-sm"
+                                                    className="p-3 bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400 rounded-sm hover:bg-slate-200 shadow-sm"
                                                 >
                                                     <Copy size={16} />
                                                 </button>
@@ -4139,7 +4139,7 @@ Sua opinião é muito importante pra gente :)`;
                             </div>
 
                             {/* Desktop Table */}
-                            <div className="hidden lg:block overflow-x-auto bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                            <div className="hidden lg:block overflow-x-auto bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-slate-50/80 dark:bg-zinc-800/50 border-b border-slate-100 dark:border-zinc-800">
@@ -4199,14 +4199,14 @@ Sua opinião é muito importante pra gente :)`;
                                                                     window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(msg)}`, '_blank');
                                                                     handleMarkAsMessaged(row.id);
                                                                 }}
-                                                                className="p-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-xl hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                                                className="p-2.5 bg-zinc-950 dark:bg-white text-white dark:text-black rounded-sm hover:scale-110 active:scale-95 transition-all shadow-sm"
                                                                 title="Enviar Pesquisa de Satisfação"
                                                             >
                                                                 <MessageCircle size={16} />
                                                             </button>
                                                             <button 
                                                                 onClick={() => handleMarkAsMessaged(row.id)}
-                                                                className={`p-2.5 rounded-xl border transition-all ${isAlreadyMessaged ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'}`}
+                                                                className={`p-2.5 rounded-sm border transition-all ${isAlreadyMessaged ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700 text-slate-400 hover:text-emerald-500'}`}
                                                                 title="Marcar como enviado manualmente"
                                                             >
                                                                 <CircleCheck size={16} />

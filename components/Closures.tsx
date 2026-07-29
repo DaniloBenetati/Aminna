@@ -566,19 +566,19 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         </div>
 
         <div className="grid grid-cols-4 gap-4">
-          <div className="border-2 border-slate-100 p-6 rounded-3xl">
+          <div className="border-2 border-slate-100 p-6 rounded-sm">
             <p className="text-[8px] font-black text-slate-400 uppercase mb-2">Faturamento Bruto</p>
             <p className="text-lg font-black">{formatCurrency(totals.revenue)}</p>
           </div>
-          <div className="border-2 border-slate-100 p-6 rounded-3xl">
+          <div className="border-2 border-slate-100 p-6 rounded-sm">
             <p className="text-[8px] font-black text-indigo-400 uppercase mb-2">Total para Nota</p>
             <p className="text-lg font-black text-indigo-600">{formatCurrency(totals.serviceCommission)}</p>
           </div>
-          <div className="border-2 border-slate-100 p-6 rounded-3xl">
+          <div className="border-2 border-slate-100 p-6 rounded-sm">
             <p className="text-[8px] font-black text-rose-400 uppercase mb-2">Total Caixinhas</p>
             <p className="text-lg font-black text-rose-600">{formatCurrency(totals.tips)}</p>
           </div>
-          <div className="bg-emerald-50 border-2 border-emerald-100 p-6 rounded-3xl">
+          <div className="bg-emerald-50 border-2 border-emerald-100 p-6 rounded-sm">
             <p className="text-[8px] font-black text-emerald-600 uppercase mb-2">Total a Repassar</p>
             <p className="text-lg font-black text-emerald-700">{formatCurrency(totals.toPay)}</p>
           </div>
@@ -918,29 +918,29 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
     <div className="space-y-6 relative h-full flex flex-col pb-24 md:pb-8 text-slate-900 dark:text-white">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div><h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight uppercase">Repasses Profissionais</h2><p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Cálculo de Comissões e Caixinhas</p></div>
-        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 px-3 py-2 rounded-2xl border border-slate-200 shadow-sm"><Calendar size={16} className="text-slate-400" /><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /><span className="text-slate-300 font-black">-</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /></div>
+        <div className="flex items-center gap-2 bg-white dark:bg-zinc-900 px-3 py-2 rounded-sm border border-slate-200 shadow-sm"><Calendar size={16} className="text-slate-400" /><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /><span className="text-slate-300 font-black">-</span><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-[11px] font-black outline-none" /></div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
           <div className="min-w-0"><p className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">Faturamento Bruto</p><p className="text-[10px] md:text-[11px] font-black whitespace-nowrap">R$ {totals.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-lg text-slate-400 flex-shrink-0 ml-1"><Files size={12} className="md:w-[14px] md:h-[14px]" /></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-sm text-slate-400 flex-shrink-0 ml-1"><Files size={12} className="md:w-[14px] md:h-[14px]" /></div>
         </div>
-        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
           <div className="min-w-0"><p className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">Total para Nota</p><p className="text-[10px] md:text-[11px] font-black text-indigo-600 whitespace-nowrap">R$ {totals.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-lg text-indigo-400 flex-shrink-0 ml-1"><FileText size={12} className="md:w-[14px] md:h-[14px]" /></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-sm text-indigo-400 flex-shrink-0 ml-1"><FileText size={12} className="md:w-[14px] md:h-[14px]" /></div>
         </div>
-        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
+        <div className="bg-white dark:bg-zinc-900 p-2 md:p-2.5 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm flex items-center justify-between">
           <div className="min-w-0"><p className="text-[6px] md:text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 truncate">Total Caixinhas</p><p className="text-[10px] md:text-[11px] font-black text-rose-600 whitespace-nowrap">R$ {totals.tips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-lg text-rose-400 flex-shrink-0 ml-1"><Heart size={12} className="md:w-[14px] md:h-[14px]" /></div>
+          <div className="bg-slate-50 dark:bg-zinc-800 p-1 md:p-1.5 rounded-sm text-rose-400 flex-shrink-0 ml-1"><Heart size={12} className="md:w-[14px] md:h-[14px]" /></div>
         </div>
-        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-2 md:p-2.5 rounded-xl border border-emerald-100 shadow-sm flex items-center justify-between">
+        <div className="bg-emerald-50 dark:bg-emerald-900/10 p-2 md:p-2.5 rounded-sm border border-emerald-100 shadow-sm flex items-center justify-between">
           <div className="min-w-0"><p className="text-[6px] md:text-[7px] font-black text-emerald-600 uppercase tracking-widest mb-0.5 truncate">Total a Repassar</p><p className="text-[10px] md:text-[11px] font-black text-emerald-700 whitespace-nowrap">R$ {totals.toPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p></div>
-          <div className="bg-white dark:bg-zinc-900 p-1 md:p-1.5 rounded-lg text-emerald-600 flex-shrink-0 ml-1"><CircleCheck size={12} className="md:w-[14px] md:h-[14px]" /></div>
+          <div className="bg-white dark:bg-zinc-900 p-1 md:p-1.5 rounded-sm text-emerald-600 flex-shrink-0 ml-1"><CircleCheck size={12} className="md:w-[14px] md:h-[14px]" /></div>
         </div>
       </div>
 
-      <div className="flex flex-row justify-between items-center bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-2xl border border-slate-200 shadow-sm gap-2">
+      <div className="flex flex-row justify-between items-center bg-white dark:bg-zinc-900 p-2 md:p-3 rounded-sm border border-slate-200 shadow-sm gap-2">
         <div className={`relative transition-all duration-300 flex items-center ${isSearchOpen ? 'flex-1 min-w-[150px]' : 'w-9'}`}>
           {isSearchOpen ? (
             <div className="relative w-full flex items-center">
@@ -949,16 +949,16 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 autoFocus
                 type="text" 
                 placeholder="Buscar profissional..." 
-                className="w-full pl-9 pr-8 py-1.5 bg-slate-50 dark:bg-zinc-800 border rounded-xl text-[10px] font-black outline-none animate-in slide-in-from-left-1 duration-200" 
+                className="w-full pl-9 pr-8 py-1.5 bg-slate-50 dark:bg-zinc-800 border rounded-sm text-[10px] font-black outline-none animate-in slide-in-from-left-1 duration-200" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)}
               />
-              <button onClick={() => {setSearchTerm(''); setIsSearchOpen(false);}} className="absolute right-2 p-1 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-md transition-colors"><X size={12} className="text-slate-400" /></button>
+              <button onClick={() => {setSearchTerm(''); setIsSearchOpen(false);}} className="absolute right-2 p-1 hover:bg-slate-100 dark:hover:bg-zinc-700 rounded-sm transition-colors"><X size={12} className="text-slate-400" /></button>
             </div>
           ) : (
             <button 
               onClick={() => setIsSearchOpen(true)}
-              className="flex items-center justify-center w-9 h-9 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-xl hover:bg-slate-100 transition-colors"
+              className="flex items-center justify-center w-9 h-9 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm hover:bg-slate-100 transition-colors"
               title="Buscar"
             >
               <Search size={16} className="text-slate-500" />
@@ -967,25 +967,25 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button onClick={() => handleGenerateReceipts(null, false, 'auditoria')} className="flex items-center justify-center gap-1.5 bg-slate-950 dark:bg-white text-white dark:text-black px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-md hover:bg-slate-800 transition-all active:scale-95">
+          <button onClick={() => handleGenerateReceipts(null, false, 'auditoria')} className="flex items-center justify-center gap-1.5 bg-slate-950 dark:bg-white text-white dark:text-black px-3 py-2 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-md hover:bg-slate-800 transition-all active:scale-95">
             <Printer size={12} /> <span className="hidden sm:inline">Auditoria</span>
           </button>
-          <button onClick={() => handleGenerateReceipts(null, true, 'receipt')} className="flex items-center justify-center gap-1.5 bg-indigo-600 dark:bg-indigo-500 text-white px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-md hover:bg-indigo-700 transition-all active:scale-95">
+          <button onClick={() => handleGenerateReceipts(null, true, 'receipt')} className="flex items-center justify-center gap-1.5 bg-indigo-600 dark:bg-indigo-500 text-white px-3 py-2 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-md hover:bg-indigo-700 transition-all active:scale-95">
             <Printer size={12} /> <span className="hidden sm:inline">Recibos</span>
           </button>
-          <button onClick={() => setRescisaoModalData({ providerId: 'all', type: 'all' })} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+          <button onClick={() => setRescisaoModalData({ providerId: 'all', type: 'all' })} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
             <Scissors size={12} className="text-rose-500" /> <span className="hidden sm:inline">Média Rescisão</span>
           </button>
-          <button onClick={() => setIsProvisionModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+          <button onClick={() => setIsProvisionModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
             <FileSpreadsheet size={12} className="text-emerald-500" /> <span className="hidden sm:inline">Provisão</span>
           </button>
-          <button onClick={() => setIsAccountingModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
+          <button onClick={() => setIsAccountingModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white border border-slate-200 dark:border-zinc-700 px-3 py-2 rounded-sm text-[9px] font-black uppercase tracking-wider shadow-sm hover:bg-slate-50 transition-all active:scale-95">
             <FileCode size={12} className="text-amber-500" /> <span className="hidden sm:inline">Contabilidade</span>
           </button>
         </div>
       </div>
 
-      <div className="flex-1 bg-white dark:bg-zinc-900 rounded-[2rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-0">
+      <div className="flex-1 bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-0">
         <div className="overflow-x-auto flex-1 text-slate-900 dark:text-white scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800">
           <table className="w-full text-left text-sm relative min-w-[1000px] lg:min-w-0">
             <thead className="bg-slate-50 dark:bg-zinc-800 text-[9px] uppercase font-black border-b sticky top-0 z-10 shadow-sm">
@@ -1024,7 +1024,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         persistDiscount(data.provider?.id || '', 'das', val);
                       }}
                       placeholder="0,00"
-                      className="w-16 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-[10px] font-black text-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
+                      className="w-16 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-sm p-1 text-[10px] font-black text-rose-500 focus:ring-1 focus:ring-rose-500 outline-none"
                     />
                   </td>
                   <td className="px-3 py-3 text-right">
@@ -1040,22 +1040,22 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         persistDiscount(data.provider?.id || '', 'discount', val);
                       }}
                       placeholder="0,00"
-                      className="w-16 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-lg p-1 text-[10px] font-black text-rose-600 focus:ring-1 focus:ring-rose-600 outline-none"
+                      className="w-16 text-right bg-slate-50 dark:bg-zinc-800 border-none rounded-sm p-1 text-[10px] font-black text-rose-600 focus:ring-1 focus:ring-rose-600 outline-none"
                     />
                   </td>
                   <td className="px-3 py-3 text-right font-black text-emerald-700 whitespace-nowrap">R$ {data.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   <td className="px-4 py-3 sticky right-0 bg-white dark:bg-zinc-900 z-10">
                     <div className="flex items-center justify-center gap-1">
-                       <button onClick={() => { setSelectedReceipt(data); handleGenerateReceipts(data, true, 'auditoria'); }} title="Recibo Detalhado (Sem Faturamento)" className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
+                       <button onClick={() => { setSelectedReceipt(data); handleGenerateReceipts(data, true, 'auditoria'); }} title="Recibo Detalhado (Sem Faturamento)" className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-indigo-600 dark:text-indigo-400 transition-colors">
                         <FileText size={16} />
                       </button>
-                      <button onClick={() => setWhatsappModalData(data)} title="Enviar via WhatsApp" className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg text-emerald-600 dark:text-emerald-400 transition-colors">
+                      <button onClick={() => setWhatsappModalData(data)} title="Enviar via WhatsApp" className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-sm text-emerald-600 dark:text-emerald-400 transition-colors">
                         <MessageCircle size={16} />
                       </button>
-                      <button onClick={() => setFiscalDetailingData(data)} title="Gerar Detalhamento Fiscal (NFSe)" className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg text-indigo-600 dark:text-indigo-400 transition-colors">
+                      <button onClick={() => setFiscalDetailingData(data)} title="Gerar Detalhamento Fiscal (NFSe)" className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-indigo-600 dark:text-indigo-400 transition-colors">
                         <FileCode size={16} />
                       </button>
-                      <button onClick={() => setRescisaoModalData({ providerId: data.provider?.id || '', type: 'single' })} title="Cálculo de Média para Rescisão" className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg text-rose-600 dark:text-rose-400 transition-colors">
+                      <button onClick={() => setRescisaoModalData({ providerId: data.provider?.id || '', type: 'single' })} title="Cálculo de Média para Rescisão" className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-sm text-rose-600 dark:text-rose-400 transition-colors">
                         <Scissors size={16} />
                       </button>
                     </div>
@@ -1069,7 +1069,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       {whatsappModalData && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-[2rem] shadow-2xl p-6 flex flex-col items-center">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-sm shadow-2xl p-6 flex flex-col items-center">
             <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-4 text-emerald-600"><MessageCircle size={24} /></div>
             <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-2">Enviar Comprovante</h3>
             <p className="text-xs text-slate-500 text-center mb-6">Compartilhar com {whatsappModalData.provider?.name}.</p>
@@ -1081,7 +1081,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`, '_blank');
                     setWhatsappModalData(null);
                   }} 
-                  className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[9px] uppercase tracking-widest flex flex-col items-center justify-center"
+                  className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm font-black text-[9px] uppercase tracking-widest flex flex-col items-center justify-center"
                 >
                   <Send size={14} className="mb-1" /> Enviar Resumo
                 </button>
@@ -1091,7 +1091,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     window.open(`https://api.whatsapp.com/send?phone=55${phone}&text=${encodeURIComponent(message)}`, '_blank');
                     setWhatsappModalData(null);
                   }} 
-                  className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[9px] uppercase tracking-widest flex flex-col items-center justify-center"
+                  className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm font-black text-[9px] uppercase tracking-widest flex flex-col items-center justify-center"
                 >
                   <FileText size={14} className="mb-1" /> Detalhado
                 </button>
@@ -1103,7 +1103,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   setWhatsappModalData(null);
                   showToast('Texto Detalhado Copiado!', 'success');
                 }} 
-                className="w-full py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
+                className="w-full py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
               >
                 <Copy size={16} /> Copiar Texto (Completo)
               </button>
@@ -1115,10 +1115,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       {fiscalDetailingData && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl p-8 flex flex-col">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-sm shadow-2xl p-8 flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600">
+                <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-sm flex items-center justify-center text-indigo-600">
                   <FileCode size={24} />
                 </div>
                 <div>
@@ -1133,14 +1133,14 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
             <textarea
               readOnly
-              className="w-full h-64 p-6 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-3xl font-mono text-[11px] text-slate-600 dark:text-slate-300 outline-none focus:border-indigo-500 transition-all resize-none shadow-inner"
+              className="w-full h-64 p-6 bg-slate-50 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm font-mono text-[11px] text-slate-600 dark:text-slate-300 outline-none focus:border-indigo-500 transition-all resize-none shadow-inner"
               value={generateFiscalDetailingText(fiscalDetailingData)}
             />
 
             <div className="mt-8 grid grid-cols-2 gap-4">
               <button
                 onClick={() => setFiscalDetailingData(null)}
-                className="py-4 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all"
+                className="py-4 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm font-black text-[10px] uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-all"
               >
                 Cancelar
               </button>
@@ -1151,7 +1151,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   showToast('Copiado com sucesso! Agora você pode colar na descrição da sua nota fiscal.', 'success');
                   setFiscalDetailingData(null);
                 }}
-                className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none transition-all"
+                className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none transition-all"
               >
                 <Copy size={18} /> Copiar Detalhamento
               </button>
@@ -1162,21 +1162,21 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       {rescisaoModalData && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-sm shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50">
               <div>
                 <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Média para Rescisão</h3>
                 <p className="text-[10px] font-black text-rose-600 uppercase tracking-widest mt-1">Cálculo baseado nos últimos 3 meses</p>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={handlePrintRescisao} className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-xl text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity">
+                <button onClick={handlePrintRescisao} className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-sm text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity">
                   <Printer size={14} /> Exportar PDF
                 </button>
-                <button onClick={() => setRescisaoModalData(null)} className="p-3 hover:bg-white rounded-2xl text-slate-400"><X size={20} /></button>
+                <button onClick={() => setRescisaoModalData(null)} className="p-3 hover:bg-white rounded-sm text-slate-400"><X size={20} /></button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6" id="rescisao-print-wrapper">
-              <div className="overflow-x-auto rounded-[2rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+              <div className="overflow-x-auto rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                 <table className="w-full text-left text-sm whitespace-nowrap">
                   <thead className="bg-slate-50 dark:bg-zinc-800 text-[9px] uppercase font-black">
                     <tr>
@@ -1213,40 +1213,40 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       {selectedReceipt && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-4xl rounded-sm shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50">
               <div><h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Detalhamento</h3><p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">{selectedReceipt.provider?.name}</p></div>
-              <button onClick={() => setSelectedReceipt(null)} className="p-3 hover:bg-white rounded-2xl text-slate-400"><X size={20} /></button>
+              <button onClick={() => setSelectedReceipt(null)} className="p-3 hover:bg-white rounded-sm text-slate-400"><X size={20} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 {!hideFaturamento && (
-                  <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-3xl border border-slate-100">
+                  <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100">
                     <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Faturamento</p>
                     <p className="text-sm font-black text-slate-900 dark:text-white">R$ {selectedReceipt.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                   </div>
                 )}
-                <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-3xl border border-slate-100">
+                <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100">
                   <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Comissões</p>
                   <p className="text-sm font-black text-indigo-600">R$ {selectedReceipt.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
-                <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-3xl border border-slate-100">
+                <div className="bg-slate-50 dark:bg-zinc-800/50 p-4 rounded-sm border border-slate-100">
                   <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Caixinhas</p>
                   <p className="text-sm font-black text-rose-600">R$ {selectedReceipt.totalTips.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
                 {selectedReceipt.das > 0 && (
-                  <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-3xl border border-rose-100">
+                  <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-sm border border-rose-100">
                     <p className="text-[8px] font-black text-rose-500 uppercase mb-1">DAS (MEI)</p>
                     <p className="text-sm font-black text-rose-600">R$ {selectedReceipt.das.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                   </div>
                 )}
                 {selectedReceipt.discount > 0 && (
-                  <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-3xl border border-rose-100">
+                  <div className="bg-rose-50 dark:bg-rose-900/20 p-4 rounded-sm border border-rose-100">
                     <p className="text-[8px] font-black text-rose-500 uppercase mb-1">Descontos</p>
                     <p className="text-sm font-black text-rose-600">R$ {selectedReceipt.discount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                   </div>
                 )}
-                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-3xl border border-emerald-100">
+                <div className="bg-emerald-50 dark:bg-emerald-900/20 p-4 rounded-sm border border-emerald-100">
                   <p className="text-[8px] font-black text-emerald-600 uppercase mb-1">Líquido</p>
                   <p className="text-sm font-black text-emerald-700">R$ {selectedReceipt.finalToPay.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
@@ -1255,9 +1255,9 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Serviços</h4>
                 <div className="space-y-2">
                   {selectedReceipt.details.map((service: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-800 border border-slate-100 rounded-2xl hover:border-slate-200 transition-all">
+                    <div key={idx} className="flex items-center justify-between p-4 bg-white dark:bg-zinc-800 border border-slate-100 rounded-sm hover:border-slate-200 transition-all">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-slate-400">
+                        <div className="w-10 h-10 rounded-sm bg-slate-50 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-black text-slate-400">
                           {new Date((service.date ? service.date.substring(0, 10) : new Date().toISOString().split('T')[0]) + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                         </div>
                         <div><p className="text-xs font-black uppercase text-slate-900 dark:text-white">{service.serviceName}</p><p className="text-[10px] font-bold text-slate-500 uppercase">{service.clientName}</p></div>
@@ -1289,13 +1289,13 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             <div className="p-6 border-t border-slate-100 flex gap-4 bg-slate-50/50">
               <button 
                 onClick={() => handleGenerateReceipts(selectedReceipt, false, 'auditoria')}
-                className="flex-1 flex items-center justify-center gap-2 bg-slate-200 dark:bg-zinc-700 text-slate-900 dark:text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest"
+                className="flex-1 flex items-center justify-center gap-2 bg-slate-200 dark:bg-zinc-700 text-slate-900 dark:text-white py-4 rounded-sm text-[10px] font-black uppercase tracking-widest"
               >
                 <Printer size={18} /> Detalhado (Auditoria)
               </button>
               <button 
                 onClick={() => handleGenerateReceipts(selectedReceipt, true, 'receipt')}
-                className="flex-[2] flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg"
+                className="flex-[2] flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black py-4 rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg"
               >
                 <Printer size={18} /> Imprimir Recibo Profissional
               </button>
@@ -1344,10 +1344,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       {isProvisionModalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-sm shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
             <div className="p-8 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600">
+                <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-sm flex items-center justify-center text-emerald-600">
                   <FileSpreadsheet size={24} />
                 </div>
                 <div>
@@ -1359,7 +1359,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
             </div>
             
             <div className="flex-1 overflow-y-auto p-8">
-              <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-3xl p-6 border border-slate-100 dark:border-zinc-700 font-mono text-[11px] whitespace-pre-wrap text-slate-600 dark:text-slate-300 line-clamp-[20]">
+              <div className="bg-slate-50 dark:bg-zinc-800/50 rounded-sm p-6 border border-slate-100 dark:border-zinc-700 font-mono text-[11px] whitespace-pre-wrap text-slate-600 dark:text-slate-300 line-clamp-[20]">
                 {generateProvisionSummary()}
               </div>
             </div>
@@ -1371,7 +1371,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   navigator.clipboard.writeText(msg);
                   showToast('Copiado para a área de transferência!', 'success');
                 }}
-                className="py-4 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-900 dark:text-white flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
+                className="py-4 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm font-black text-[10px] uppercase tracking-widest text-slate-900 dark:text-white flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
               >
                 <Copy size={18} /> Copiar Texto
               </button>
@@ -1380,7 +1380,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   const message = generateProvisionSummary();
                   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`, '_blank');
                 }}
-                className="py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none transition-all"
+                className="py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none transition-all"
               >
                 <MessageCircle size={18} /> WhatsApp
               </button>
@@ -1389,7 +1389,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   setIsPrintingProvision(true);
                   handleGenerateReceipts();
                 }}
-                className="py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all col-span-2 lg:col-span-1"
+                className="py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all col-span-2 lg:col-span-1"
               >
                 <Printer size={18} /> Gerar PDF
               </button>
@@ -1400,10 +1400,10 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
 
       {isAccountingModalOpen && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-5xl rounded-[2.5rem] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="bg-white dark:bg-zinc-900 w-full max-w-5xl rounded-sm shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-6 md:p-8 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center bg-slate-50/50">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-2xl flex items-center justify-center text-amber-600">
+                <div className="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-sm flex items-center justify-center text-amber-600">
                   <FileCode size={24} />
                 </div>
                 <div>
@@ -1466,7 +1466,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   link.click();
                   document.body.removeChild(link);
                 }}
-                className="flex-1 min-w-[150px] py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
+                className="flex-1 min-w-[150px] py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
               >
                 <Download size={18} /> Exportar CSV
               </button>
@@ -1547,7 +1547,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   `);
                   printWindow.document.close();
                 }}
-                className="flex-1 min-w-[150px] py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
+                className="flex-1 min-w-[150px] py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
               >
                 <Printer size={18} /> Imprimir PDF
               </button>

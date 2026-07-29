@@ -199,7 +199,7 @@ const ReconciliationRow = React.memo(({
 
                 {/* Lista de Itens Vinculados (para Desmembramentos) */}
                 {row.linkedMatches && row.linkedMatches.length > 0 && (
-                    <div className="mt-2 space-y-1 bg-slate-50/50 p-2 rounded-lg border border-slate-100">
+                    <div className="mt-2 space-y-1 bg-slate-50/50 p-2 rounded-sm border border-slate-100">
                         <p className="text-[9px] font-black text-slate-400 uppercase mb-1 flex items-center gap-1">
                             <Link2 size={10} /> Itens Vinculados:
                         </p>
@@ -217,7 +217,7 @@ const ReconciliationRow = React.memo(({
                 )}
 
                 {row.type === 'RECEITA' && (
-                    <span className="inline-flex items-center gap-1.5 mt-2 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-md border border-emerald-200">
+                    <span className="inline-flex items-center gap-1.5 mt-2 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase px-2 py-0.5 rounded-sm border border-emerald-200">
                         <DollarSign className="w-3 h-3 stroke-[3]" />
                         Recebimento em Conta
                     </span>
@@ -268,14 +268,14 @@ const ReconciliationRow = React.memo(({
                 )}
                 {row.status === 'A_CONFERIR' && (
                     <div className="flex flex-col gap-2">
-                        <p className="text-xs leading-relaxed text-rose-600 font-semibold bg-rose-50 p-2 rounded-lg border border-rose-100 flex gap-2 items-start">
+                        <p className="text-xs leading-relaxed text-rose-600 font-semibold bg-rose-50 p-2 rounded-sm border border-rose-100 flex gap-2 items-start">
                             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                             {row.divergenceReason}
                         </p>
                         <div className="flex gap-2 flex-wrap">
                             <button
                                 onClick={(e) => { e.stopPropagation(); onManualConfirm?.(row.id); }}
-                                className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded-md shadow-sm transition-all flex items-center justify-center gap-1.5"
+                                className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded-sm shadow-sm transition-all flex items-center justify-center gap-1.5"
                                 title="Confirmar que este lançamento sistêmico corresponde a este item bancário"
                             >
                                 <Check className="w-3.5 h-3.5" />
@@ -283,7 +283,7 @@ const ReconciliationRow = React.memo(({
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onAdjustDate?.(row.id); }}
-                                className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black uppercase rounded-md border border-slate-200 transition-all flex items-center justify-center gap-1.5"
+                                className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-black uppercase rounded-sm border border-slate-200 transition-all flex items-center justify-center gap-1.5"
                                 title="Mover para outro mês ou ajustar sistema"
                             >
                                 <Calendar className="w-3 h-3" />
@@ -291,7 +291,7 @@ const ReconciliationRow = React.memo(({
                             </button>
                             <button
                                 onClick={(e) => { e.stopPropagation(); onStartLinking?.(row.id); }}
-                                className="px-2 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[10px] font-black uppercase rounded-md border border-indigo-200 transition-all flex items-center justify-center gap-1.5"
+                                className="px-2 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-[10px] font-black uppercase rounded-sm border border-indigo-200 transition-all flex items-center justify-center gap-1.5"
                                 title="Vincular este lançamento com uma linha do extrato (Muitos para um)"
                             >
                                 <Link2 className="w-3 h-3" />
@@ -305,7 +305,7 @@ const ReconciliationRow = React.memo(({
                         {isLinkingActive ? (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onCompleteLinking?.(row.id); }}
-                                className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase rounded-lg shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 animate-pulse"
+                                className="w-full px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase rounded-sm shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 animate-pulse"
                             >
                                 <Check className="w-4 h-4" />
                                 Confirmar Vínculo aqui
@@ -314,7 +314,7 @@ const ReconciliationRow = React.memo(({
                             <div className="flex gap-2">
                                 <button
                                     onClick={(e) => { e.stopPropagation(); onStartLinking?.(row.id); }}
-                                    className="px-2 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase rounded-md border border-indigo-100 transition-all flex items-center justify-center gap-1.5"
+                                    className="px-2 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-black uppercase rounded-sm border border-indigo-100 transition-all flex items-center justify-center gap-1.5"
                                     title="Vincular este lançamento com itens existentes no sistema (Muitos para um)"
                                 >
                                     <Link2 className="w-3.5 h-3.5" />
@@ -323,7 +323,7 @@ const ReconciliationRow = React.memo(({
                                 {row.linkedMatches && row.linkedMatches.length > 0 && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onManualConfirm?.(row.id); }}
-                                        className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded-md shadow-sm transition-all flex items-center justify-center gap-1.5"
+                                        className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-black uppercase rounded-sm shadow-sm transition-all flex items-center justify-center gap-1.5"
                                         title="Confirmar os vínculos atuais e conciliar"
                                     >
                                         <Check className="w-3.5 h-3.5" />
@@ -1877,12 +1877,12 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
 
     return (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-center items-center py-10 overflow-y-auto">
-            <div className="bg-white max-w-7xl w-full rounded-2xl shadow-xl border border-slate-200 flex flex-col m-auto min-h-[600px] h-[90vh]">
+            <div className="bg-white max-w-7xl w-full rounded-sm shadow-xl border border-slate-200 flex flex-col m-auto min-h-[600px] h-[90vh]">
 
                 {/* Header */}
                 <div className="flex items-center justify-between p-6 border-b border-slate-100">
                     <div className="flex items-center gap-3">
-                        <div className="bg-indigo-100 p-2 rounded-xl">
+                        <div className="bg-indigo-100 p-2 rounded-sm">
                             <RefreshCw className="w-6 h-6 text-indigo-600" />
                         </div>
                         <div>
@@ -1899,7 +1899,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 <div className="flex-1 flex flex-col p-6 overflow-hidden">
                     {reconciledRows.length === 0 ? (
                         <div className="flex flex-col items-center justify-center flex-1 space-y-4">
-                            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-4">
+                            <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-sm flex items-center justify-center mb-4">
                                 <Upload className="w-8 h-8" />
                             </div>
                             <h3 className="text-lg font-bold text-slate-800">Importar Extrato Bancário</h3>
@@ -1909,13 +1909,13 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                 value={rawText}
                                 onChange={(e) => setRawText(e.target.value)}
                                 placeholder="Cole o texto do extrato aqui..."
-                                className="w-full max-w-2xl h-48 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none shadow-inner"
+                                className="w-full max-w-2xl h-48 p-4 bg-slate-50 border border-slate-200 rounded-sm text-xs font-mono text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all resize-none shadow-inner"
                             />
 
                             <button
                                 onClick={() => parseBankText(rawText)}
                                 disabled={!rawText || isProcessing}
-                                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-sm shadow-lg shadow-indigo-200 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                             >
                                 {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                                 Iniciar Cruzamento de Dados
@@ -1925,7 +1925,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         <div className="flex flex-col h-full overflow-hidden">
                             {/* Stats Cards */}
                             <div className="grid grid-cols-3 gap-4 mb-6 shrink-0">
-                                <button onClick={() => setActiveTab('A_LANCAR')} className={`p-4 rounded-xl border flex flex-col gap-1 text-left transition-all ${activeTab === 'A_LANCAR' ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-500/20' : 'bg-white border-slate-200 hover:border-amber-300'}`}>
+                                <button onClick={() => setActiveTab('A_LANCAR')} className={`p-4 rounded-sm border flex flex-col gap-1 text-left transition-all ${activeTab === 'A_LANCAR' ? 'bg-amber-50 border-amber-300 ring-2 ring-amber-500/20' : 'bg-white border-slate-200 hover:border-amber-300'}`}>
                                     <div className="flex items-center gap-2 text-amber-600 mb-2">
                                         <PlusCircle className="w-5 h-5" />
                                         <span className="font-bold uppercase text-[10px] tracking-widest">A Lançar (Novo no Banco)</span>
@@ -1934,7 +1934,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                     <span className="text-xs font-semibold text-slate-500">Encontrados no extrato</span>
                                 </button>
 
-                                <button onClick={() => setActiveTab('A_CONFERIR')} className={`p-4 rounded-xl border flex flex-col gap-1 text-left transition-all ${activeTab === 'A_CONFERIR' ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 hover:border-rose-300'}`}>
+                                <button onClick={() => setActiveTab('A_CONFERIR')} className={`p-4 rounded-sm border flex flex-col gap-1 text-left transition-all ${activeTab === 'A_CONFERIR' ? 'bg-rose-50 border-rose-300 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 hover:border-rose-300'}`}>
                                     <div className="flex items-center gap-2 text-rose-600 mb-2">
                                         <AlertCircle className="w-5 h-5" />
                                         <span className="font-bold uppercase text-[10px] tracking-widest">A Conferir (Divergência)</span>
@@ -1943,7 +1943,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                     <span className="text-xs font-semibold text-slate-500">Lançados, mas sumiram</span>
                                 </button>
 
-                                <button onClick={() => setActiveTab('CONCILIADOS')} className={`p-4 rounded-xl border flex flex-col gap-1 text-left transition-all ${activeTab === 'CONCILIADOS' ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-emerald-300'}`}>
+                                <button onClick={() => setActiveTab('CONCILIADOS')} className={`p-4 rounded-sm border flex flex-col gap-1 text-left transition-all ${activeTab === 'CONCILIADOS' ? 'bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-emerald-300'}`}>
                                     <div className="flex items-center gap-2 text-emerald-600 mb-2">
                                         <CircleCheck className="w-5 h-5" />
                                         <span className="font-bold uppercase text-[10px] tracking-widest">Já Conciliados (Batem)</span>
@@ -1963,13 +1963,13 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                             placeholder="Pesquisar histórico..."
                                             value={searchTerm}
                                             onChange={e => setSearchTerm(e.target.value)}
-                                            className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold w-64 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-sm"
+                                            className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-sm text-sm font-semibold w-64 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-sm"
                                         />
                                     </div>
-                                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-1 shadow-sm">
+                                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-sm p-1 shadow-sm">
                                         <button
                                             onClick={() => changeDate(-1)}
-                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors"
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-sm transition-colors"
                                         >
                                             <ChevronLeft className="w-4 h-4" />
                                         </button>
@@ -1982,7 +1982,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                             ) : (
                                                 <div className="flex items-center gap-1 group">
                                                     <select
-                                                        className="bg-slate-100 dark:bg-zinc-800 border-none text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 outline-none px-2 py-1 rounded-md cursor-pointer hover:bg-slate-200"
+                                                        className="bg-slate-100 dark:bg-zinc-800 border-none text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 outline-none px-2 py-1 rounded-sm cursor-pointer hover:bg-slate-200"
                                                         onChange={(e) => {
                                                             const month = e.target.value;
                                                             if (month) {
@@ -2008,7 +2008,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                                     </select>
                                                     <select
                                                         id="reset-year-select"
-                                                        className="bg-slate-100 dark:bg-zinc-800 border-none text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 outline-none px-2 py-1 rounded-md cursor-pointer hover:bg-slate-200"
+                                                        className="bg-slate-100 dark:bg-zinc-800 border-none text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 outline-none px-2 py-1 rounded-sm cursor-pointer hover:bg-slate-200"
                                                         onChange={(e) => {
                                                             const year = e.target.value;
                                                             const month = (document.querySelector('select:has(option[value="01"])') as HTMLSelectElement)?.value;
@@ -2027,27 +2027,27 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                         </div>
                                         <button
                                             onClick={() => changeDate(1)}
-                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors"
+                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-sm transition-colors"
                                         >
                                             <ChevronRight className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    <div className="flex bg-slate-100 p-1 rounded-xl shadow-inner">
+                                    <div className="flex bg-slate-100 p-1 rounded-sm shadow-inner">
                                         <button
                                             onClick={() => setTransactionTypeFilter('ALL')}
-                                            className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${transactionTypeFilter === 'ALL' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            className={`px-3 py-1.5 text-[10px] font-black rounded-sm uppercase tracking-wider transition-all ${transactionTypeFilter === 'ALL' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                         >
                                             Todos
                                         </button>
                                         <button
                                             onClick={() => setTransactionTypeFilter('RECEITA')}
-                                            className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${transactionTypeFilter === 'RECEITA' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:text-emerald-600'}`}
+                                            className={`px-3 py-1.5 text-[10px] font-black rounded-sm uppercase tracking-wider transition-all ${transactionTypeFilter === 'RECEITA' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-500 hover:text-emerald-600'}`}
                                         >
                                             Receitas
                                         </button>
                                         <button
                                             onClick={() => setTransactionTypeFilter('DESPESA')}
-                                            className={`px-3 py-1.5 text-[10px] font-black rounded-lg uppercase tracking-wider transition-all ${transactionTypeFilter === 'DESPESA' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-500 hover:text-rose-600'}`}
+                                            className={`px-3 py-1.5 text-[10px] font-black rounded-sm uppercase tracking-wider transition-all ${transactionTypeFilter === 'DESPESA' ? 'bg-rose-500 text-white shadow-md' : 'text-slate-500 hover:text-rose-600'}`}
                                         >
                                             Despesas
                                         </button>
@@ -2056,7 +2056,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                     {linkingSourceIds.length > 0 && (
                                         <button
                                             onClick={handleCancelLinking}
-                                            className="px-3 py-1.5 bg-rose-100 text-rose-700 text-[10px] font-black uppercase rounded-lg border border-rose-200 hover:bg-rose-200 transition-all flex items-center gap-2"
+                                            className="px-3 py-1.5 bg-rose-100 text-rose-700 text-[10px] font-black uppercase rounded-sm border border-rose-200 hover:bg-rose-200 transition-all flex items-center gap-2"
                                         >
                                             <X className="w-3 h-3" />
                                             Cancelar Vínculo Manual ({linkingSourceIds.length})
@@ -2072,7 +2072,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                             {activeTab === 'A_CONFERIR' && (
                                                 <button
                                                     onClick={() => handleStartLinking([...approvalQueue])}
-                                                    className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase rounded-lg shadow-sm hover:bg-indigo-700 transition-all flex items-center gap-2"
+                                                    className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase rounded-sm shadow-sm hover:bg-indigo-700 transition-all flex items-center gap-2"
                                                 >
                                                     <Link2 className="w-3.5 h-3.5" />
                                                     Vincular ao Extrato
@@ -2083,7 +2083,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                     <button
                                         onClick={handleResetMonth}
                                         disabled={isProcessing || isCleaning || !targetDate}
-                                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-lg text-sm border border-rose-200 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group relative"
+                                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-sm text-sm border border-rose-200 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed group relative"
                                         title={!targetDate ? "Selecione um mês para habilitar a limpeza" : "Limpar toda a conciliação deste mês para refazer"}
                                     >
                                         <Trash2 className="w-4 h-4" />
@@ -2097,7 +2097,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                     <button
                                         onClick={handleApproveSelected}
                                         disabled={(approvalQueue.size === 0 && reconciledRows.filter(r => r.status === 'CONCILIADOS').length === 0) || isProcessing}
-                                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg text-sm shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
+                                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-sm text-sm shadow-md transition-all flex items-center gap-2 disabled:opacity-50"
                                     >
                                         <Check className="w-4 h-4" />
                                         Processar Lançamentos
@@ -2106,7 +2106,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                             </div>
 
                             {/* List Component inside Container */}
-                            <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl bg-slate-50 relative">
+                            <div className="flex-1 overflow-y-auto border border-slate-200 rounded-sm bg-slate-50 relative">
                                 <table className="w-full text-left border-collapse">
                                     <thead className="bg-slate-100 sticky top-0 z-10 shadow-sm border-b border-slate-200">
                                         <tr>
@@ -2164,7 +2164,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
             {/* QUICK CREATE MODAL OVERLAY */}
             {quickCreateType && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-                    <div className="bg-white max-w-sm w-full rounded-2xl shadow-2xl border border-slate-200 overflow-hidden transform transition-all scale-100">
+                    <div className="bg-white max-w-sm w-full rounded-sm shadow-2xl border border-slate-200 overflow-hidden transform transition-all scale-100">
                         <div className="p-6">
                             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mb-2">
                                 <PlusCircle className="w-5 h-5 text-indigo-600" />
@@ -2179,20 +2179,20 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                 onChange={(e) => setNewItemName(e.target.value)}
                                 onKeyDown={(e) => e.key === 'Enter' && executeQuickCreate()}
                                 placeholder="Digite o nome..."
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all mb-6"
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-sm text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all mb-6"
                             />
 
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => setQuickCreateType(null)}
-                                    className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl transition-all text-sm"
+                                    className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-sm transition-all text-sm"
                                 >
                                     Cancelar
                                 </button>
                                 <button
                                     onClick={executeQuickCreate}
                                     disabled={!newItemName.trim() || isSavingNewItem}
-                                    className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-sm shadow-lg shadow-indigo-200 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
                                 >
                                     {isSavingNewItem ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                                     Confirmar

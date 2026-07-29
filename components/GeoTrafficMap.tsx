@@ -625,7 +625,7 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
     <div className={`transition-all duration-300 ${
       isFullscreen 
         ? 'fixed inset-0 z-[9999] bg-white dark:bg-zinc-900 p-6 md:p-8 flex flex-col space-y-6 overflow-hidden' 
-        : 'bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-100 dark:border-zinc-800 shadow-sm p-4 sm:p-6 md:p-8 space-y-6'
+        : 'bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm p-4 sm:p-6 md:p-8 space-y-6'
     }`}>
       
       {/* Header Info */}
@@ -648,7 +648,7 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
           
           <button 
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white rounded-xl transition-all flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider border border-slate-200/20 dark:border-zinc-800"
+            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white rounded-sm transition-all flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider border border-slate-200/20 dark:border-zinc-800"
             title={isFullscreen ? "Minimizar" : "Ver em tela cheia"}
           >
             {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
@@ -662,14 +662,14 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
       <div className={`grid grid-cols-1 xl:grid-cols-3 gap-6 ${isFullscreen ? 'flex-1 min-h-0' : ''}`}>
         
         {/* Map Container */}
-        <div className={`xl:col-span-2 relative rounded-3xl overflow-hidden border border-slate-100 dark:border-zinc-800/80 shadow-inner z-10 ${
+        <div className={`xl:col-span-2 relative rounded-sm overflow-hidden border border-slate-100 dark:border-zinc-800/80 shadow-inner z-10 ${
           isFullscreen ? 'h-full' : 'h-[380px] sm:h-[450px]'
         }`}>
           <div ref={mapContainerRef} className="w-full h-full" />
           
           {isGeocoding && (
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm z-[1000] flex items-center justify-center">
-              <div className="bg-white dark:bg-zinc-900 px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-100 dark:border-zinc-800">
+              <div className="bg-white dark:bg-zinc-900 px-6 py-4 rounded-sm shadow-xl flex items-center gap-3 border border-slate-100 dark:border-zinc-800">
                 <RefreshCw size={16} className="text-indigo-600 animate-spin" />
                 <span className="text-[10px] font-black uppercase text-slate-800 dark:text-white tracking-widest">Calculando Coordenadas Meta...</span>
               </div>
@@ -680,7 +680,7 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
           <div className="absolute top-4 left-4 z-[999] flex flex-col gap-2">
             <button 
               onClick={() => setSelectedAdSetId(null)}
-              className="bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-800 text-[9px] font-black uppercase tracking-wider text-slate-800 dark:text-white px-3 py-2 rounded-xl border border-slate-100 dark:border-zinc-800 shadow-lg flex items-center gap-1.5 transition-all active:scale-95"
+              className="bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-800 text-[9px] font-black uppercase tracking-wider text-slate-800 dark:text-white px-3 py-2 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-lg flex items-center gap-1.5 transition-all active:scale-95"
             >
               <Navigation size={10} /> Recalibrar Foco Geral
             </button>
@@ -702,11 +702,11 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
               const isCampExpanded = expandedCampaigns[campGroup.campaignName] ?? true; // expanded by default
               
               return (
-                <div key={campGroup.campaignName} className="space-y-2 border border-slate-100 dark:border-zinc-800/80 rounded-2xl p-2 bg-slate-50/30 dark:bg-zinc-800/10">
+                <div key={campGroup.campaignName} className="space-y-2 border border-slate-100 dark:border-zinc-800/80 rounded-sm p-2 bg-slate-50/30 dark:bg-zinc-800/10">
                   {/* Campaign Header */}
                   <div 
                     onClick={() => setExpandedCampaigns(prev => ({ ...prev, [campGroup.campaignName]: !isCampExpanded }))}
-                    className="flex justify-between items-center p-2 hover:bg-slate-100/50 dark:hover:bg-zinc-800/30 rounded-xl cursor-pointer select-none"
+                    className="flex justify-between items-center p-2 hover:bg-slate-100/50 dark:hover:bg-zinc-800/30 rounded-sm cursor-pointer select-none"
                   >
                     <div className="min-w-0">
                       <p className="text-[10px] font-extrabold text-slate-900 dark:text-white uppercase truncate max-w-[180px]">
@@ -733,7 +733,7 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
                           <div
                             key={group.adSetId}
                             onClick={() => setSelectedAdSetId(isSelected ? null : group.adSetId)}
-                            className={`p-3 rounded-xl border transition-all cursor-pointer select-none group text-left ${
+                            className={`p-3 rounded-sm border transition-all cursor-pointer select-none group text-left ${
                               isSelected 
                                 ? 'bg-indigo-50/70 border-indigo-200 dark:bg-indigo-950/20 dark:border-indigo-800/40 shadow-sm' 
                                 : 'bg-white hover:bg-slate-50 border-slate-100 hover:border-slate-200 dark:bg-zinc-950 dark:border-zinc-900/60 dark:hover:bg-zinc-850'
@@ -799,7 +799,7 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
                                             mapInstanceRef.current.setView([loc.lat, loc.lng], 13, { animate: true, duration: 1.0 });
                                           }
                                         }}
-                                        className="px-1.5 py-0.5 bg-slate-50 dark:bg-zinc-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-lg text-[8px] font-black border border-slate-100 dark:border-zinc-800/80 hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                                        className="px-1.5 py-0.5 bg-slate-50 dark:bg-zinc-900 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-700 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-indigo-400 rounded-sm text-[8px] font-black border border-slate-100 dark:border-zinc-800/80 hover:border-indigo-200 dark:hover:border-indigo-900/40 transition-all flex items-center gap-1 shadow-sm active:scale-95"
                                       >
                                         <Navigation size={7} className="text-indigo-500" />
                                         <span className="truncate max-w-[100px]">{loc.name}</span>
@@ -819,7 +819,7 @@ export const GeoTrafficMap: React.FC<{ campaigns?: any[], adSets: any[], ads?: a
                                       {matchingAds.map((ad: any) => (
                                         <div 
                                           key={ad.id} 
-                                          className="flex items-center justify-between p-1 bg-slate-50 dark:bg-zinc-900 rounded-lg border border-slate-105 dark:border-zinc-800/50 hover:border-indigo-100 dark:hover:border-indigo-950/40 transition-colors"
+                                          className="flex items-center justify-between p-1 bg-slate-50 dark:bg-zinc-900 rounded-sm border border-slate-105 dark:border-zinc-800/50 hover:border-indigo-100 dark:hover:border-indigo-950/40 transition-colors"
                                         >
                                           <div className="flex items-center gap-1.5 min-w-0">
                                             {ad.creative?.thumbnail_url ? (

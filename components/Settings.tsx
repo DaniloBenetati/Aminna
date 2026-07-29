@@ -534,9 +534,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mt-1">Configure o sistema e consulte a documentação</p>
                 </div>
 
-                <div className="flex bg-slate-100 dark:bg-zinc-800 p-1.5 rounded-2xl">
-                    <button onClick={() => setActiveTab('GENERAL')} className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'GENERAL' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}>Geral</button>
-                    <button onClick={() => setActiveTab('MANUAL')} className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'MANUAL' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}>Manual</button>
+                <div className="flex bg-slate-100 dark:bg-zinc-800 p-1.5 rounded-sm">
+                    <button onClick={() => setActiveTab('GENERAL')} className={`px-6 py-2.5 rounded-sm text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'GENERAL' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}>Geral</button>
+                    <button onClick={() => setActiveTab('MANUAL')} className={`px-6 py-2.5 rounded-sm text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'MANUAL' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm transform scale-105' : 'text-slate-400 hover:text-slate-600'}`}>Manual</button>
                 </div>
             </header>
 
@@ -568,7 +568,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             {/* CATEGORIES TAB */}
                             {subTab === 'CATEGORIES' && (
                                 <div className="space-y-6">
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm">
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                                             <div className="max-w-xl">
                                                 <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center gap-3">
@@ -580,7 +580,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             </div>
                                         </div>
 
-                                        <form onSubmit={handleSaveCategory} className="flex flex-col md:flex-row gap-4 items-end bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-2xl border border-slate-100 dark:border-zinc-700 mb-8">
+                                        <form onSubmit={handleSaveCategory} className="flex flex-col md:flex-row gap-4 items-end bg-slate-50 dark:bg-zinc-800/50 p-6 rounded-sm border border-slate-100 dark:border-zinc-700 mb-8">
                                             <div className="flex-1 w-full">
                                                 <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
                                                     {editingCategory ? 'Editar Categoria' : 'Nome da Categoria'}
@@ -589,7 +589,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     value={newCategoryName}
                                                     onChange={e => setNewCategoryName(e.target.value)}
                                                     placeholder="Ex: Manutenção Predial"
-                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
+                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
                                                 />
                                             </div>
                                             <div className="md:w-64 w-full">
@@ -598,7 +598,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     <select
                                                         value={newCategoryDRE}
                                                         onChange={e => setNewCategoryDRE(e.target.value as any)}
-                                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none appearance-none focus:border-indigo-600 dark:text-white"
+                                                        className="w-full bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold outline-none appearance-none focus:border-indigo-600 dark:text-white"
                                                     >
                                                         {Object.entries(dreLabels).map(([key, label]) => (
                                                             <option key={key} value={key}>{label}</option>
@@ -608,11 +608,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 </div>
                                             </div>
                                             {editingCategory && (
-                                                <button type="button" onClick={handleCancelEditCategory} className="px-4 py-3 bg-slate-200 text-slate-600 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-slate-300 transition-colors h-[48px]">
+                                                <button type="button" onClick={handleCancelEditCategory} className="px-4 py-3 bg-slate-200 text-slate-600 rounded-sm font-black uppercase text-xs tracking-widest hover:bg-slate-300 transition-colors h-[48px]">
                                                     Cancelar
                                                 </button>
                                             )}
-                                            <button disabled={!newCategoryName} type="submit" className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors w-full md:w-auto h-[48px]">
+                                            <button disabled={!newCategoryName} type="submit" className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-sm font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors w-full md:w-auto h-[48px]">
                                                 {editingCategory ? 'Salvar' : 'Adicionar'}
                                             </button>
                                         </form>
@@ -622,7 +622,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 const cats = expenseCategories.filter(c => c.dreClass === dreKey);
                                                 if (cats.length === 0) return null;
                                                 return (
-                                                    <div key={dreKey} className="bg-slate-50 dark:bg-zinc-800/30 rounded-2xl p-5 border border-slate-100 dark:border-zinc-700">
+                                                    <div key={dreKey} className="bg-slate-50 dark:bg-zinc-800/30 rounded-sm p-5 border border-slate-100 dark:border-zinc-700">
                                                         <h4 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 mb-4 pb-2 border-b border-slate-200 dark:border-zinc-700">{label}</h4>
                                                         <ul className="space-y-2">
                                                             {cats.map(cat => (
@@ -650,7 +650,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             {/* PAYMENT SETTINGS TAB */}
                             {subTab === 'FINANCE' && (
                                 <div className="space-y-6">
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between">
                                         <div className="max-w-xl text-center md:text-left">
                                             <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center justify-center md:justify-start gap-3">
                                                 <Percent className="text-indigo-600" /> Antecipação & Vigência
@@ -663,7 +663,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                         <div className="lg:col-span-1">
-                                            <form onSubmit={handleSaveRates} className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm h-full">
+                                            <form onSubmit={handleSaveRates} className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm h-full">
                                                 <div className="space-y-4 mb-6">
                                                     <div>
                                                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1 flex justify-between">
@@ -684,7 +684,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                             disabled={!localRates.anticipationEnabled}
                                                             value={localRates.anticipationRate}
                                                             onChange={e => setLocalRates({ ...localRates, anticipationRate: parseFloat(e.target.value) || 0 })}
-                                                            className="w-full bg-slate-50 dark:bg-zinc-800/50 disabled:opacity-50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
+                                                            className="w-full bg-slate-50 dark:bg-zinc-800/50 disabled:opacity-50 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
                                                         />
                                                     </div>
                                                     <div>
@@ -693,7 +693,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                             type="date"
                                                             value={localRates.validFrom}
                                                             onChange={e => setLocalRates({ ...localRates, validFrom: e.target.value })}
-                                                            className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
+                                                            className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
                                                         />
                                                         <p className="text-[9px] text-slate-400 mt-1 ml-1 leading-tight">Mudar a data criará um novo registro de vigência no histórico.</p>
                                                     </div>
@@ -709,7 +709,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                             step="0.01"
                                                             value={localRates.initialBalance}
                                                             onChange={e => setLocalRates({ ...localRates, initialBalance: parseFloat(e.target.value) || 0 })}
-                                                            className="w-full bg-emerald-50/30 dark:bg-emerald-900/10 border-2 border-emerald-100 dark:border-emerald-800 rounded-xl p-3 text-sm font-bold outline-none focus:border-emerald-600 dark:text-white"
+                                                            className="w-full bg-emerald-50/30 dark:bg-emerald-900/10 border-2 border-emerald-100 dark:border-emerald-800 rounded-sm p-3 text-sm font-bold outline-none focus:border-emerald-600 dark:text-white"
                                                             placeholder="0,00"
                                                         />
                                                     </div>
@@ -723,7 +723,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                             step="0.01"
                                                             value={localRates.cashFlowReserveRate}
                                                             onChange={e => setLocalRates({ ...localRates, cashFlowReserveRate: parseFloat(e.target.value) || 0 })}
-                                                            className="w-full bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
+                                                            className="w-full bg-indigo-50/30 dark:bg-indigo-900/10 border-2 border-indigo-100 dark:border-indigo-800 rounded-sm p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white"
                                                             placeholder="0,00"
                                                         />
                                                         <p className="text-[9px] text-slate-400 mt-1 ml-1 leading-tight italic">Percentual do faturamento que ficará retido para formar seu caixa próprio.</p>
@@ -733,7 +733,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     <button
                                                         type="submit"
                                                         disabled={isSavingRates}
-                                                        className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors w-full h-[48px] shadow-lg shadow-indigo-200 dark:shadow-none"
+                                                        className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 text-white rounded-sm font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-colors w-full h-[48px] shadow-lg shadow-indigo-200 dark:shadow-none"
                                                     >
                                                         {isSavingRates ? 'Salvando...' : 'Salvar Vigência'}
                                                     </button>
@@ -742,7 +742,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         </div>
 
                                         <div className="lg:col-span-2">
-                                            <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden h-full">
+                                            <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden h-full">
                                                 <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex justify-between items-center">
                                                     <h4 className="text-xs font-black uppercase text-slate-500 dark:text-slate-400 tracking-widest">Histórico de Vigência</h4>
                                                     <div className="flex items-center gap-2">
@@ -774,7 +774,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                                             </span>
                                                                         </td>
                                                                         <td className="px-6 py-4">
-                                                                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-md ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400'}`}>
+                                                                            <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-sm ${isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-zinc-800 dark:text-slate-400'}`}>
                                                                                 {isActive ? 'Vigente' : (isPast ? 'Histórico' : 'Agendado')}
                                                                             </span>
                                                                         </td>
@@ -793,7 +793,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         </div>
                                     </div>
 
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between mt-8">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between mt-8">
                                         <div className="max-w-xl text-center md:text-left">
                                             <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center justify-center md:justify-start gap-3">
                                                 <Wallet className="text-indigo-600" /> Prazos e Taxas Específicos
@@ -804,7 +804,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         </div>
                                         <button
                                             onClick={() => handleOpenPaymentModal()}
-                                            className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all w-full md:w-auto justify-center"
+                                            className="px-8 py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all w-full md:w-auto justify-center"
                                         >
                                             <Plus size={18} /> Novo Método
                                         </button>
@@ -814,10 +814,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         {paymentSettings.map((pay) => {
                                             const Icon = iconMap[pay.iconName] || CreditCard;
                                             return (
-                                                <div key={pay.id} className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group">
+                                                <div key={pay.id} className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group">
                                                     <div className="flex items-center justify-between mb-6">
                                                         <div className="flex items-center gap-4">
-                                                            <div className={`p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-800 ${pay.color}`}>
+                                                            <div className={`p-3.5 rounded-sm bg-slate-50 dark:bg-zinc-800 ${pay.color}`}>
                                                                 <Icon size={24} />
                                                             </div>
                                                             <div>
@@ -826,17 +826,17 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                             </div>
                                                         </div>
                                                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button onClick={() => handleOpenPaymentModal(pay)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors"><Edit3 size={16} /></button>
-                                                            <button onClick={() => handleDeletePayment(pay.id)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-rose-600 rounded-xl transition-colors"><Trash2 size={16} /></button>
+                                                            <button onClick={() => handleOpenPaymentModal(pay)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-indigo-600 rounded-sm transition-colors"><Edit3 size={16} /></button>
+                                                            <button onClick={() => handleDeletePayment(pay.id)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-rose-600 rounded-sm transition-colors"><Trash2 size={16} /></button>
                                                         </div>
                                                     </div>
 
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                        <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                             <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 block">Taxa Administr.</label>
                                                             <p className="text-xl font-black text-slate-950 dark:text-white">{pay.fee.toFixed(2)}%</p>
                                                         </div>
-                                                        <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                        <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                             <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 block">Liquidação</label>
                                                             <p className="text-xl font-black text-slate-950 dark:text-white">D+{pay.days}</p>
                                                         </div>
@@ -854,7 +854,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         })}
                                     </div>
 
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between mt-8">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm flex flex-col md:flex-row gap-6 items-center justify-between mt-8">
                                         <div className="max-w-xl text-center md:text-left">
                                             <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center justify-center md:justify-start gap-3">
                                                 <Handshake className="text-emerald-500" /> Configuração de Repasses
@@ -867,10 +867,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {commissionSettings.map((comm) => (
-                                            <div key={comm.id} className="bg-white dark:bg-zinc-900 p-6 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group">
+                                            <div key={comm.id} className="bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm hover:border-indigo-200 dark:hover:border-indigo-900 transition-all group">
                                                 <div className="flex items-center justify-between mb-6">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-zinc-800 text-emerald-500">
+                                                        <div className="p-3.5 rounded-sm bg-emerald-50 dark:bg-zinc-800 text-emerald-500">
                                                             <Calendar size={24} />
                                                         </div>
                                                         <div>
@@ -879,18 +879,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                         </div>
                                                     </div>
                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button onClick={() => handleOpenCommissionModal(comm)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors"><Edit3 size={16} /></button>
+                                                        <button onClick={() => handleOpenCommissionModal(comm)} className="p-2 bg-slate-50 dark:bg-zinc-800 text-slate-400 hover:text-indigo-600 rounded-sm transition-colors"><Edit3 size={16} /></button>
                                                     </div>
                                                 </div>
 
                                                 <div className="grid grid-cols-2 gap-4">
-                                                    <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                    <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                         <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 block">Apuração</label>
                                                         <p className="text-base font-black text-slate-950 dark:text-white">
                                                             Dia {comm.startDay} ao {comm.endDay === 'last' ? 'Fim' : `Dia ${comm.endDay}`}
                                                         </p>
                                                     </div>
-                                                    <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-2xl border border-slate-100 dark:border-zinc-700">
+                                                    <div className="p-4 bg-slate-50/50 dark:bg-zinc-800/50 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                         <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1 block">Pagamento</label>
                                                         <p className="text-base font-black text-emerald-600 dark:text-emerald-400">Dia {comm.paymentDay}</p>
                                                     </div>
@@ -904,7 +904,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             {/* USERS TAB */}
                             {subTab === 'USERS' && (
                                 <div className="space-y-6">
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm">
                                         <div className="max-w-xl mb-8">
                                             <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center gap-3">
                                                 <User className="text-indigo-600" /> Controle de Acesso
@@ -921,9 +921,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         ) : (
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                                 {profiles.map(user => (
-                                                    <div key={user.id} className="bg-slate-50 dark:bg-zinc-800/50 rounded-3xl p-6 border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-all group">
+                                                    <div key={user.id} className="bg-slate-50 dark:bg-zinc-800/50 rounded-sm p-6 border border-slate-100 dark:border-zinc-700 hover:border-indigo-200 transition-all group">
                                                         <div className="flex items-center gap-4 mb-4">
-                                                            <div className="w-12 h-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
+                                                            <div className="w-12 h-12 rounded-sm bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600">
                                                                 <User size={24} />
                                                             </div>
                                                             <div className="flex-1 min-w-0">
@@ -943,23 +943,23 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                         <div className="space-y-3">
                                                             <div className="flex flex-wrap gap-1">
                                                                 {user.permissions.tabs.slice(0, 3).map(tab => (
-                                                                    <span key={tab} className="px-2 py-0.5 bg-white dark:bg-zinc-800 rounded-md text-[9px] font-bold text-slate-500 uppercase">{tab}</span>
+                                                                    <span key={tab} className="px-2 py-0.5 bg-white dark:bg-zinc-800 rounded-sm text-[9px] font-bold text-slate-500 uppercase">{tab}</span>
                                                                 ))}
                                                                 {user.permissions.tabs.length > 3 && (
-                                                                    <span className="px-2 py-0.5 bg-white dark:bg-zinc-800 rounded-md text-[9px] font-bold text-slate-500">+{user.permissions.tabs.length - 3}</span>
+                                                                    <span className="px-2 py-0.5 bg-white dark:bg-zinc-800 rounded-sm text-[9px] font-bold text-slate-500">+{user.permissions.tabs.length - 3}</span>
                                                                 )}
                                                             </div>
                                                             <div className="grid grid-cols-2 gap-2">
                                                                 <button
                                                                     onClick={() => handleOpenUserModal(user)}
-                                                                    className="py-3 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:border-indigo-600 hover:text-indigo-600 transition-all"
+                                                                    className="py-3 bg-white dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-700 rounded-sm text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:border-indigo-600 hover:text-indigo-600 transition-all"
                                                                 >
                                                                     Permissões
                                                                 </button>
                                                                 {isAdmin && onSimulateUser && (
                                                                     <button
                                                                         onClick={() => onSimulateUser(user)}
-                                                                        className="py-3 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-900 rounded-xl text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:border-indigo-600 transition-all flex items-center justify-center gap-2"
+                                                                        className="py-3 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-100 dark:border-indigo-900 rounded-sm text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:border-indigo-600 transition-all flex items-center justify-center gap-2"
                                                                     >
                                                                         <Sparkles size={12} /> Simular
                                                                     </button>
@@ -977,7 +977,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             {/* UNIT / FISCAL SETTINGS TAB */}
                             {subTab === 'UNIT' && (
                                 <div className="space-y-6">
-                                    <div className="bg-white dark:bg-zinc-900 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm">
+                                    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-200 dark:border-zinc-800 p-6 md:p-8 shadow-sm">
                                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
                                             <div className="max-w-xl">
                                                 <h3 className="text-xl font-black text-slate-950 dark:text-white uppercase mb-2 flex items-center gap-3">
@@ -999,15 +999,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <div>
                                                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Razão Social / Nome do Salão</label>
-                                                        <input name="salonName" defaultValue={fiscalConfig?.salonName} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
+                                                        <input name="salonName" defaultValue={fiscalConfig?.salonName} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
                                                     </div>
                                                     <div>
                                                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">CNPJ</label>
-                                                        <input name="cnpj" defaultValue={fiscalConfig?.cnpj} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
+                                                        <input name="cnpj" defaultValue={fiscalConfig?.cnpj} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
                                                     </div>
                                                     <div>
                                                         <label className="block text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Inscrição Municipal</label>
-                                                        <input name="im" defaultValue={fiscalConfig?.municipalRegistration} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
+                                                        <input name="im" defaultValue={fiscalConfig?.municipalRegistration} className="w-full bg-slate-50 dark:bg-zinc-800/50 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold outline-none focus:border-indigo-600 dark:text-white" />
                                                     </div>
                                                 </div>
 
@@ -1019,12 +1019,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                         <Globe size={18} className="text-emerald-500" /> Integração Focus NFe
                                                     </h4>
 
-                                                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-2xl border border-emerald-100 dark:border-emerald-800 mb-6">
+                                                    <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-sm border border-emerald-100 dark:border-emerald-800 mb-6">
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                             <div>
                                                                 <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5 ml-1">Token de Acesso (API Key)</label>
                                                                 <div className="relative">
-                                                                    <input name="focusToken" type="password" defaultValue={fiscalConfig?.focusNfeToken} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-700 rounded-xl p-3 pl-10 text-sm font-bold outline-none focus:border-emerald-500 dark:text-white" placeholder="Cole seu token aqui" />
+                                                                    <input name="focusToken" type="password" defaultValue={fiscalConfig?.focusNfeToken} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-700 rounded-sm p-3 pl-10 text-sm font-bold outline-none focus:border-emerald-500 dark:text-white" placeholder="Cole seu token aqui" />
                                                                     <FileKey size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
                                                                 </div>
                                                                 <p className="text-[10px] text-slate-400 mt-1 ml-1">Obtenha em: Painel Focus &gt; Tokens</p>
@@ -1032,7 +1032,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                             <div>
                                                                 <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-1.5 ml-1">Ambiente</label>
                                                                 <div className="relative">
-                                                                    <select name="environment" defaultValue={fiscalConfig?.focusNfeEnvironment} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-700 rounded-xl p-3 text-sm font-bold outline-none appearance-none focus:border-emerald-500 dark:text-white">
+                                                                    <select name="environment" defaultValue={fiscalConfig?.focusNfeEnvironment} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-200 dark:border-emerald-700 rounded-sm p-3 text-sm font-bold outline-none appearance-none focus:border-emerald-500 dark:text-white">
                                                                         <option value="sandbox">Homologação (Testes)</option>
                                                                         <option value="production">Produção (Valendo)</option>
                                                                     </select>
@@ -1050,7 +1050,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                                 type="button"
                                                                 onClick={handleRegisterCompany}
                                                                 disabled={isRegisteringCompany || !fiscalConfig?.focusNfeToken}
-                                                                className="px-6 py-3 bg-emerald-600 disabled:bg-slate-300 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all shadow-sm flex items-center gap-2"
+                                                                className="px-6 py-3 bg-emerald-600 disabled:bg-slate-300 text-white rounded-sm font-black uppercase text-xs tracking-widest hover:bg-emerald-700 transition-all shadow-sm flex items-center gap-2"
                                                             >
                                                                 {isRegisteringCompany ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <CircleCheck size={16} />}
                                                                 Autorizar CNPJ (Habilitar Emissão)
@@ -1059,7 +1059,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     </div>
 
                                                     {/* CERTIFICADO DIGITAL */}
-                                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-2xl border border-indigo-100 dark:border-indigo-800">
+                                                    <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-sm border border-indigo-100 dark:border-indigo-800">
                                                         <h4 className="text-base font-black text-slate-950 dark:text-white uppercase mb-4 flex items-center gap-2">
                                                             <ShieldCheck size={18} className="text-indigo-500" /> Certificado Digital (Modelo A1)
                                                         </h4>
@@ -1071,7 +1071,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                                     type="file"
                                                                     accept=".pfx,.p12"
                                                                     onChange={(e) => setCertificateFile(e.target.files?.[0] || null)}
-                                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl p-2.5 text-xs font-bold outline-none focus:border-indigo-500 dark:text-white"
+                                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-200 dark:border-indigo-700 rounded-sm p-2.5 text-xs font-bold outline-none focus:border-indigo-500 dark:text-white"
                                                                 />
                                                                 <p className="text-[10px] text-slate-400 mt-1 ml-1">Somente certificados modelo A1 são aceitos.</p>
                                                             </div>
@@ -1081,7 +1081,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                                     type="password"
                                                                     value={certificatePassword}
                                                                     onChange={(e) => setCertificatePassword(e.target.value)}
-                                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-indigo-500 dark:text-white"
+                                                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-200 dark:border-indigo-700 rounded-sm p-3 text-sm font-bold outline-none focus:border-indigo-500 dark:text-white"
                                                                     placeholder="Digite a senha de exportação"
                                                                 />
                                                             </div>
@@ -1104,7 +1104,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                                 type="button"
                                                                 onClick={handleUploadCertificate}
                                                                 disabled={isUploadingCertificate || !certificateFile || !certificatePassword}
-                                                                className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 text-white rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all shadow-sm flex items-center gap-2"
+                                                                className="px-6 py-3 bg-indigo-600 disabled:bg-slate-300 text-white rounded-sm font-black uppercase text-xs tracking-widest hover:bg-indigo-700 transition-all shadow-sm flex items-center gap-2"
                                                             >
                                                                 {isUploadingCertificate ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : <Save size={16} />}
                                                                 Enviar Certificado
@@ -1117,7 +1117,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                     <button
                                                         type="submit"
                                                         disabled={isSavingFiscal}
-                                                        className="px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 hover:bg-indigo-700 transition-all flex items-center gap-2"
+                                                        className="px-8 py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 hover:bg-indigo-700 transition-all flex items-center gap-2"
                                                     >
                                                         {isSavingFiscal ? 'Salvando...' : 'Salvar Alterações'} <Save size={18} />
                                                     </button>
@@ -1141,19 +1141,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     {activeTab === 'MANUAL' && (
                         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                             {/* DOCUMENTATION CONTENT RECONSTRUCTED */}
-                            <div className="flex justify-between items-center bg-indigo-600 text-white p-6 rounded-[2rem] shadow-xl">
+                            <div className="flex justify-between items-center bg-indigo-600 text-white p-6 rounded-sm shadow-xl">
                                 <div>
                                     <h2 className="text-xl font-black uppercase tracking-tight mb-1">Manual Oficial</h2>
                                     <p className="text-indigo-100 text-xs font-bold">Documentação técnica e regras de negócio</p>
                                 </div>
-                                <button onClick={handlePrintDocumentation} className="bg-white text-indigo-600 px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest hover:bg-indigo-50 transition-colors flex items-center gap-2">
+                                <button onClick={handlePrintDocumentation} className="bg-white text-indigo-600 px-6 py-3 rounded-sm font-black uppercase text-xs tracking-widest hover:bg-indigo-50 transition-colors flex items-center gap-2">
                                     <Printer size={16} /> Imprimir / PDF
                                 </button>
                             </div>
 
                             <div className="grid gap-8">
                                 {DOCUMENTATION_DATA.sections.map((section, idx) => (
-                                    <section key={idx} className="bg-white dark:bg-zinc-900 p-8 rounded-[2.5rem] border border-slate-200 dark:border-zinc-800 shadow-sm">
+                                    <section key={idx} className="bg-white dark:bg-zinc-900 p-8 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-sm">
                                         <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-zinc-800">
                                             <BookOpen size={24} className="text-indigo-600" />
                                             <h2 className="text-2xl font-black uppercase text-slate-900 dark:text-white">{section.title}</h2>
@@ -1183,7 +1183,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 </div>
                                             ))}
                                             {section.analysis && (
-                                                <div className="bg-slate-50 p-4 rounded-xl mt-4">
+                                                <div className="bg-slate-50 p-4 rounded-sm mt-4">
                                                     <h4 className="font-bold mb-2 uppercase text-xs">Análise de Dados</h4>
                                                     <ul className="space-y-1">
                                                         {section.analysis.map((an, aIdx) => (
@@ -1205,7 +1205,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             {
                 isPaymentModalOpen && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
+                        <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-sm shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
                             <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
                                     <Landmark size={20} className="text-indigo-400" />
@@ -1216,14 +1216,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             <form onSubmit={handleSavePayment} className="p-6 md:p-8 space-y-6 bg-white dark:bg-zinc-900 overflow-y-auto scrollbar-hide">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Nome do Método</label>
-                                    <input name="method" required defaultValue={editingPayment?.method} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none focus:border-indigo-600" placeholder="Ex: Cartão Master 12x" />
+                                    <input name="method" required defaultValue={editingPayment?.method} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-4 text-sm font-black outline-none focus:border-indigo-600" placeholder="Ex: Cartão Master 12x" />
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Ícone Visual</label>
                                         <div className="relative">
-                                            <select name="iconName" defaultValue={editingPayment?.iconName || 'CreditCard'} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                            <select name="iconName" defaultValue={editingPayment?.iconName || 'CreditCard'} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
                                                 <option value="Smartphone">Pix / Celular</option>
                                                 <option value="CreditCard">Cartão</option>
                                                 <option value="Landmark">Banco / TED</option>
@@ -1237,7 +1237,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Liquidação (Dias)</label>
                                         <div className="relative">
-                                            <select name="days" defaultValue={editingPayment?.days || 0} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                            <select name="days" defaultValue={editingPayment?.days || 0} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
                                                 <option value={0}>D+0 (Imediato)</option>
                                                 <option value={1}>D+1 (1 Dia)</option>
                                                 <option value={2}>D+2 (2 Dias)</option>
@@ -1250,7 +1250,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-[2rem] border-2 border-indigo-100 dark:border-indigo-800">
+                                <div className="bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-sm border-2 border-indigo-100 dark:border-indigo-800">
                                     <label className="block text-[10px] font-black text-indigo-900 dark:text-indigo-400 uppercase tracking-widest mb-2 ml-1 text-center">Taxa Administrativa (%)</label>
                                     <div className="relative max-w-[200px] mx-auto">
                                         <input
@@ -1259,7 +1259,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             step="0.01"
                                             required
                                             defaultValue={editingPayment?.fee || 0}
-                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-600 rounded-2xl p-4 text-2xl font-black text-center outline-none text-indigo-950 dark:text-indigo-300"
+                                            className="w-full bg-white dark:bg-zinc-900 border-2 border-indigo-600 rounded-sm p-4 text-2xl font-black text-center outline-none text-indigo-950 dark:text-indigo-300"
                                         />
                                         <Percent size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-indigo-400" />
                                     </div>
@@ -1267,8 +1267,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 </div>
 
                                 <div className="flex gap-3 pt-2">
-                                    <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                                    <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors">Cancelar</button>
+                                    <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
                                         <Save size={18} /> Salvar Regra
                                     </button>
                                 </div>
@@ -1283,7 +1283,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             {
                 isCommissionModalOpen && editingCommission && (
                     <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
+                        <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-sm shadow-2xl w-full max-w-md overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
                             <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
                                 <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
                                     <Handshake size={20} className="text-emerald-400" />
@@ -1296,7 +1296,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Dia Início</label>
                                         <div className="relative">
-                                            <select name="startDay" defaultValue={editingCommission.startDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                            <select name="startDay" defaultValue={editingCommission.startDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
                                                 {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
                                                     <option key={d} value={d}>Dia {d}</option>
                                                 ))}
@@ -1307,7 +1307,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1.5 ml-1">Dia Fim</label>
                                         <div className="relative">
-                                            <select name="endDay" defaultValue={editingCommission.endDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-2xl p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
+                                            <select name="endDay" defaultValue={editingCommission.endDay} className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-4 text-sm font-black outline-none appearance-none focus:border-indigo-600">
                                                 {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
                                                     <option key={d} value={d}>Dia {d}</option>
                                                 ))}
@@ -1318,11 +1318,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     </div>
                                 </div>
 
-                                <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-[2rem] border-2 border-emerald-100 dark:border-emerald-800">
+                                <div className="bg-emerald-50/50 dark:bg-emerald-900/10 p-6 rounded-sm border-2 border-emerald-100 dark:border-emerald-800">
                                     <label className="block text-[10px] font-black text-emerald-900 dark:text-emerald-400 uppercase tracking-widest mb-2 ml-1 text-center">Dia do Pagamento</label>
                                     <div className="relative max-w-[200px] mx-auto">
                                         <div className="relative">
-                                            <select name="paymentDay" defaultValue={editingCommission.paymentDay} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-600 rounded-2xl p-4 text-xl font-black text-center outline-none text-emerald-950 dark:text-emerald-300 appearance-none">
+                                            <select name="paymentDay" defaultValue={editingCommission.paymentDay} className="w-full bg-white dark:bg-zinc-900 border-2 border-emerald-600 rounded-sm p-4 text-xl font-black text-center outline-none text-emerald-950 dark:text-emerald-300 appearance-none">
                                                 {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
                                                     <option key={d} value={d}>Dia {d}</option>
                                                 ))}
@@ -1334,8 +1334,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                 </div>
 
                                 <div className="flex gap-3 pt-2">
-                                    <button type="button" onClick={() => setIsCommissionModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                                    <button type="submit" className="flex-[2] py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                    <button type="button" onClick={() => setIsCommissionModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors">Cancelar</button>
+                                    <button type="submit" className="flex-[2] py-4 bg-emerald-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
                                         <Save size={18} /> Salvar Alterações
                                     </button>
                                 </div>
@@ -1348,7 +1348,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             {/* USER PERMISSIONS MODAL */}
             {isUserModalOpen && editingUser && (
                 <div className="fixed inset-0 bg-black/60 z-[110] flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-sm shadow-2xl w-full max-w-2xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col border-2 border-black dark:border-zinc-700 max-h-[90vh]">
                         <div className="px-6 py-5 bg-slate-950 dark:bg-black text-white flex justify-between items-center">
                             <h3 className="font-black text-base uppercase tracking-tight flex items-center gap-2">
                                 <ShieldCheck size={20} className="text-indigo-400" />
@@ -1364,7 +1364,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                         key={role}
                                         type="button"
                                         onClick={() => setEditingUser({ ...editingUser, role })}
-                                        className={`p-4 rounded-2xl border-2 transition-all text-left ${editingUser.role === role ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/10' : 'border-slate-100 dark:border-zinc-800'}`}
+                                        className={`p-4 rounded-sm border-2 transition-all text-left ${editingUser.role === role ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/10' : 'border-slate-100 dark:border-zinc-800'}`}
                                     >
                                         <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{role === 'admin' ? 'Acesso Total' : role === 'manager' ? 'Gestão' : 'Operativo'}</p>
                                         <p className="text-sm font-black text-slate-900 dark:text-white uppercase">{role}</p>
@@ -1381,7 +1381,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                             key={tab}
                                             type="button"
                                             onClick={() => toggleTabPermission(tab)}
-                                            className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${editingUser.permissions.tabs.includes(tab) ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-400' : 'border-slate-100 dark:border-zinc-800 text-slate-400'}`}
+                                            className={`flex items-center gap-3 p-3 rounded-sm border-2 transition-all ${editingUser.permissions.tabs.includes(tab) ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-400' : 'border-slate-100 dark:border-zinc-800 text-slate-400'}`}
                                         >
                                             <div className={`w-4 h-4 rounded flex items-center justify-center border ${editingUser.permissions.tabs.includes(tab) ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300'}`}>
                                                 {editingUser.permissions.tabs.includes(tab) && <CircleCheck size={10} />}
@@ -1403,14 +1403,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                                 value={tempPassword}
                                                 onChange={e => setTempPassword(e.target.value)}
                                                 placeholder="Digite uma nova senha temporária"
-                                                className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-xl p-3 text-sm font-bold outline-none focus:border-rose-500 dark:text-white"
+                                                className="w-full bg-slate-50 dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm p-3 text-sm font-bold outline-none focus:border-rose-500 dark:text-white"
                                             />
                                         </div>
                                         <button
                                             type="button"
                                             onClick={handleResetPassword}
                                             disabled={!tempPassword || isResettingPassword}
-                                            className="py-3 px-6 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-2 border-rose-200 dark:border-rose-800 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all disabled:opacity-50"
+                                            className="py-3 px-6 bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 border-2 border-rose-200 dark:border-rose-800 rounded-sm text-[10px] font-black uppercase tracking-widest hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all disabled:opacity-50"
                                         >
                                             {isResettingPassword ? 'Enviando...' : 'Aplicar Senha'}
                                         </button>
@@ -1420,8 +1420,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                             )}
 
                             <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={() => setIsUserModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-2xl transition-colors">Cancelar</button>
-                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                                <button type="button" onClick={() => setIsUserModalOpen(false)} className="flex-1 py-4 text-slate-500 font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors">Cancelar</button>
+                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
                                     <Save size={18} /> Salvar Permissões
                                 </button>
                             </div>

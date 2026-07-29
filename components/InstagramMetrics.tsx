@@ -42,7 +42,7 @@ const getPartnerUsernames = (pt: any): string[] => {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white dark:bg-zinc-900 p-4 rounded-2xl shadow-xl border border-slate-100 dark:border-zinc-800/80 text-left">
+      <div className="bg-white dark:bg-zinc-900 p-4 rounded-sm shadow-xl border border-slate-100 dark:border-zinc-800/80 text-left">
         <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase mb-2">{label}</p>
         <div className="space-y-1">
           {payload.map((p: any, idx: number) => (
@@ -124,8 +124,8 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
     })), [history]);
 
   const KPI = ({ label, value, icon: I, color = 'indigo' }: { label: string; value: string | number; icon: any; color?: string }) => (
-    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
-      <div className={`w-6 h-6 rounded-lg bg-gradient-to-br from-${color}-500 to-${color}-600 flex items-center justify-center mb-1`}>
+    <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
+      <div className={`w-6 h-6 rounded-sm bg-gradient-to-br from-${color}-500 to-${color}-600 flex items-center justify-center mb-1`}>
         <I size={12} className="text-white" />
       </div>
       <p className="text-sm font-black text-slate-900 dark:text-white">{typeof value === 'number' ? value.toLocaleString('pt-BR') : value}</p>
@@ -147,7 +147,7 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
         <div className="flex gap-1 flex-wrap">
           {(['kpi','history','posts','rankings','charts','partners'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${tab === t ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}>
+              className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-sm transition-all ${tab === t ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}>
               {t === 'kpi' ? 'Visão Geral' : t === 'history' ? 'Seguidores' : t === 'posts' ? 'Publicações' : t === 'rankings' ? 'Rankings' : t === 'charts' ? 'Gráficos' : 'Parcerias'}
             </button>
           ))}
@@ -155,14 +155,14 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
         <div className="flex items-center gap-2">
           {lastSync && <span className="text-[8px] text-slate-400">Última sync: {new Date(lastSync).toLocaleString('pt-BR')}</span>}
           <button onClick={() => handleSync()} disabled={loading}
-            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-[10px] font-bold disabled:opacity-50">
+            className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white rounded-sm text-[10px] font-bold disabled:opacity-50">
             {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Sincronizar
           </button>
         </div>
       </div>
 
       {loading && progress.msg && (
-        <div className="bg-indigo-50 dark:bg-indigo-950/30 rounded-xl p-3 border border-indigo-100 dark:border-indigo-900">
+        <div className="bg-indigo-50 dark:bg-indigo-950/30 rounded-sm p-3 border border-indigo-100 dark:border-indigo-900">
           <div className="flex items-center gap-2 mb-1">
             <Loader2 size={14} className="animate-spin text-indigo-600" />
             <span className="text-xs font-bold text-indigo-600">{progress.msg}</span>
@@ -201,7 +201,7 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
       {tab === 'history' && (
         <div className="space-y-4">
           {followerChart.length > 1 && (
-            <div className="bg-white dark:bg-zinc-950 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800/80 shadow-sm flex flex-col">
+            <div className="bg-white dark:bg-zinc-950 p-6 md:p-8 rounded-sm border border-slate-100 dark:border-zinc-800/80 shadow-sm flex flex-col">
               <div className="flex items-center gap-2 mb-1">
                 <Users size={16} className="text-indigo-600 dark:text-indigo-400" />
                 <h4 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white leading-none">Evolução de Seguidores</h4>
@@ -226,7 +226,7 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
               </div>
             </div>
           )}
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 overflow-hidden">
             <table className="w-full text-left">
               <thead><tr className="bg-slate-50 dark:bg-zinc-800 border-b border-slate-100 dark:border-zinc-700">
                 <th className="px-4 py-2 text-[9px] font-black text-slate-400 uppercase">Data/Hora</th>
@@ -253,7 +253,7 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
 
       {/* Posts Tab */}
       {tab === 'posts' && (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-x-auto">
+        <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 overflow-x-auto">
           <table className="w-full text-left min-w-[900px]">
             <thead><tr className="bg-slate-50 dark:bg-zinc-800 border-b border-slate-100 dark:border-zinc-700">
               {['','Data','Tipo','Alcance','Impr.','Curtidas','Coment.','Compart.','Salvam.','Engaj.','Taxa','Seg.Est.','Collab'].map(h => (
@@ -267,10 +267,10 @@ export const InstagramMetrics: React.FC<Props> = ({ token, igUserId, partners = 
                 <td className="px-2 py-1">
                   {thumb ? (
                     <a href={p.permalink} target="_blank" rel="noreferrer">
-                      <img src={thumb} alt="post" className="w-10 h-10 object-cover rounded-lg border border-slate-200 dark:border-zinc-700 hover:opacity-80 transition-opacity" />
+                      <img src={thumb} alt="post" className="w-10 h-10 object-cover rounded-sm border border-slate-200 dark:border-zinc-700 hover:opacity-80 transition-opacity" />
                     </a>
                   ) : (
-                    <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-300 text-[8px] font-bold border border-slate-200 dark:border-zinc-700">
+                    <div className="w-10 h-10 rounded-sm bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-300 text-[8px] font-bold border border-slate-200 dark:border-zinc-700">
                       {p.media_type === 'VIDEO' ? '▶' : p.media_type === 'STORY' ? '⭕' : '📷'}
                     </div>
                   )}
@@ -346,12 +346,12 @@ const RankingsSection: React.FC<{ posts: IGPost[]; partners?: any[] }> = ({ post
       <div className="flex gap-1 flex-wrap">
         {rankings.map((rk, i) => (
           <button key={i} onClick={() => setRankTab(i)}
-            className={`px-2 py-1 text-[8px] font-bold uppercase rounded-lg ${rankTab === i ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}>
+            className={`px-2 py-1 text-[8px] font-bold uppercase rounded-sm ${rankTab === i ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}>
             {rk.label}
           </button>
         ))}
       </div>
-      <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 overflow-hidden">
         {(r?.data || []).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2">
             <span className="text-4xl">🤝</span>
@@ -383,12 +383,12 @@ const RankingsSection: React.FC<{ posts: IGPost[]; partners?: any[] }> = ({ post
                       src={thumb} 
                       alt={`post-${i+1}`} 
                       onError={() => setImageErrorMap(prev => ({ ...prev, [p.id]: true }))}
-                      className="w-12 h-12 object-cover rounded-xl border border-slate-200 dark:border-zinc-700 hover:opacity-80 hover:scale-105 transition-all shadow-sm" 
+                      className="w-12 h-12 object-cover rounded-sm border border-slate-200 dark:border-zinc-700 hover:opacity-80 hover:scale-105 transition-all shadow-sm" 
                     />
                   </a>
                 ) : (
                   <a href={p.permalink} target="_blank" rel="noreferrer">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-white text-xs font-black shadow-sm hover:opacity-80 transition-opacity">
+                    <div className="w-12 h-12 rounded-sm bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-white text-xs font-black shadow-sm hover:opacity-80 transition-opacity">
                       {p.media_type === 'VIDEO' ? '▶' : p.media_type === 'CAROUSEL_ALBUM' ? '⊞' : p.media_type === 'STORY' ? '⭕' : '📷'}
                     </div>
                   </a>
@@ -450,7 +450,7 @@ const ChartsSection: React.FC<{ posts: IGPost[]; history: IGMetricSnapshot[] }> 
 
 
   const Chart = ({ title, subtitle, icon: Icon, children }: { title: string; subtitle?: string; icon: any; children: React.ReactNode }) => (
-    <div className="bg-white dark:bg-zinc-950 p-6 md:p-8 rounded-[2rem] border border-slate-100 dark:border-zinc-800/80 shadow-sm flex flex-col">
+    <div className="bg-white dark:bg-zinc-950 p-6 md:p-8 rounded-sm border border-slate-100 dark:border-zinc-800/80 shadow-sm flex flex-col">
       <div className="flex items-center gap-2 mb-1">
         <Icon size={16} className="text-indigo-600 dark:text-indigo-400" />
         <h4 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white leading-none">{title}</h4>
@@ -653,14 +653,14 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
 
       {activePartnerSubTab === 'PERFORMANCE' ? (
         <>
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-4">
             <h3 className="text-xs font-black uppercase tracking-widest mb-2 text-slate-800 dark:text-white">Performance de Parcerias Orgânicas</h3>
             <p className="text-[10px] text-slate-400">
               Abaixo estão listados os parceiros ativos cadastrados no sistema cruzados com as publicações orgânicas e collabs do Instagram que os mencionam.
             </p>
           </div>
 
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-x-auto shadow-sm">
+          <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 overflow-x-auto shadow-sm">
             <table className="w-full text-left min-w-[800px]">
               <thead>
                 <tr className="bg-slate-50 dark:bg-zinc-800 border-b border-slate-100 dark:border-zinc-700">
@@ -734,7 +734,7 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                                         src={thumb} 
                                         alt="post thumb" 
                                         onError={() => setImageErrorMap(prev => ({ ...prev, [p.id]: true }))}
-                                        className={`w-8 h-8 object-cover border border-slate-200 dark:border-zinc-700 ${p.media_type === 'STORY' ? 'rounded-full' : 'rounded-lg'}`} 
+                                        className={`w-8 h-8 object-cover border border-slate-200 dark:border-zinc-700 ${p.media_type === 'STORY' ? 'rounded-full' : 'rounded-sm'}`} 
                                       />
                                     </div>
                                   ) : (
@@ -742,8 +742,8 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                                       p.media_type === 'STORY' 
                                         ? 'bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 border-purple-100 dark:border-purple-900 rounded-full' 
                                         : p.media_type === 'VIDEO'
-                                          ? 'bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900 rounded-lg'
-                                          : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900 rounded-lg'
+                                          ? 'bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900 rounded-sm'
+                                          : 'bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900 rounded-sm'
                                     }`}>
                                       {p.media_type === 'VIDEO' ? '▶' : p.media_type === 'STORY' ? '⭕' : '📷'}
                                     </div>
@@ -776,7 +776,7 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
           </div>
         </>
       ) : (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 p-6 space-y-6">
+        <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-6 space-y-6">
           <div>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 dark:text-white">Rankings de Publicações por Parceiro</h3>
             <p className="text-[10px] text-slate-400 mt-1">
@@ -785,13 +785,13 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
           </div>
 
           {/* Dropdown Selector */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-800/20 p-4 rounded-2xl border border-slate-100/80 dark:border-zinc-800/60">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/50 dark:bg-zinc-800/20 p-4 rounded-sm border border-slate-100/80 dark:border-zinc-800/60">
             <div className="flex-1 min-w-[200px] max-w-md">
               <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Filtrar rankings por parceria</label>
               <select
                 value={selectedPartnerId}
                 onChange={(e) => setSelectedPartnerId(e.target.value)}
-                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-sm px-3 py-2 text-xs font-bold text-slate-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               >
                 {partnersPerformance.map(perf => {
                   const pt = perf.partner;
@@ -815,8 +815,8 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
           {/* Partnership Indicators Grid */}
           {partnerPosts.length > 0 && (
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mb-1">
+              <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
+                <div className="w-6 h-6 rounded-sm bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center mb-1">
                   <Eye size={12} className="text-white" />
                 </div>
                 <p className="text-sm font-black text-slate-900 dark:text-white">
@@ -825,8 +825,8 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Alcance Total</p>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center mb-1">
+              <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
+                <div className="w-6 h-6 rounded-sm bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center mb-1">
                   <Heart size={12} className="text-white" />
                 </div>
                 <p className="text-sm font-black text-slate-900 dark:text-white">
@@ -835,8 +835,8 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Interações</p>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mb-1">
+              <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
+                <div className="w-6 h-6 rounded-sm bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center mb-1">
                   <TrendingUp size={12} className="text-white" />
                 </div>
                 <p className="text-sm font-black text-slate-900 dark:text-white">
@@ -847,8 +847,8 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Engajamento Médio</p>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mb-1">
+              <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-3 shadow-sm">
+                <div className="w-6 h-6 rounded-sm bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mb-1">
                   <Users size={12} className="text-white" />
                 </div>
                 <p className="text-sm font-black text-slate-900 dark:text-white">
@@ -857,8 +857,8 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Seguidores Est.</p>
               </div>
 
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-slate-100 dark:border-zinc-800 p-3 shadow-sm col-span-2 sm:col-span-1">
-                <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center mb-1">
+              <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 p-3 shadow-sm col-span-2 sm:col-span-1">
+                <div className="w-6 h-6 rounded-sm bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center mb-1">
                   <BarChart3 size={12} className="text-white" />
                 </div>
                 <p className="text-sm font-black text-slate-900 dark:text-white">
@@ -870,7 +870,7 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
           )}
 
           {partnerPosts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2 border border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl">
+            <div className="flex flex-col items-center justify-center py-16 text-slate-400 gap-2 border border-dashed border-slate-200 dark:border-zinc-800 rounded-sm">
               <span className="text-4xl">👥</span>
               <p className="text-xs font-black uppercase tracking-widest">Nenhuma publicação encontrada para este parceiro</p>
               <p className="text-[10px] text-slate-400 text-center max-w-xs">
@@ -883,14 +883,14 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
               <div className="flex gap-1 flex-wrap">
                 {rankings.map((rk, i) => (
                   <button key={i} onClick={() => setRankTab(i)}
-                    className={`px-2.5 py-1 text-[8px] font-bold uppercase rounded-lg transition-all ${rankTab === i ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}>
+                    className={`px-2.5 py-1 text-[8px] font-bold uppercase rounded-sm transition-all ${rankTab === i ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}>
                     {rk.label}
                   </button>
                 ))}
               </div>
 
               {/* Ranking Table */}
-              <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
+              <div className="bg-white dark:bg-zinc-900 rounded-sm border border-slate-100 dark:border-zinc-800 overflow-hidden shadow-sm">
                 <table className="w-full text-left">
                   <thead>
                     <tr className="bg-slate-50 dark:bg-zinc-800">
@@ -914,12 +914,12 @@ const PartnersTabSection: React.FC<{ posts: IGPost[]; partners: any[] }> = ({ po
                                   src={thumb} 
                                   alt={`post-${i+1}`} 
                                   onError={() => setImageErrorMap(prev => ({ ...prev, [p.id]: true }))}
-                                  className="w-12 h-12 object-cover rounded-xl border border-slate-200 dark:border-zinc-700 hover:opacity-80 hover:scale-105 transition-all shadow-sm" 
+                                  className="w-12 h-12 object-cover rounded-sm border border-slate-200 dark:border-zinc-700 hover:opacity-80 hover:scale-105 transition-all shadow-sm" 
                                 />
                               </a>
                             ) : (
                               <a href={p.permalink} target="_blank" rel="noreferrer">
-                                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-white text-xs font-black shadow-sm hover:opacity-80 transition-opacity">
+                                <div className="w-12 h-12 rounded-sm bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center text-white text-xs font-black shadow-sm hover:opacity-80 transition-opacity">
                                   {p.media_type === 'VIDEO' ? '▶' : p.media_type === 'CAROUSEL_ALBUM' ? '⊞' : p.media_type === 'STORY' ? '⭕' : '📷'}
                                 </div>
                               </a>
