@@ -1668,7 +1668,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                           {localAssignedProviderIds.length > 0 ? (
                             localAssignedProviderIds.map(pid => {
                               const p = providers.find(pr => pr.id === pid);
-                              if (!p) return null;
+                              if (!p || !p.active) return null;
                               return (
                                 <div key={pid} className="flex items-center px-4 py-1 bg-[#FF007F] rounded-full shadow-sm" title={p.name}>
                                   <span className="text-[10px] font-black uppercase text-white py-1">{p.name}</span>

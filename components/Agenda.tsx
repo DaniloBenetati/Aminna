@@ -2553,7 +2553,7 @@ export const Agenda: React.FC<AgendaProps> = ({
                                                                                             <div className="flex flex-wrap gap-1.5">
                                                                                                 {customer.assignedProviderIds.map(pid => {
                                                                                                     const p = providers.find(pr => pr.id === pid);
-                                                                                                    if (!p) return null;
+                                                                                                    if (!p || !p.active) return null;
                                                                                                     return (
                                                                                                         <div key={pid} className="px-3 py-1 bg-pink-600 rounded-full shadow-sm" title={p.name}>
                                                                                                             <span className="text-[9px] font-black uppercase text-white">{p.name.split(' ')[0]}</span>

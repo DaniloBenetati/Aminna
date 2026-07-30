@@ -486,7 +486,7 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                                     ) : (
                                         <div className="flex flex-wrap gap-3">
                                             {customer.assignedProviderIds && customer.assignedProviderIds.length > 0 ? (
-                                                providers.filter(p => customer.assignedProviderIds?.includes(p.id)).map(p => (
+                                                providers.filter(p => p.active && customer.assignedProviderIds?.includes(p.id)).map(p => (
                                                     <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-zinc-800 rounded-sm border border-slate-100 dark:border-zinc-700">
                                                         <Avatar name={p.name} src={p.avatar} size="w-6 h-6" />
                                                         <span className="text-[10px] font-black text-slate-700 dark:text-slate-300 uppercase">{p.name}</span>
