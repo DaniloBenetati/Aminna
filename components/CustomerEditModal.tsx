@@ -354,16 +354,16 @@ export const CustomerEditModal: React.FC<CustomerEditModalProps> = ({
                             </div>
 
                             {/* observations */}
-                            <div className="md:col-span-2 bg-black dark:bg-white p-6 rounded-sm shadow-2xl space-y-6">
-                                <div className="flex items-center gap-3 text-white dark:text-black">
-                                    <FileText size={20} />
+                            <div className="md:col-span-2 bg-white dark:bg-zinc-900 p-6 rounded-sm border border-slate-100 dark:border-zinc-800 shadow-sm space-y-6">
+                                <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
+                                    <FileText size={20} className="text-indigo-600 dark:text-indigo-400" />
                                     <h4 className="text-[11px] font-black uppercase tracking-widest">Prontuário Estratégico</h4>
                                 </div>
                                 <div className="space-y-1">
                                     {editMode ? (
-                                        <textarea value={localObservations} onChange={e => setLocalObservations(e.target.value)} className="w-full bg-zinc-900 dark:bg-slate-50 border-2 border-zinc-800 dark:border-slate-200 rounded-sm p-6 font-black text-white dark:text-black outline-none focus:border-indigo-500 transition-all min-h-[150px] resize-none text-sm placeholder:italic placeholder:font-normal placeholder:opacity-50" placeholder="Digite notas privadas, restrições médicas ou observações importantes..." />
+                                        <textarea value={localObservations} onChange={e => setLocalObservations(e.target.value)} className="w-full bg-slate-50 dark:bg-zinc-950 border-2 border-slate-200 dark:border-zinc-800 rounded-sm p-6 font-black text-slate-900 dark:text-white outline-none focus:border-indigo-500 transition-all min-h-[150px] resize-none text-sm placeholder:italic placeholder:font-normal placeholder:opacity-50" placeholder="Digite notas privadas, restrições médicas ou observações importantes..." />
                                     ) : (
-                                        <div className="bg-zinc-900 dark:bg-slate-50 rounded-sm p-6 text-sm italic font-black text-white dark:text-black leading-relaxed whitespace-pre-wrap">
+                                        <div className="bg-slate-50 dark:bg-zinc-950 rounded-sm p-6 text-sm italic font-black text-slate-900 dark:text-white leading-relaxed whitespace-pre-wrap border border-slate-100 dark:border-zinc-800">
                                             {localObservations ? `"${localObservations}"` : '"Nenhuma nota privada."'}
                                         </div>
                                     )}

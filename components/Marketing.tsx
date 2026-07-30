@@ -2130,7 +2130,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
            const crmROI = c.crmROI;
 
            return (
-             <div key={c.id} className="p-5 space-y-4">
+             <div key={c.id} className="p-5 space-y-4 md:max-w-md">
                 <div className="flex justify-between items-start gap-4">
                    <span className="text-[13px] font-black text-slate-900 dark:text-white leading-tight uppercase">{c.name}</span>
                 </div>

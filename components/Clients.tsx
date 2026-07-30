@@ -1050,7 +1050,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
       <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-hidden">
 
         {/* MASTER LIST */}
-        <div className={`${showDetail ? 'hidden lg:flex' : 'flex'} w-full max-w-[360px] mx-auto lg:max-w-none lg:w-[350px] flex-shrink-0 bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex-col overflow-hidden`}>
+        <div className={`${showDetail ? 'hidden lg:flex' : 'flex'} w-full lg:w-[350px] flex-shrink-0 bg-white dark:bg-zinc-900 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex-col overflow-hidden`}>
           <div className="p-3.5 border-b border-slate-100 dark:border-zinc-800/80 bg-slate-50/30 dark:bg-zinc-900/30">
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-zinc-500 w-4 h-4" />
@@ -1565,14 +1565,14 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       </div>
 
                       {/* PRONTUARIO */}
-                      <div className="md:col-span-2 bg-zinc-950 dark:bg-zinc-900 p-6 rounded-sm shadow-xl text-white border border-transparent dark:border-zinc-800">
-                        <div className="flex justify-between items-center mb-3">
-                          <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-2"><FileText size={16} className="text-indigo-400" /> Prontuário Estratégico</h4>
+                      <div className="md:col-span-2 bg-white dark:bg-zinc-800 p-6 rounded-sm border-2 border-slate-100 dark:border-zinc-700 shadow-sm space-y-4">
+                        <div className="flex justify-between items-center mb-1">
+                          <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest flex items-center gap-2"><FileText size={16} className="text-indigo-600 dark:text-indigo-400" /> Prontuário Estratégico</h4>
                         </div>
                         {isEditing ? (
-                          <textarea rows={3} className="w-full bg-white/5 border-2 border-transparent focus:border-indigo-500 rounded-sm p-4 text-sm font-medium text-white outline-none resize-none placeholder:text-zinc-700" value={formData.observations || ''} onChange={e => setFormData({ ...formData, observations: e.target.value })} placeholder="Observações privadas sobre gostos e comportamento..." />
+                          <textarea rows={3} className="w-full bg-slate-50 dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-700 focus:border-indigo-500 rounded-sm p-4 text-sm font-medium text-slate-950 dark:text-white outline-none resize-none placeholder:text-slate-400" value={formData.observations || ''} onChange={e => setFormData({ ...formData, observations: e.target.value })} placeholder="Observações privadas sobre gostos e comportamento..." />
                         ) : (
-                          <p className="text-sm font-medium text-zinc-300 italic">"{formData.observations || 'Nenhuma nota privada.'}"</p>
+                          <p className="text-sm font-medium text-slate-950 dark:text-white italic">"{formData.observations || 'Nenhuma nota privada.'}"</p>
                         )}
                       </div>
                     </div>
