@@ -677,7 +677,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
         ) : (
           <div className="block pt-4 overflow-visible">
             <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-              <Scissors size={10} className="opacity-40" /> Relatório de Atendimentos
+              Relatório de Atendimentos
             </p>
             <div className="block pr-2">
               <table className="w-full text-[10px] border-collapse overflow-visible">
@@ -1083,7 +1083,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   }} 
                   className="py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm font-black text-[9px] uppercase tracking-widest flex flex-col items-center justify-center"
                 >
-                  <Send size={14} className="mb-1" /> Enviar Resumo
+                  Enviar Resumo
                 </button>
                 <button 
                   onClick={() => {
@@ -1093,7 +1093,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                   }} 
                   className="py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm font-black text-[9px] uppercase tracking-widest flex flex-col items-center justify-center"
                 >
-                  <FileText size={14} className="mb-1" /> Detalhado
+                  Detalhado
                 </button>
               </div>
               <button 
@@ -1105,7 +1105,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 }} 
                 className="w-full py-3 bg-white dark:bg-zinc-800 border-2 border-slate-200 rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2"
               >
-                <Copy size={16} /> Copiar Texto (Completo)
+                Copiar Texto (Completo)
               </button>
               <button onClick={() => setWhatsappModalData(null)} className="w-full py-3 text-slate-400 font-bold text-[10px] uppercase tracking-widest">Cancelar</button>
             </div>
@@ -1153,7 +1153,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 }}
                 className="py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none transition-all"
               >
-                <Copy size={18} /> Copiar Detalhamento
+                Copiar Detalhamento
               </button>
             </div>
           </div>
@@ -1170,7 +1170,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={handlePrintRescisao} className="flex items-center gap-2 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-black rounded-sm text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-opacity">
-                  <Printer size={14} /> Exportar PDF
+                  Exportar PDF
                 </button>
                 <button onClick={() => setRescisaoModalData(null)} className="p-3 hover:bg-white rounded-sm text-slate-400"><X size={20} /></button>
               </div>
@@ -1291,13 +1291,13 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 onClick={() => handleGenerateReceipts(selectedReceipt, false, 'auditoria')}
                 className="flex-1 flex items-center justify-center gap-2 bg-slate-200 dark:bg-zinc-700 text-slate-900 dark:text-white py-4 rounded-sm text-[10px] font-black uppercase tracking-widest"
               >
-                <Printer size={18} /> Detalhado (Auditoria)
+                Detalhado (Auditoria)
               </button>
               <button 
                 onClick={() => handleGenerateReceipts(selectedReceipt, true, 'receipt')}
                 className="flex-[2] flex items-center justify-center gap-2 bg-slate-950 dark:bg-white text-white dark:text-black py-4 rounded-sm text-[10px] font-black uppercase tracking-widest shadow-lg"
               >
-                <Printer size={18} /> Imprimir Recibo Profissional
+                Imprimir Recibo Profissional
               </button>
             </div>
           </div>
@@ -1373,7 +1373,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 }}
                 className="py-4 bg-white dark:bg-zinc-800 border-2 border-slate-200 dark:border-zinc-700 rounded-sm font-black text-[10px] uppercase tracking-widest text-slate-900 dark:text-white flex items-center justify-center gap-2 hover:bg-slate-50 transition-all"
               >
-                <Copy size={18} /> Copiar Texto
+                Copiar Texto
               </button>
               <button 
                 onClick={() => {
@@ -1382,7 +1382,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 }}
                 className="py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-200 dark:shadow-none transition-all"
               >
-                <MessageCircle size={18} /> WhatsApp
+                WhatsApp
               </button>
               <button 
                 onClick={() => {
@@ -1391,7 +1391,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 }}
                 className="py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all col-span-2 lg:col-span-1"
               >
-                <Printer size={18} /> Gerar PDF
+                Gerar PDF
               </button>
             </div>
           </div>
@@ -1468,7 +1468,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 }}
                 className="flex-1 min-w-[150px] py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
               >
-                <Download size={18} /> Exportar CSV
+                Exportar CSV
               </button>
               <button 
                 onClick={() => {
@@ -1549,7 +1549,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                 }}
                 className="flex-1 min-w-[150px] py-4 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg transition-all"
               >
-                <Printer size={18} /> Imprimir PDF
+                Imprimir PDF
               </button>
             </div>
           </div>

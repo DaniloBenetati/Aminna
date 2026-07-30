@@ -1928,7 +1928,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                         <div>
                             <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
-                                <Ticket size={18} className="text-amber-500" /> Detalhamento de Cupons Usados
+                                Detalhamento de Cupons Usados
                             </h3>
                             <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                                 Total de Cupons: <span className="text-amber-400">{couponsListData.length}</span> | Período: {getDateLabel()}
@@ -1992,7 +1992,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                         {couponsListData.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-24 text-slate-400 uppercase tracking-widest font-black text-xs gap-4 opacity-50">
-                                <Ticket size={48} strokeWidth={1} />
                                 Nenhum cupom utilizado no período
                             </div>
                         )}
@@ -2035,13 +2034,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                     </p>
                     <div className="space-y-2">
                         <div className="flex justify-between items-center gap-4">
-                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1"><Users size={10} /> Atendimentos:</span>
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1">Atendimentos:</span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">
                                 {data.atendimentos}
                             </span>
                         </div>
                         <div className="flex justify-between items-center gap-4">
-                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1"><Users size={10} /> Clientes:</span>
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1">Clientes:</span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">
                                 {data.clientes} <span className="text-rose-500 font-bold">({data.clientesCancelados || 0} canc.)</span>
                             </span>
@@ -2057,7 +2056,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
                         </div>
                         <div className="flex justify-between items-center gap-4 border-t border-slate-100 dark:border-zinc-700/50 pt-2">
-                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1"><DollarSign size={10} /> Faturamento Projetado:</span>
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1">Faturamento Projetado:</span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {(data.faturamento + (data.faturamentoCancelado || 0)).toFixed(2)}</span>
                         </div>
                         <div className="pl-4 border-l-2 border-slate-100 dark:border-zinc-700 space-y-1">
@@ -2075,7 +2074,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             </div>
                         </div>
                         <div className="flex justify-between items-center gap-4 border-t border-slate-100 dark:border-zinc-700/50 pt-2">
-                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase flex items-center gap-1"><Wallet size={10} /> Receita Líq.:</span>
+                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase flex items-center gap-1">Receita Líq.:</span>
                             <span className="text-xs font-black text-slate-700 dark:text-slate-300">R$ {data.receita.toFixed(2)}</span>
                         </div>
                     </div>
@@ -2228,7 +2227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 onClick={() => { setFilterProvider('all'); setFilterService('all'); setFilterCampaign('all'); setFilterProduct('all'); setFilterPartner('all'); setFilterChannel('all'); }}
                                 className="text-[10px] font-black text-rose-600 uppercase tracking-widest hover:text-rose-800 flex items-center gap-1"
                             >
-                                <X size={12} /> Limpar Filtros
+                                Limpar Filtros
                             </button>
                         </div>
                     )}
@@ -2245,13 +2244,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             onClick={() => setActiveSubTab('charts')}
                             className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BarChart2 size={14} /> Visão Executiva
+                            Visão Executiva
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
                             className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BrainCircuit size={14} /> IA de Negócios
+                            Negócios
                         </button>
                     </div>
 
@@ -2317,7 +2316,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                                     <div>
                                         <h3 className="text-[11px] min-[350px]:text-sm sm:text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-1.5">
-                                            <Clock className="text-indigo-600 dark:text-indigo-400 w-3.5 h-3.5 sm:w-5 sm:h-5" /> Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
+                                            Fluxo {timeView === 'day' ? 'Horário' : timeView === 'month' || timeView === 'custom' ? 'Diário' : 'Mensal'}
                                         </h3>
                                         <p className="text-[7px] min-[350px]:text-[8px] sm:text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mt-0.5">Distribuição de atendimentos no período</p>
                                     </div>
@@ -2358,7 +2357,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-                                        <Gift size={20} className="text-indigo-600 dark:text-indigo-400" /> Clientes Aniversariantes ({displayMonthName})
+                                        Clientes Aniversariantes ({displayMonthName})
                                     </h3>
                                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
                                         {customerBirthdays.length > 0 ? customerBirthdays.map(c => (
@@ -2379,7 +2378,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
 
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-sm font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-slate-900 dark:text-white">
-                                        <Gift size={20} className="text-rose-600 dark:text-rose-400" /> Equipe Aniversariante ({displayMonthName})
+                                        Equipe Aniversariante ({displayMonthName})
                                     </h3>
                                     <div className="space-y-3 max-h-60 overflow-y-auto pr-2 scrollbar-hide">
                                         {providerBirthdays.length > 0 ? providerBirthdays.map(p => (
@@ -2491,13 +2490,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             onClick={() => setActiveSubTab('charts')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BarChart2 size={14} /> Gráficos de Fluxo
+                            Gráficos de Fluxo
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BrainCircuit size={14} /> Inteligência & Insights
+                            Inteligência & Insights
                         </button>
                     </div>
 
@@ -2506,7 +2505,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Top Horários de Pico */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Clock size={16} className="text-indigo-600 dark:text-indigo-400" /> Horários de Pico
+                                    Horários de Pico
                                 </h3>
                                 <div className="h-64">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -2527,7 +2526,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 {/* Top Dias da Semana */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <Calendar size={16} className="text-violet-600 dark:text-violet-400" /> Dias de Pico (Total)
+                                        Dias de Pico (Total)
                                     </h3>
                                     <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -2547,7 +2546,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 {/* Média de Agendamentos por Dia */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-400" /> Média de Agendamentos / Dia
+                                        Média de Agendamentos / Dia
                                     </h3>
                                     <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -2582,7 +2581,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 {/* Tempo Médio no Salão */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <Clock size={16} className="text-teal-600 dark:text-teal-400" /> Tempo Médio no Salão (Minutos)
+                                        Tempo Médio no Salão (Minutos)
                                     </h3>
                                     <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -2699,25 +2698,25 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             onClick={() => setActiveSubTab('charts')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BarChart2 size={14} /> Rankings & Metas
+                            Rankings & Metas
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('ausencias')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'ausencias' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <AlertCircle size={14} /> Ausências
+                            Ausências
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('high_performance')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'high_performance' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <Zap size={14} /> High Performance
+                            High Performance
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BrainCircuit size={14} /> Análise de Performance
+                            Análise de Performance
                         </button>
                     </div>
 
@@ -2726,7 +2725,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Profissionais por Volume */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Users size={16} className="text-sky-600 dark:text-sky-400" /> Profissionais por Volume
+                                    Profissionais por Volume
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, topProvidersVolume.length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -2745,7 +2744,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Faturamento por Profissional */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Faturamento
+                                    Faturamento
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, providerMetrics.revenue.length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -2764,7 +2763,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Ticket Médio por Profissional */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
+                                    Ticket Médio
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, providerMetrics.ticket.length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -2783,7 +2782,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Preferências por Profissional */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Heart size={16} className="text-rose-600 dark:text-rose-400" /> Preferência dos Clientes
+                                    Preferência dos Clientes
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, providerPreferencesCount.length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -2850,7 +2849,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 {/* Motivos de Ausência */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <PieChart size={16} className="text-rose-600" /> Motivos de Ausência
+                                        Motivos de Ausência
                                     </h3>
                                     <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -2869,7 +2868,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 {/* Ausências por Dia */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <Calendar size={16} className="text-amber-600 dark:text-amber-400" /> Ausências por Dia
+                                        Ausências por Dia
                                     </h3>
                                     <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
@@ -2890,7 +2889,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between">
                                     <div>
                                         <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1 flex items-center gap-2">
-                                            <BrainCircuit size={16} className="text-indigo-600 dark:text-indigo-400" /> Simulador de Recuperação
+                                            Simulador de Recuperação
                                         </h3>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Potencial de ganho ao reduzir ausências</p>
                                     </div>
@@ -2913,7 +2912,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Ranking de Risco por Profissional */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Target size={16} className="text-rose-600" /> Ranking de Impacto (Risco de Agenda)
+                                    Ranking de Impacto (Risco de Agenda)
                                 </h3>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left">
@@ -3002,7 +3001,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 {/* Diferença p/ Profissional */}
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 lg:col-span-2">
                                     <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                        <TrendingUp size={16} className="text-emerald-600 dark:text-emerald-400" /> Gap p/ Meta de Excelência (R$)
+                                        Gap p/ Meta de Excelência (R$)
                                     </h3>
                                     <div className="min-h-[300px]" style={{ height: `${Math.max(300, (highPerformanceMetrics?.performanceGaps.length || 0) * 40)}px` }}>
                                         <ResponsiveContainer width="100%" height="100%">
@@ -3022,7 +3021,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800 flex flex-col justify-between h-full">
                                     <div>
                                         <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-1 flex items-center gap-2">
-                                            <BrainCircuit size={16} className="text-indigo-600 dark:text-indigo-400" /> Simulador de Performance
+                                            Simulador de Performance
                                         </h3>
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Impacto ao reduzir o gap profissional</p>
                                     </div>
@@ -3193,13 +3192,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             onClick={() => setActiveSubTab('charts')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BarChart2 size={14} /> Mix de Serviços
+                            Mix de Serviços
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
                             className={`flex items-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BrainCircuit size={14} /> Inteligência de Mix
+                            Inteligência de Mix
                         </button>
                     </div>
 
@@ -3208,7 +3207,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Serviços por Volume */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <TrendingUp size={16} className="text-pink-600 dark:text-pink-400" /> Serviços por Volume
+                                    Serviços por Volume
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, topServicesVolume.length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -3227,7 +3226,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Faturamento por Serviço */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Faturamento
+                                    Faturamento
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, serviceMetrics.revenue.length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -3246,7 +3245,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                              {/* Ticket Médio por Serviço */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
+                                    Ticket Médio
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, serviceMetrics.ticket.length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -3265,7 +3264,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Faturamento por Categoria */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Package size={16} className="text-indigo-600 dark:text-indigo-400" /> Faturamento por Categoria
+                                    Faturamento por Categoria
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, categoryMetrics.length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -3369,13 +3368,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             onClick={() => setActiveSubTab('charts')}
                             className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'charts' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <Users size={14} /> Base de Clientes
+                            Base de Clientes
                         </button>
                         <button 
                             onClick={() => setActiveSubTab('insights')}
                             className={`flex items-center justify-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-wider transition-all ${activeSubTab === 'insights' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
                         >
-                            <BrainCircuit size={14} /> CRM Inteligente
+                            CRM Inteligente
                         </button>
                     </div>
 
@@ -3452,7 +3451,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                                 <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 sm:gap-6 mb-4 sm:mb-8">
                                     <div>
                                         <h3 className="text-[10px] min-[350px]:text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                                            <TrendingUp size={14} className="text-emerald-500 sm:w-4 sm:h-4" /> Tráfego e Performance de Período
+                                            Tráfego e Performance de Período
                                         </h3>
                                         <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase mt-1 hidden sm:block">Análise de conversão e fidelidade no período selecionado</p>
                                     </div>
@@ -3556,7 +3555,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Frequência Clientes */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <ShoppingBag size={16} className="text-indigo-600 dark:text-indigo-400" /> Frequência
+                                    Frequência
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, customerFrequency.slice(0, 10).length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -3575,7 +3574,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Top Clientes Gasto */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <DollarSign size={16} className="text-emerald-600 dark:text-emerald-400" /> Gasto Total (R$)
+                                    Gasto Total (R$)
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, topCustomers.slice(0, 10).length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -3594,7 +3593,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Ticket Médio Clientes */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <Ticket size={16} className="text-amber-600 dark:text-amber-400" /> Ticket Médio
+                                    Ticket Médio
                                 </h3>
                                 <div className="min-h-[240px]" style={{ height: `${Math.max(240, customerAvgTicket.slice(0, 10).length * 32)}px` }}>
                                     <ResponsiveContainer width="100%" height="100%">
@@ -3615,7 +3614,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                             {/* Ticket Médio Dia Semana */}
                             <div className="bg-white dark:bg-zinc-900 p-6 rounded-sm shadow-sm border border-slate-200 dark:border-zinc-800">
                                 <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest mb-6 flex items-center gap-2">
-                                    <TrendingUp size={16} className="text-indigo-600 dark:text-indigo-400" /> Ticket Médio Semanal
+                                    Ticket Médio Semanal
                                 </h3>
                                 <div className="h-60 mt-4">
                                     <ResponsiveContainer width="100%" height="100%">
@@ -3777,7 +3776,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                             <div>
                                 <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
-                                    <Target size={18} className="text-rose-500" /> Plano de Recuperação
+                                    Plano de Recuperação
                                 </h3>
                                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 leading-none">
                                     <span>Base: <span className="text-white">{customers.length} Clientes</span></span>
@@ -3823,7 +3822,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-50/50 dark:bg-zinc-900/50">
                             <div className="mb-6 bg-white dark:bg-zinc-800/80 p-4 md:p-6 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm">
                                 <h4 className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <BrainCircuit size={14} className="text-indigo-500" /> Estratégia Sugerida
+                                    Estratégia Sugerida
                                 </h4>
                                 <p className="text-[11px] md:text-xs font-bold text-slate-700 dark:text-slate-300 leading-relaxed">
                                     {churnModalTab === 'loyal' ? (
@@ -4023,7 +4022,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ appointments, customers, s
                         <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
                             <div>
                                 <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
-                                    <Users size={18} className="text-blue-500" /> Relatório de Novos Clientes
+                                    Relatório de Novos Clientes
                                 </h3>
                                 <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
                                     Base de Novos: <span className="text-blue-400">{newCustomersListData.length}</span> | Período: {getDateLabel()}

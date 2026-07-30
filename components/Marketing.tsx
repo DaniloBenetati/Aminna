@@ -483,7 +483,7 @@ const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
         <div className="px-6 py-4 md:px-8 md:py-6 bg-zinc-950 dark:bg-black text-white flex justify-between items-center">
           <div>
             <h3 className="font-black uppercase text-xs md:text-sm tracking-widest flex items-center gap-2">
-              <Ticket size={18} className="text-amber-500" /> Detalhamento de Cupons Usados
+              Detalhamento de Cupons Usados
             </h3>
             <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
               Total de Cupons: <span className="text-amber-400">{couponsListData.length}</span> | Período: {getDateLabel()}
@@ -547,7 +547,6 @@ const CouponsModal = ({ couponsListData, onClose, getDateLabel }: any) => {
 
           {couponsListData.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24 text-slate-400 uppercase tracking-widest font-black text-xs gap-4 opacity-50">
-              <Ticket size={48} strokeWidth={1} />
               Nenhum cupom utilizado no período
             </div>
           )}
@@ -2015,7 +2014,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       <div className="p-4 md:p-6 bg-slate-50/50 dark:bg-zinc-800/30 border-b border-slate-200 dark:border-zinc-800 flex flex-col md:flex-row md:items-center gap-3 md:gap-4 text-[10px] md:text-[11px] font-black uppercase tracking-widest px-6 md:px-8">
          <span className="text-slate-900 dark:text-white">Resultados de {campaignsWithCRM.filter(c => c.status === 'ACTIVE').length} campanhas ativas</span>
          <button className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors">
-            <Info size={14} /> Detalhes do Gerenciador
+            Detalhes do Gerenciador
          </button>
       </div>
       {/* Desktop Version */}
@@ -2972,7 +2971,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                           <div className="flex items-center gap-2">
                             <div>
                               <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                                <MessageSquare size={16} className="text-indigo-600" /> Conversas Iniciadas por Dia
+                                Conversas Iniciadas por Dia
                               </h3>
                               <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Volume diário de novas conversas via Meta Ads</p>
                             </div>
@@ -3051,7 +3050,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                           <div className="flex items-center gap-2">
                             <div>
                               <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                                <TrendingUp size={16} className="text-indigo-600" /> Conversão e Performance de Clientes
+                                Conversão e Performance de Clientes
                               </h3>
                               <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase mt-1 hidden sm:block">Análise de novos clientes e serviços no período</p>
                             </div>
@@ -3123,7 +3122,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                           <div className="flex items-center gap-2">
                             <div>
                               <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                                <BarChart3 size={16} className="text-slate-500" /> Projeção de Clientes Novos (Próximos 60 dias)
+                                Projeção de Clientes Novos (Próximos 60 dias)
                               </h3>
                               <p className="text-[8px] sm:text-[10px] font-bold text-slate-500 uppercase mt-1 hidden sm:block">Clientes novos futuros com visitas agendadas (Projetado)</p>
                             </div>
@@ -3181,7 +3180,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                           <div className="flex items-center gap-2">
                             <div>
                               <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                                <TrendingUp size={16} className="text-indigo-600" /> Comparativo com a Semana Anterior
+                                Comparativo com a Semana Anterior
                               </h3>
                               <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Comparação de novas conversas com o mesmo dia da semana anterior</p>
                             </div>
@@ -3316,7 +3315,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
                           <div className="flex items-center gap-2">
                             <div>
                               <h3 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
-                                <DollarSign size={16} className="text-emerald-600" /> Consumo de Orçamento Diário
+                                Consumo de Orçamento Diário
                               </h3>
                               <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Comparação do investimento realizado com o orçamento diário programado</p>
                             </div>
