@@ -1325,9 +1325,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const { error: custError } = await supabase.from('customers').update({
                 last_visit: dischargeDate,
                 total_spent: customer.totalSpent + priceDifference,
-                outstanding_balance: Math.max(0, (customer.outstandingBalance || 0) + outstandingAdjustment),
                 status: customer.status === 'Novo' ? 'Regular' : customer.status,
-                credit_balance: Math.max(0, (customer.creditBalance || 0) + creditAdjustment)
+                ...buildCustomerFinancialUpdate(customer, creditAdjustment, outstandingAdjustment, savedAppt.id, 'Atendimento (Checkout)')
             }).eq('id', customer.id);
             if (custError) throw custError;
 
@@ -1506,8 +1505,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             // Apply customer changes
             const { error: custError } = await supabase.from('customers').update({
                 total_spent: customer.totalSpent + totalSpentAdjustment,
-                outstanding_balance: Math.max(0, (customer.outstandingBalance || 0) + outstandingAdjustment),
-                credit_balance: Math.max(0, (customer.creditBalance || 0) + creditAdjustment)
+                ...buildCustomerFinancialUpdate(customer, creditAdjustment, outstandingAdjustment, appointment.id, 'Atendimento (Modificação)')
             }).eq('id', customer.id);
             if (custError) throw custError;
 
@@ -2027,8 +2025,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const { error: custError } = await supabase.from('customers').update({
                 last_visit: dischargeDate,
                 total_spent: customer.totalSpent + totalSpentAdjustment,
-                outstanding_balance: Math.max(0, (customer.outstandingBalance || 0) + outstandingAdjustment),
-                credit_balance: Math.max(0, (customer.creditBalance || 0) + creditAdjustment)
+                ...buildCustomerFinancialUpdate(customer, creditAdjustment, outstandingAdjustment, appointment.id, 'Atendimento (Modificação)')
             }).eq('id', customer.id);
 
             if (custError) throw custError;
@@ -2457,8 +2454,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
             const { error: custError } = await supabase.from('customers').update({
                 last_visit: dischargeDate,
                 total_spent: customer.totalSpent + totalSpentAdjustment,
-                outstanding_balance: Math.max(0, (customer.outstandingBalance || 0) + outstandingAdjustment),
-                credit_balance: Math.max(0, (customer.creditBalance || 0) + creditAdjustment)
+                ...buildCustomerFinancialUpdate(customer, creditAdjustment, outstandingAdjustment, appointment.id, 'Atendimento (Modificação)')
             }).eq('id', customer.id);
             if (custError) throw custError;
 
@@ -2593,9 +2589,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     // Update database
                     supabase.from('customers').update({
                         history: updatedHistory,
-                        credit_balance: newCreditBalance,
                         total_spent: newTotalSpent,
-                        outstanding_balance: newOutstandingBalance
+                        ...buildCustomerFinancialUpdate(customer, newCreditBalance - (customer.creditBalance || 0), newOutstandingBalance - (customer.outstandingBalance || 0), appointment.id, 'Atendimento (Cancelamento)')
                     }).eq('id', customer.id).then(({ error }) => {
                         if (error) console.error('Error updating customer in DB:', error);
                     });
@@ -2678,9 +2673,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 const { error: custError } = await supabase
                     .from('customers')
                     .update({
-                        credit_balance: newCreditBalance,
                         total_spent: newTotalSpent,
-                        outstanding_balance: newOutstandingBalance
+                        ...buildCustomerFinancialUpdate(customer, newCreditBalance - (customer.creditBalance || 0), newOutstandingBalance - (customer.outstandingBalance || 0), appointment.id, 'Atendimento (Cancelamento)')
                     })
                     .eq('id', customer.id);
                 if (custError) console.error('Error updating customer financials in DB on delete:', custError);

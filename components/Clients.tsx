@@ -10,6 +10,7 @@ import {
 import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile, ConsentForm as IConsentForm, Partner, Sale } from '../types';
 import { ConsentForm } from './ConsentForm';
 import { LinkCustomersModal } from './LinkCustomersModal';
+import { FinancialExtractModal } from './FinancialExtractModal';
 
 const isCompleted = (status?: string) => status?.includes('Conclu');
 
@@ -1246,7 +1247,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
 
                       {/* DADOS PESSOAIS */}
-                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-[1.75rem] border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
+                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
                         <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-700 pb-2"><User size={16} className="text-indigo-600 dark:text-indigo-400" /> Dados Pessoais</h4>
                         <div className="space-y-3">
                           <label className="block">
@@ -1282,29 +1283,36 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                               })()}
                             </p>
                           </label>
-                          <label className="block pt-2">
-                            <span className="text-[9px] md:text-[8px] font-black text-purple-600 dark:text-purple-400 uppercase flex items-center gap-1"><Wallet size={10} /> Crédito Aminna</span>
-                            {isEditing ? (
-                              <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xs">R$</span>
-                                <input type="number" step="0.01" className="w-full bg-purple-50/50 dark:bg-purple-900/10 border-2 border-purple-100 dark:border-purple-800 rounded-sm pl-8 pr-3 py-2 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-purple-500" value={formData.creditBalance || 0} onChange={e => setFormData({ ...formData, creditBalance: parseFloat(e.target.value) || 0 })} />
-                              </div>
-                            ) : (
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            <label className="block">
+                              <span className="text-[9px] md:text-[8px] font-black text-purple-600 dark:text-purple-400 uppercase flex items-center gap-1"><Wallet size={10} /> Crédito Aminna</span>
                               <button
                                 type="button"
                                 onClick={() => setIsCreditDetailsOpen(true)}
-                                className="text-sm font-black text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer text-left"
+                                className="text-sm font-black text-purple-700 dark:text-purple-400 hover:text-purple-900 dark:hover:text-purple-300 transition-all flex items-center gap-1.5 cursor-pointer text-left mt-1"
                               >
                                 R$ {(formData.creditBalance || 0).toFixed(2)}
-                                <span className="text-[9px] text-purple-400 font-bold uppercase tracking-wider">(Ver Extrato)</span>
+                                <span className="text-[9px] text-purple-400 font-bold uppercase tracking-wider block mt-0.5">(Ver Extrato)</span>
                               </button>
-                            )}
-                          </label>
+                            </label>
+                            
+                            <label className="block">
+                              <span className="text-[9px] md:text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase flex items-center gap-1"><AlertTriangle size={10} /> Débito (Fiado)</span>
+                              <button
+                                type="button"
+                                onClick={() => setIsCreditDetailsOpen(true)}
+                                className="text-sm font-black text-rose-700 dark:text-rose-400 hover:text-rose-900 dark:hover:text-rose-300 transition-all flex items-center gap-1.5 cursor-pointer text-left mt-1"
+                              >
+                                R$ {(formData.outstandingBalance || 0).toFixed(2)}
+                                <span className="text-[9px] text-rose-400 font-bold uppercase tracking-wider block mt-0.5">(Ver Extrato)</span>
+                              </button>
+                            </label>
+                          </div>
                         </div>
                       </div>
 
                       {/* ORIGEM DA CLIENTE */}
-                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-[1.75rem] border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
+                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
                         <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-700 pb-2">
                           <Megaphone size={16} className="text-emerald-600 dark:text-emerald-400" /> Origem da Cliente
                         </h4>
@@ -1371,7 +1379,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       </div>
 
                       {/* CONTATOS */}
-                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-[1.75rem] border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
+                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
                         <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-700 pb-2"><Smartphone size={16} className="text-indigo-600 dark:text-indigo-400" /> Contatos</h4>
                         <div className="space-y-3">
                           <label className="block">
@@ -1449,7 +1457,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       </div>
 
                       {/* VIP SECTION */}
-                      <div className={`p-5 rounded-[1.75rem] border shadow-sm space-y-4 transition-all ${formData.isVip ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700'}`}>
+                      <div className={`p-5 rounded-sm border shadow-sm space-y-4 transition-all ${formData.isVip ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700'}`}>
                         <h4 className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border-b pb-2 ${formData.isVip ? 'text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-900' : 'text-slate-400 dark:text-slate-500 border-slate-50 dark:border-zinc-700'}`}>
                           <Sparkles size={16} /> Cliente VIP
                         </h4>
@@ -1495,7 +1503,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       </div>
 
                       {/* LOCALIZAÇÃO */}
-                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-[1.75rem] border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
+                      <div className="bg-white dark:bg-zinc-800 p-5 rounded-sm border border-slate-200 dark:border-zinc-700 shadow-sm space-y-4">
                         <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center gap-2 border-b border-slate-50 dark:border-zinc-700 pb-2"><MapPin size={16} className="text-indigo-600 dark:text-indigo-400" /> Localização</h4>
                         <label className="block">
                           <span className="text-[9px] md:text-[8px] font-black text-slate-500 dark:text-slate-400 uppercase block mb-1">Endereço Residencial</span>
@@ -1508,7 +1516,7 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                       </div>
 
                       {/* BLOQUEIO DE CLIENTE */}
-                      <div className={`p-5 rounded-[1.75rem] border shadow-sm space-y-4 transition-all ${formData.isBlocked ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700'}`}>
+                      <div className={`p-5 rounded-sm border shadow-sm space-y-4 transition-all ${formData.isBlocked ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800' : 'bg-white dark:bg-zinc-800 border-slate-200 dark:border-zinc-700'}`}>
                         <h4 className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-2 border-b pb-2 ${formData.isBlocked ? 'text-rose-600 dark:text-rose-400 border-rose-100 dark:border-rose-900' : 'text-slate-400 dark:text-slate-500 border-slate-50 dark:border-zinc-700'}`}>
                           <Ban size={16} /> Bloqueio de Cliente
                         </h4>
@@ -2403,111 +2411,20 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
         />
       )}
 
-      {/* Extrato de Crédito Modal */}
+      {/* Financial Extract Modal */}
       {isCreditDetailsOpen && formData && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-sm shadow-2xl border border-slate-200 dark:border-zinc-800 flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="p-6 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between flex-shrink-0">
-              <div>
-                <h3 className="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-                  <Wallet className="text-purple-600 dark:text-purple-400" size={18} /> Extrato de Crédito
-                </h3>
-                <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-wider mt-0.5">
-                  Cliente: {formData.name}
-                </p>
-              </div>
-              <button
-                onClick={() => setIsCreditDetailsOpen(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full text-slate-400 dark:text-zinc-500 hover:text-slate-600 transition-all"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900 p-3 rounded-sm text-center">
-                  <span className="text-[8px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-wider block">Saldo Atual</span>
-                  <span className="text-sm font-black text-purple-700 dark:text-purple-400 mt-1 block">
-                    R$ {(formData.creditBalance || 0).toFixed(2)}
-                  </span>
-                </div>
-                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 p-3 rounded-sm text-center">
-                  <span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Gerado</span>
-                  <span className="text-sm font-black text-emerald-700 dark:text-emerald-400 mt-1 block">
-                    + R$ {creditSummary.generated.toFixed(2)}
-                  </span>
-                </div>
-                <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900 p-3 rounded-sm text-center">
-                  <span className="text-[8px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider block">Utilizado</span>
-                  <span className="text-sm font-black text-rose-700 dark:text-rose-400 mt-1 block">
-                    - R$ {creditSummary.used.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Transactions List */}
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider">Histórico de Lançamentos</h4>
-                {customerCreditTransactions.length === 0 ? (
-                  <div className="text-center py-8 bg-slate-50 dark:bg-zinc-800/40 rounded-sm border border-slate-100 dark:border-zinc-800">
-                    <p className="text-xs text-slate-400 font-bold uppercase">Nenhum lançamento de crédito registrado nos atendimentos.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {customerCreditTransactions.map((t, idx) => (
-                      <div
-                        key={t.id || idx}
-                        className="p-4 bg-slate-50 dark:bg-zinc-800/50 border border-slate-100 dark:border-zinc-800/60 rounded-sm flex items-center justify-between gap-4"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black text-slate-400 dark:text-zinc-500 uppercase">
-                              {formatTimelineDate(t.date)}
-                            </span>
-                            {t.status === 'Cancelado' && (
-                              <span className="text-[8px] font-black bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-400 px-1.5 py-0.5 rounded-full uppercase">
-                                Cancelado
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs font-black text-slate-900 dark:text-white mt-1 uppercase truncate">
-                            {t.serviceDescription}
-                          </p>
-                          <p className="text-[9px] font-bold text-slate-500 mt-0.5 uppercase truncate">
-                            Profissional: {t.professionals}
-                          </p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          {t.creditGenerated > 0 && (
-                            <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase">
-                              + R$ {t.creditGenerated.toFixed(2)}
-                            </p>
-                          )}
-                          {t.creditUsed > 0 && (
-                            <p className="text-xs font-black text-rose-600 dark:text-rose-400 uppercase">
-                              - R$ {t.creditUsed.toFixed(2)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 bg-slate-50 dark:bg-zinc-950 border-t border-slate-100 dark:border-zinc-800/80 text-center flex-shrink-0">
-              <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">
-                Valores calculados em tempo real com base no histórico de checkouts e cancelamentos.
-              </p>
-            </div>
-          </div>
-        </div>
+        <FinancialExtractModal
+          customer={formData}
+          legacyCreditTransactions={customerCreditTransactions}
+          onClose={() => setIsCreditDetailsOpen(false)}
+          onUpdateCustomer={(updatedCustomer) => {
+            setFormData(updatedCustomer);
+            if (setCustomers) {
+              setCustomers(prev => prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c));
+            }
+          }}
+          userProfile={userProfile || undefined}
+        />
       )}
     </div>
   );

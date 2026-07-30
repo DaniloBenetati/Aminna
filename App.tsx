@@ -573,6 +573,8 @@ const App: React.FC = () => {
           isVip: c.is_vip,
           vipDiscountPercent: c.vip_discount_percent,
           creditBalance: c.credit_balance,
+          creditHistory: c.credit_history || [],
+          debtHistory: c.debt_history || [],
           lastMarketingContact: c.last_marketing_contact,
           acquisitionChannel: c.acquisition_channel,
           secondaryPhones: c.secondary_phones || []

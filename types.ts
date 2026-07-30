@@ -111,6 +111,21 @@ export interface Customer {
   creditBalance?: number; // Saldo de Crédito
   lastMarketingContact?: string; // Último contato de recuperação/marketing
   secondaryPhones?: string[];
+  creditHistory?: CustomerLedgerEntry[];
+  debtHistory?: CustomerLedgerEntry[];
+}
+
+export interface CustomerLedgerEntry {
+  id: string;
+  date: string; // ISO date string
+  action: 'ADD' | 'USE' | 'PAY' | 'MANUAL_ADJUSTMENT' | 'REVERSAL';
+  amount: number;
+  balanceAfter: number;
+  reason?: string;
+  userId?: string;
+  appointmentId?: string;
+  saleId?: string;
+  notes?: string;
 }
 
 export interface CustomerHistoryItem {

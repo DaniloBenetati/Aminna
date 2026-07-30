@@ -979,7 +979,7 @@ export const ConsentForm: React.FC<ConsentFormProps> = ({
               <p>3. <span className="font-black text-black dark:text-white">Riscos:</span> Estou ciente de que podem ocorrer reações alérgicas ou sensibilidades individuais, mesmo com técnicas e materiais adequados.</p>
             </div>
 
-            <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-zinc-800/20 rounded-[1.75rem] border border-slate-200 dark:border-zinc-800">
+            <div className="flex items-center justify-between p-6 bg-slate-50 dark:bg-zinc-800/20 rounded-sm border border-slate-200 dark:border-zinc-800">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white dark:bg-zinc-800 rounded-sm text-slate-500 dark:text-indigo-400"><Eye size={18} /></div>
                 <p className="text-xs md:text-sm font-black text-black dark:text-zinc-200 uppercase">Autorizo o uso de imagem para portfólio e marketing</p>

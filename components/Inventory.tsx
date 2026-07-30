@@ -1227,7 +1227,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                 )}
 
                                 {productFormData.imageUrl && (
-                                    <div className="relative aspect-video rounded-xl overflow-hidden border-2 border-slate-200 dark:border-zinc-800 mb-4 bg-slate-50 dark:bg-zinc-950 flex items-center justify-center group/img">
+                                    <div className="relative aspect-video rounded-sm overflow-hidden border-2 border-slate-200 dark:border-zinc-800 mb-4 bg-slate-50 dark:bg-zinc-950 flex items-center justify-center group/img">
                                         <img src={sanitizeImageUrl(productFormData.imageUrl)} className="max-w-full max-h-full object-contain" alt="Preview" />
                                         <button
                                             type="button"
@@ -1302,7 +1302,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                     imageUrls: otherUrls
                                                 });
                                             }}
-                                            className={`relative w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden border-2 transition-all active:scale-90 ${i === 0 ? 'border-indigo-600 scale-105 shadow-md' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-400 bg-slate-100 dark:bg-zinc-800'}`}
+                                            className={`relative w-16 h-16 flex-shrink-0 rounded-sm overflow-hidden border-2 transition-all active:scale-90 ${i === 0 ? 'border-indigo-600 scale-105 shadow-md' : 'border-slate-200 dark:border-zinc-700 hover:border-indigo-400 bg-slate-100 dark:bg-zinc-800'}`}
                                         >
                                             <img
                                                 src={sanitizeImageUrl(url)}
@@ -1888,7 +1888,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-zinc-800/50">
                                                 <td className="px-4 py-2">
                                                     <div
-                                                        className="w-12 h-12 rounded-xl overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in mx-auto relative"
+                                                        className="w-12 h-12 rounded-sm overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in mx-auto relative"
                                                         onMouseEnter={(e) => {
                                                             if (!item.imageUrl) return;
                                                             const rect = e.currentTarget.getBoundingClientRect();
@@ -1939,7 +1939,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         height: '320px'
                     }}
                 >
-                    <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-white dark:border-zinc-800 ring-1 ring-black/10">
+                    <div className="w-full h-full bg-white dark:bg-zinc-900 rounded-sm overflow-hidden shadow-2xl border-4 border-white dark:border-zinc-800 ring-1 ring-black/10">
                         <img
                             src={sanitizeImageUrl(hoveredImage)}
                             alt="Preview"
