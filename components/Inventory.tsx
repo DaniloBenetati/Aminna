@@ -11,6 +11,72 @@ interface InventoryProps {
     providers: Provider[];
 }
 
+export const generateInventoryReport = (reportRecord: any) => {
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+        printWindow.document.write(`
+            <html>
+            <head>
+                <title>Relatório de Fechamento de Inventário</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+                    h1 { border-bottom: 2px solid #4f46e5; padding-bottom: 10px; color: #111; }
+                    p { font-size: 14px; color: #555; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 12px; }
+                    th { background-color: #f8fafc; font-weight: bold; text-transform: uppercase; }
+                    .diff-positive { color: #16a34a; font-weight: bold; }
+                    .diff-negative { color: #dc2626; font-weight: bold; }
+                    .signature { margin-top: 80px; text-align: center; width: 300px; float: right; }
+                    .signature div { border-top: 1px solid #333; padding-top: 5px; }
+                </style>
+            </head>
+            <body>
+                <h1>Relatório de Fechamento de Inventário</h1>
+                <p><strong>Data:</strong> ${new Date(reportRecord.created_at).toLocaleString('pt-BR')}</p>
+                <p><strong>Total de itens conferidos:</strong> ${reportRecord.items_counted}</p>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Código</th>
+                            <th>Sist.</th>
+                            <th>Real</th>
+                            <th>Divergência</th>
+                            <th>Justificativa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${reportRecord.data.map((item: any) => `
+                            <tr>
+                                <td>${item.name}</td>
+                                <td>${item.code}</td>
+                                <td>${item.systemQty}</td>
+                                <td>${item.realQty}</td>
+                                <td class="${item.diff > 0 ? 'diff-positive' : item.diff < 0 ? 'diff-negative' : ''}">
+                                    ${item.diff > 0 ? '+' : ''}${item.diff}
+                                </td>
+                                <td>${item.justification}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                
+                <div class="signature">
+                    <div>Assinatura do Responsável</div>
+                </div>
+                
+                <script>
+                    window.onload = () => { window.print(); }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    }
+};
+
 export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers }) => {
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -58,13 +124,41 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     }, [stock.length, setStock]);
 
     // Modal States
-    const [modalType, setModalType] = useState<'ENTRY' | 'EXIT' | 'HISTORY' | 'EDIT_PRICE' | 'NEW_PRODUCT' | 'EDIT_PRODUCT' | 'INVENTORY' | 'REPORT' | 'CHOICE' | 'BEST_SELLERS' | null>(null);
+    const [modalType, setModalType] = useState<'ENTRY' | 'EXIT' | 'HISTORY' | 'EDIT_PRICE' | 'NEW_PRODUCT' | 'EDIT_PRODUCT' | 'INVENTORY' | 'INVENTORY_HISTORY' | 'REPORT' | 'CHOICE' | 'BEST_SELLERS' | null>(null);
+    const [inventoryReports, setInventoryReports] = useState<any[]>([]);
+
+    const fetchInventoryReports = async () => {
+        const { data } = await supabase.from('inventory_reports').select('*').order('created_at', { ascending: false });
+        if (data) setInventoryReports(data);
+    };
     const [showReportExportMenu, setShowReportExportMenu] = useState(false);
 
     const [selectedItemId, setSelectedItemId] = useState('');
     const [quantity, setQuantity] = useState('');
     const [physicalCount, setPhysicalCount] = useState('');
     const [inventoryJustification, setInventoryJustification] = useState('');
+    // Batch Inventory State
+    const [batchCounts, setBatchCounts] = useState<Record<string, string>>({});
+    const [batchJustifications, setBatchJustifications] = useState<Record<string, string>>({});
+    
+    // Load inventory draft
+    useEffect(() => {
+        if (modalType === 'INVENTORY') {
+            try {
+                const draft = localStorage.getItem('inventory_draft');
+                if (draft) {
+                    const { counts, justifications } = JSON.parse(draft);
+                    if (counts) setBatchCounts(counts);
+                    if (justifications) setBatchJustifications(justifications);
+                }
+            } catch(e) {}
+        }
+    }, [modalType]);
+
+    const saveInventoryDraft = () => {
+        localStorage.setItem('inventory_draft', JSON.stringify({ counts: batchCounts, justifications: batchJustifications }));
+        alert("Rascunho salvo com sucesso! Você pode fechar o sistema e continuar mais tarde.");
+    };
     const [entryCost, setEntryCost] = useState('');
     const [exitProviderId, setExitProviderId] = useState('');
     const [newPrice, setNewPrice] = useState('');
@@ -387,40 +481,86 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
     const handleTransaction = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedItemId) return;
 
         try {
             if (modalType === 'INVENTORY') {
-                const physicalQty = parseInt(physicalCount);
-                const currentItem = stock.find(i => i.id === selectedItemId);
-                if (!currentItem || isNaN(physicalQty) || physicalQty < 0) return;
-                const diff = physicalQty - currentItem.quantity;
-                if (diff !== 0 && !inventoryJustification.trim()) {
-                    alert("⚠️ Atenção: Como há divergência no estoque, é OBRIGATÓRIO informar a justificativa no relatório.");
+                const updates = Object.keys(batchCounts)
+                    .map(id => ({ id, count: batchCounts[id] }))
+                    .filter(u => u.count !== ''); // Process only filled inputs
+
+                if (updates.length === 0) {
+                    alert("Nenhuma contagem foi informada. Preencha a contagem real dos produtos para sincronizar.");
                     return;
                 }
 
-                // 1. Update stock_items quantity
-                const { error: updateError } = await supabase.from('stock_items').update({ quantity: physicalQty }).eq('id', selectedItemId);
-                if (updateError) throw updateError;
-
-                // 2. Insert usage_log if there's a difference
-                if (diff !== 0) {
-                    const { error: logError } = await supabase.from('usage_logs').insert([{
-                        stock_item_id: selectedItemId,
-                        quantity: Math.abs(diff),
-                        type: 'CORRECAO',
-                        note: `Inventário: Sist(${currentItem.quantity}) vs Real(${physicalQty}) | Motivo: ${inventoryJustification}`,
-                        date: new Date().toISOString()
-                    }]);
-                    if (logError) throw logError;
+                const validUpdates = [];
+                for (const u of updates) {
+                    const physicalQty = parseInt(u.count);
+                    const currentItem = stock.find(i => i.id === u.id);
+                    if (!currentItem || isNaN(physicalQty) || physicalQty < 0) continue;
+                    
+                    const diff = physicalQty - currentItem.quantity;
+                    if (diff !== 0) {
+                        const just = batchJustifications[u.id] || '';
+                        if (!just.trim()) {
+                            alert(`⚠️ Atenção: Como há divergência no estoque do produto "${currentItem.name}", é OBRIGATÓRIO informar a justificativa.`);
+                            return; // Stop processing and wait for user to fix
+                        }
+                    }
+                    validUpdates.push({ ...u, physicalQty, currentItem, diff });
                 }
 
-                setStock(prev => prev.map(item => item.id === selectedItemId ? { ...item, quantity: physicalQty } : item));
+                // All validated, process them
+                const reportItems = [];
+
+                for (const u of validUpdates) {
+                    const { error: updateError } = await supabase.from('stock_items').update({ quantity: u.physicalQty }).eq('id', u.id);
+                    if (updateError) throw updateError;
+
+                    if (u.diff !== 0) {
+                        const { error: logError } = await supabase.from('usage_logs').insert([{
+                            stock_item_id: u.id,
+                            quantity: Math.abs(u.diff),
+                            type: 'CORRECAO',
+                            note: `Inventário: Sist(${u.currentItem.quantity}) vs Real(${u.physicalQty}) | Motivo: ${batchJustifications[u.id]}`,
+                            date: new Date().toISOString()
+                        }]);
+                        if (logError) throw logError;
+                    }
+                    
+                    reportItems.push({
+                        name: u.currentItem.name,
+                        code: u.currentItem.code,
+                        systemQty: u.currentItem.quantity,
+                        realQty: u.physicalQty,
+                        diff: u.diff,
+                        justification: u.diff !== 0 ? batchJustifications[u.id] : 'Ok'
+                    });
+                }
+
+                setStock(prev => prev.map(item => {
+                    const update = validUpdates.find(u => u.id === item.id);
+                    return update ? { ...item, quantity: update.physicalQty } : item;
+                }));
+                
+                // Save to inventory_reports table
+                const reportRecord = {
+                    items_counted: reportItems.length,
+                    data: reportItems,
+                    created_at: new Date().toISOString()
+                };
+                await supabase.from('inventory_reports').insert([reportRecord]);
+
+                // Generate Report Window
+                generateInventoryReport(reportRecord);
                 closeModal();
+                setBatchCounts({});
+                setBatchJustifications({});
+                localStorage.removeItem('inventory_draft');
                 return;
             }
 
+            if (!selectedItemId) return;
             if (!quantity) return;
             if (modalType === 'EXIT' && !exitProviderId) {
                 alert("É obrigatório informar a profissional responsável pela retirada.");
@@ -882,6 +1022,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 {/* Action Quick Bar - Mobile Only */}
                 <div className="md:hidden flex gap-1.5 overflow-x-auto scrollbar-hide pb-1">
                     <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><ClipboardList size={14} /> Inventário</button>
+                    <button onClick={() => { fetchInventoryReports(); setModalType('INVENTORY_HISTORY'); }} className="whitespace-nowrap px-4 py-2.5 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-slate-300 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><History size={14} /> Histórico</button>
                     <button onClick={() => { setModalType('BEST_SELLERS'); }} className="whitespace-nowrap px-4 py-2.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><TrendingUp size={14} /> Mais Vendidos</button>
                     <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Plus size={14} /> Entrada</button>
                     <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="whitespace-nowrap px-4 py-2.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-sm text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Minus size={14} /> Saída</button>
@@ -963,6 +1104,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         </div>
                         <div className="flex gap-2">
                             <button onClick={() => { setModalType('INVENTORY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 text-slate-900 dark:text-white rounded-sm text-xs font-bold hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-all flex items-center gap-1.5 shadow-sm"><ClipboardList size={14} /> Inventário</button>
+                            <button onClick={() => { fetchInventoryReports(); setModalType('INVENTORY_HISTORY'); }} className="px-3 py-1.5 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-slate-300 rounded-sm text-xs font-bold hover:bg-slate-200 dark:hover:bg-zinc-700 transition-all flex items-center gap-1.5 shadow-sm"><History size={14} /> Histórico</button>
                             <button onClick={() => { setModalType('BEST_SELLERS'); }} className="px-3 py-1.5 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-400 rounded-sm text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-all flex items-center gap-1.5 shadow-sm"><TrendingUp size={14} /> Mais Vendidos</button>
                             <button onClick={() => { setModalType('ENTRY'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-slate-900 dark:text-white rounded-sm text-xs font-bold hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Plus size={14} /> Entrada</button>
                             <button onClick={() => { setModalType('EXIT'); setSelectedItemId(''); }} className="px-3 py-1.5 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-slate-900 dark:text-white rounded-sm text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-all flex items-center gap-1.5 shadow-sm"><Minus size={14} /> Saída</button>
@@ -1440,79 +1582,119 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
             {/* ... (Keep INVENTORY, REPORT, TRANSACTION, EDIT_PRICE, HISTORY modals as they are) ... */}
 
-            {/* INVENTORY (CONTRE FISICA) MODAL */}
+            {/* INVENTORY (CONTAGEM FÍSICA EM LOTE) MODAL */}
             {modalType === 'INVENTORY' && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-sm overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[95vh] border-2 border-black dark:border-zinc-700">
-                        <div className="px-5 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-indigo-600 text-white flex-shrink-0">
-                            <h3 className="font-black text-base uppercase tracking-tight">Inventário (Contagem Física)</h3>
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-5xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col h-[95vh] md:h-[85vh] border-t-2 md:border-2 border-black dark:border-zinc-700">
+                        <div className="px-6 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-indigo-600 text-white flex-shrink-0">
+                            <div>
+                                <h3 className="font-black text-lg uppercase tracking-tight">Inventário em Lote</h3>
+                                <p className="text-[10px] opacity-80 uppercase tracking-wider font-bold">Contagem Física</p>
+                            </div>
                             <button onClick={closeModal} className="text-white hover:text-zinc-200 p-1"><X size={24} /></button>
                         </div>
-                        <form onSubmit={handleTransaction} className="p-5 space-y-4 bg-white dark:bg-zinc-900">
-                            {!selectedItemId ? (
-                                <div className="relative">
-                                    <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Produto para conferir</label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            placeholder="Digite nome ou código..."
-                                            className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm md:rounded-sm p-3 text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
-                                            value={productSearch}
-                                            onChange={e => setProductSearch(e.target.value)}
-                                        />
-                                        <Search className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                                    </div>
+                        
+                        <div className="p-4 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 flex-shrink-0">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Buscar produto por nome ou código..."
+                                    className="w-full bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-sm p-3 pl-10 text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400"
+                                    value={productSearch}
+                                    onChange={e => setProductSearch(e.target.value)}
+                                />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                            </div>
+                        </div>
 
-                                    {productSearch && (
-                                        <div className="absolute z-20 w-full mt-1 bg-white dark:bg-zinc-900 border-2 border-black dark:border-zinc-700 rounded-sm shadow-2xl overflow-hidden max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                                            {filteredStockOptions.length > 0 ? filteredStockOptions.map(item => (
-                                                <button
-                                                    key={item.id}
-                                                    type="button"
-                                                    className="w-full text-left px-4 py-3 hover:bg-slate-100 dark:hover:bg-zinc-800 border-b border-slate-100 dark:border-zinc-800 last:border-none flex justify-between items-center group/item"
-                                                    onClick={() => {
-                                                        setSelectedItemId(item.id);
-                                                        setProductSearch('');
-                                                    }}
-                                                >
-                                                    <div className="min-w-0">
-                                                        <p className="font-black text-[11px] text-slate-950 dark:text-white truncate uppercase">{item.name}</p>
-                                                        <p className="text-[9px] font-bold text-slate-500 uppercase">{item.code} • Est: {item.quantity}</p>
+                        <form onSubmit={handleTransaction} className="flex flex-col flex-1 overflow-hidden bg-white dark:bg-zinc-900">
+                            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                                {filteredStockOptions.length > 0 ? filteredStockOptions.map(item => {
+                                    const currentInput = batchCounts[item.id] || '';
+                                    const isDiff = currentInput !== '' && parseInt(currentInput) !== item.quantity;
+                                    
+                                    return (
+                                        <div key={item.id} className={`p-4 rounded-sm border-2 transition-colors ${isDiff ? 'border-amber-400 bg-amber-50/30 dark:bg-amber-900/10' : 'border-slate-100 dark:border-zinc-800 hover:border-indigo-200 dark:hover:border-indigo-800/50'}`}>
+                                            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                                                <div className="flex gap-4 items-center min-w-0 flex-1">
+                                                    <div 
+                                                        className="w-12 h-12 flex-shrink-0 rounded-sm overflow-hidden border border-slate-200 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 flex items-center justify-center cursor-zoom-in relative"
+                                                        onMouseEnter={(e) => {
+                                                            if (!item.imageUrl) return;
+                                                            const rect = e.currentTarget.getBoundingClientRect();
+                                                            setHoverPosition({ x: Math.min(rect.right + 20, window.innerWidth - 250), y: rect.top - 50 });
+                                                            setHoveredImage(item.imageUrl);
+                                                        }}
+                                                        onMouseLeave={() => setHoveredImage(null)}
+                                                    >
+                                                        {item.imageUrl ? (
+                                                            <img 
+                                                                src={sanitizeImageUrl(item.imageUrl)} 
+                                                                alt={item.name} 
+                                                                className="w-full h-full object-cover transition-transform duration-300 hover:scale-110" 
+                                                                referrerPolicy="no-referrer"
+                                                            />
+                                                        ) : (
+                                                            <Package size={20} className="text-slate-400" />
+                                                        )}
                                                     </div>
-                                                    <ArrowRight size={14} className="text-slate-300 group-hover/item:text-indigo-600 transition-colors" />
-                                                </button>
-                                            )) : (
-                                                <div className="p-4 text-center text-slate-400 text-[10px] font-black uppercase">Nenhum produto encontrado</div>
+                                                    <div className="min-w-0">
+                                                        <p className="font-black text-sm text-slate-950 dark:text-white truncate uppercase">{item.name}</p>
+                                                        <p className="text-[10px] font-bold text-slate-500 uppercase">{item.code} • Sist: {item.quantity} {item.unit}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="w-full md:w-48 flex-shrink-0">
+                                                    <label className="block text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase mb-1">Contagem Real</label>
+                                                    <input 
+                                                        type="number" 
+                                                        min="0" 
+                                                        placeholder={`Sist: ${item.quantity}`}
+                                                        className="w-full bg-white dark:bg-zinc-950 border-2 border-black dark:border-zinc-700 rounded-sm p-2.5 text-lg font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        value={currentInput} 
+                                                        onChange={e => setBatchCounts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            {isDiff && (
+                                                <div className="mt-3 pt-3 border-t-2 border-amber-200/50 dark:border-amber-800/30 animate-in fade-in slide-in-from-top-2">
+                                                    <label className="block text-[9px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-widest mb-1.5 flex items-center gap-1"><AlertTriangle size={12} /> Justificativa da Divergência ({parseInt(currentInput) > item.quantity ? '+' : ''}{parseInt(currentInput) - item.quantity})</label>
+                                                    <textarea 
+                                                        required 
+                                                        className="w-full border-2 border-amber-300 dark:border-amber-700/50 bg-white dark:bg-zinc-950 rounded-sm p-2.5 text-xs font-black text-slate-950 dark:text-white outline-none focus:border-amber-500" 
+                                                        rows={1} 
+                                                        placeholder="Ex: Quebra, erro contagem anterior..." 
+                                                        value={batchJustifications[item.id] || ''} 
+                                                        onChange={e => setBatchJustifications(prev => ({ ...prev, [item.id]: e.target.value }))} 
+                                                    />
+                                                </div>
                                             )}
                                         </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-sm border-2 border-black dark:border-zinc-700 flex items-center justify-between">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-[9px] font-black text-slate-600 dark:text-slate-400 uppercase">Produto Selecionado</p>
-                                        <p className="text-sm font-black text-slate-950 dark:text-white truncate">{getSelectedItem()?.name}</p>
-                                        <p className="text-[10px] text-slate-800 dark:text-slate-300 font-bold">Saldo atual: {getSelectedItem()?.quantity} {getSelectedItem()?.unit}</p>
+                                    );
+                                }) : (
+                                    <div className="p-10 text-center text-slate-400 font-black uppercase flex flex-col items-center gap-3">
+                                        <Package size={48} className="opacity-20" />
+                                        <p>Nenhum produto encontrado</p>
                                     </div>
-                                    <button type="button" onClick={() => setSelectedItemId('')} className="text-[9px] font-black text-slate-950 dark:text-white uppercase bg-indigo-100 dark:bg-indigo-900/30 px-2.5 py-1.5 rounded-sm ml-2 border border-black dark:border-zinc-700 shadow-sm">Trocar</button>
-                                </div>
-                            )}
-
-                            <div>
-                                <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Contagem Real (Prateleira)</label>
-                                <input type="number" min="0" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-2xl font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" value={physicalCount} onChange={e => setPhysicalCount(e.target.value)} />
+                                )}
                             </div>
 
-                            {selectedItemId && physicalCount && parseInt(physicalCount) !== getSelectedItem()?.quantity && (
-                                <div className="animate-in fade-in slide-in-from-top-1">
-                                    <label className="block text-[10px] font-black text-rose-700 dark:text-rose-400 uppercase tracking-widest mb-1.5 flex items-center gap-1"><AlertTriangle size={12} /> Justificativa da Divergência</label>
-                                    <textarea required className="w-full border-2 border-rose-200 dark:border-rose-900 bg-rose-50/30 dark:bg-rose-900/10 rounded-sm p-3 text-sm font-black text-slate-950 dark:text-white outline-none focus:border-rose-500" rows={2} placeholder="Ex: Quebra de frasco, erro de lançamento, produto vencido..." value={inventoryJustification} onChange={e => setInventoryJustification(e.target.value)} />
-                                </div>
-                            )}
-
-                            <div className="flex gap-3 pt-4">
-                                <button type="button" onClick={closeModal} className="flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm transition-colors">Cancelar</button>
-                                <button type="submit" className="flex-[2] py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-xs tracking-widest shadow-xl active:scale-95 transition-all">Sincronizar Estoque</button>
+                            <div className="p-4 border-t border-black dark:border-zinc-700 bg-slate-50 dark:bg-zinc-950 flex flex-col md:flex-row gap-3 flex-shrink-0">
+                                <button type="button" onClick={closeModal} className="flex-1 py-4 text-slate-950 dark:text-white font-black uppercase text-[10px] tracking-widest hover:bg-slate-200 dark:hover:bg-zinc-800 rounded-sm transition-colors">Cancelar</button>
+                                <button 
+                                    type="button" 
+                                    onClick={saveInventoryDraft} 
+                                    className="flex-1 py-4 text-indigo-600 dark:text-indigo-400 font-black uppercase text-[10px] tracking-widest hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border-2 border-indigo-200 dark:border-indigo-900/50 rounded-sm transition-colors"
+                                >
+                                    Salvar Rascunho
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="flex-[2] py-4 bg-indigo-600 text-white rounded-sm font-black uppercase text-[11px] tracking-widest shadow-xl active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={Object.values(batchCounts).filter(v => v !== '').length === 0}
+                                >
+                                    Sincronizar {Object.values(batchCounts).filter(v => v !== '').length > 0 ? `(${Object.values(batchCounts).filter(v => v !== '').length})` : ''} Itens
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -1601,6 +1783,65 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         <div className="p-4 bg-slate-900 dark:bg-black border-t border-black dark:border-zinc-700 text-white flex justify-between items-center flex-shrink-0">
                             <p className="text-[10px] font-black uppercase opacity-60">Total registros: {filteredMovements.length}</p>
                             <button onClick={closeModal} className="px-6 py-2 bg-white dark:bg-zinc-800 text-slate-950 dark:text-white rounded-sm text-[10px] font-black uppercase border-2 border-black dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-700 transition-all">Fechar</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* INVENTORY_HISTORY MODAL */}
+            {modalType === 'INVENTORY_HISTORY' && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-end md:items-center justify-center p-0 md:p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-sm shadow-2xl w-full max-w-2xl overflow-hidden animate-in slide-in-from-bottom md:zoom-in duration-300 flex flex-col max-h-[90vh] md:max-h-[85vh] border-t-2 md:border-2 border-black dark:border-zinc-700">
+                        <div className="px-6 py-4 border-b border-black dark:border-zinc-700 flex justify-between items-center bg-slate-900 text-white flex-shrink-0">
+                            <div>
+                                <h3 className="font-black text-lg uppercase tracking-tight">Histórico de Inventários</h3>
+                                <p className="text-[10px] opacity-80 uppercase tracking-wider font-bold">Relatórios de balanços passados</p>
+                            </div>
+                            <button onClick={closeModal} className="text-white hover:text-zinc-300 transition-colors p-1"><X size={24} /></button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 bg-slate-50 dark:bg-zinc-950">
+                            {inventoryReports.length > 0 ? (
+                                inventoryReports.map(report => (
+                                    <div 
+                                        key={report.id} 
+                                        className="bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-800 rounded-sm p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all cursor-pointer group"
+                                        onClick={() => generateInventoryReport(report)}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-sm flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                                                <ClipboardList size={24} />
+                                            </div>
+                                            <div>
+                                                <h4 className="font-black text-slate-900 dark:text-white uppercase tracking-tight">Balanço Físico</h4>
+                                                <p className="text-xs font-bold text-slate-500">{new Date(report.created_at).toLocaleString('pt-BR')}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center justify-between w-full md:w-auto">
+                                            <div className="text-left md:text-right">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Itens</p>
+                                                <p className="text-lg font-black text-slate-900 dark:text-white">{report.items_counted}</p>
+                                            </div>
+                                            <button 
+                                                className="md:ml-6 px-4 py-2 bg-indigo-600 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
+                                                onClick={(e) => { e.stopPropagation(); generateInventoryReport(report); }}
+                                            >
+                                                <Printer size={14} /> Imprimir
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-12 px-4 flex flex-col items-center gap-4">
+                                    <div className="w-16 h-16 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center text-slate-400">
+                                        <History size={32} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-black text-lg text-slate-700 dark:text-slate-300 uppercase">Nenhum histórico</h4>
+                                        <p className="text-sm font-bold text-slate-500">Faça o seu primeiro inventário para ver os relatórios aqui.</p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
