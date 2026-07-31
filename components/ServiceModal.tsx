@@ -20,6 +20,55 @@ const cleanUUID = (id: string | null | undefined): string | null => {
     return isUUID(trimmed) ? trimmed : null;
 };
 
+// Helper to build financial ledger updates
+const buildCustomerFinancialUpdate = (
+    customer: Customer,
+    creditAdj: number,
+    outstandingAdj: number,
+    apptId: string,
+    reason: string
+) => {
+    const updatePayload: any = {};
+    let creditHistory = customer.creditHistory || [];
+    let debtHistory = customer.debtHistory || [];
+    let newCreditBal = customer.creditBalance || 0;
+    let newDebtBal = customer.outstandingBalance || 0;
+
+    if (creditAdj !== 0) {
+        newCreditBal = Math.max(0, newCreditBal + creditAdj);
+        updatePayload.credit_balance = newCreditBal;
+        updatePayload.credit_history = [{
+            id: crypto.randomUUID(),
+            date: new Date().toISOString(),
+            action: creditAdj > 0 ? 'ADD' : 'USE',
+            amount: creditAdj,
+            balanceAfter: newCreditBal,
+            reason: reason,
+            appointmentId: apptId
+        }, ...creditHistory];
+    } else {
+        updatePayload.credit_balance = newCreditBal;
+    }
+
+    if (outstandingAdj !== 0) {
+        newDebtBal = Math.max(0, newDebtBal + outstandingAdj);
+        updatePayload.outstanding_balance = newDebtBal;
+        updatePayload.debt_history = [{
+            id: crypto.randomUUID(),
+            date: new Date().toISOString(),
+            action: outstandingAdj > 0 ? 'ADD' : 'PAY',
+            amount: outstandingAdj,
+            balanceAfter: newDebtBal,
+            reason: reason,
+            appointmentId: apptId
+        }, ...debtHistory];
+    } else {
+        updatePayload.outstanding_balance = newDebtBal;
+    }
+
+    return updatePayload;
+};
+
 const calculateEndTime = (startTime: string, durationMinutes: number, provider?: Provider, serviceName?: string) => {
     if (!startTime) return '';
 
