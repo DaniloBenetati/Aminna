@@ -208,6 +208,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
     const [isZeroing, setIsZeroing] = useState(false);
     const [zeroOutReason, setZeroOutReason] = useState('');
     const [selectedLineIdsForZeroing, setSelectedLineIdsForZeroing] = useState<string[]>([]);
+    const [isRemaking, setIsRemaking] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [latestAppointment, setLatestAppointment] = useState<Appointment | null>(null);
@@ -1477,11 +1478,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         }
     };
 
-    const handleRemakeService = async () => {
+    const handleConfirmRemakeService = async () => {
         if (isSaving || restrictionData.isRestricted || customer.isBlocked) return;
-
-        const confirmRemake = window.confirm(`⚠️ ATENÇÃO: REFAZER ATENDIMENTO\n\nAo confirmar, este atendimento será ZERADO.\n- A cliente NÃO será cobrada.\n- A profissional NÃO receberá comissão.\n\nDeseja realmente refazer este atendimento sem custos?`);
-        if (!confirmRemake) return;
 
         setIsSaving(true);
         const combinedNames = lines.map(l => services.find(s => s.id === l.serviceId)?.name).join(' + ');
@@ -4066,6 +4064,34 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                                 </button>
                                                             </div>
                                                         </div>
+                                                    ) : isRemaking ? (
+                                                        <div className="space-y-3 bg-purple-50 dark:bg-purple-900/10 p-4 rounded-sm border-2 border-purple-100 dark:border-purple-900 animate-in zoom-in-95 duration-200">
+                                                            <h4 className="text-[10px] font-black text-purple-800 dark:text-purple-400 uppercase tracking-widest flex items-center gap-2">
+                                                                <RefreshCw size={12} /> Refazer Atendimento
+                                                            </h4>
+                                                            <div className="text-xs font-bold text-purple-900/80 dark:text-purple-300/80 space-y-1">
+                                                                <p className="text-purple-700 dark:text-purple-400 font-black">Ao confirmar, este atendimento será ZERADO.</p>
+                                                                <p>- A cliente NÃO será cobrada.</p>
+                                                                <p>- A profissional NÃO receberá comissão.</p>
+                                                                <p className="mt-2 text-[10px] uppercase">Deseja realmente refazer este atendimento sem custos?</p>
+                                                            </div>
+                                                            <div className="flex gap-2 mt-3">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setIsRemaking(false)}
+                                                                    className="flex-1 py-3 text-slate-600 dark:text-slate-300 font-black uppercase text-[10px] tracking-widest hover:bg-white dark:hover:bg-zinc-800 rounded-sm transition-colors border border-transparent hover:border-slate-200 dark:hover:border-zinc-700"
+                                                                >
+                                                                    Voltar
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleConfirmRemakeService}
+                                                                    className="flex-[2] py-3 bg-purple-600 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all hover:bg-purple-700"
+                                                                >
+                                                                    Confirmar e Refazer
+                                                                </button>
+                                                            </div>
+                                                        </div>
                                                     ) : isCancelling ? (
                                                         <div className="space-y-3 bg-rose-50 dark:bg-rose-900/10 p-4 rounded-sm border-2 border-rose-100 dark:border-rose-900 animate-in zoom-in-95 duration-200">
                                                             <h4 className="text-[10px] font-black text-rose-800 dark:text-rose-400 uppercase tracking-widest flex items-center gap-2">
@@ -4127,7 +4153,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                                                             {(!appointment.isRemake && appointment.paymentMethod !== 'Refazer') && (
                                                                 <button
                                                                     type="button"
-                                                                    onClick={handleRemakeService}
+                                                                    onClick={() => setIsRemaking(true)}
                                                                     className="py-4 px-4 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 rounded-sm font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40"
                                                                     title="Transformar em Refazer (Zerar)"
                                                                 >
