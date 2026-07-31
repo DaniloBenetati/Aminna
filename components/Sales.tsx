@@ -455,7 +455,11 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             return matchesGroup && matchesSubGroup && matchesSearch;
         });
         
-        return filtered.sort((a, b) => (a.catalog_order || 0) - (b.catalog_order || 0));
+        return filtered.sort((a, b) => {
+            const orderA = a.catalog_order || Number.MAX_SAFE_INTEGER;
+            const orderB = b.catalog_order || Number.MAX_SAFE_INTEGER;
+            return orderA - orderB;
+        });
     }, [saleProducts, selectedGroup, selectedSubGroup, productSearch]);
 
     // Sync orderedCatalog when filteredCatalog changes
@@ -468,6 +472,12 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
     );
 
     const handleCatalogDragEnd = useCallback(async (event: DragEndEvent) => {
+        const isFiltered = productSearch.trim() !== '' || selectedGroup !== 'all' || selectedSubGroup !== 'all';
+        if (isFiltered) {
+            alert('A organização manual está desabilitada enquanto houver buscas ou filtros ativos.\n\nLimpe os filtros para reorganizar o catálogo de forma correta e não bagunçar a ordem geral.');
+            return;
+        }
+
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
@@ -1140,14 +1150,38 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
 
                 setSales([finalSale, ...sales]);
 
-                // Update stock levels
+                // Update stock levels e Reserva
+                const currentStockMap = new Map<string, number>();
+                stock.forEach(s => currentStockMap.set(s.id, s.quantity));
+
+                if (convertingReservationId) {
+                    const { data: resItems } = await supabase
+                        .from('catalog_reservation_items')
+                        .select('product_id, quantity')
+                        .eq('reservation_id', convertingReservationId);
+                    
+                    if (resItems && resItems.length > 0) {
+                        for (const ri of resItems) {
+                            const currentQty = currentStockMap.get(ri.product_id) || 0;
+                            const restoredQty = currentQty + ri.quantity;
+                            currentStockMap.set(ri.product_id, restoredQty);
+                            await supabase.from('stock_items').update({ quantity: restoredQty }).eq('id', ri.product_id);
+                        }
+                    }
+
+                    await supabase
+                        .from('catalog_reservations')
+                        .update({ status: 'Concluída', updated_at: new Date().toISOString() })
+                        .eq('id', convertingReservationId);
+                }
+
                 for (const item of cart) {
-                    const stockItem = stock.find(s => s.id === item.productId);
-                    if (stockItem) {
-                        const newQuantity = stockItem.quantity - item.quantity;
+                    const currentQty = currentStockMap.get(item.productId);
+                    if (currentQty !== undefined) {
+                        const newQuantity = currentQty - item.quantity;
+                        currentStockMap.set(item.productId, newQuantity);
                         await supabase.from('stock_items').update({ quantity: newQuantity }).eq('id', item.productId);
                         
-                        // Log movement
                         const customerName = customers.find(c => c.id === customerId)?.name || 'Consumidor';
                         await supabase.from('usage_logs').insert({
                             stock_item_id: item.productId,
@@ -1156,41 +1190,13 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
                             note: `Venda para ${customerName} (R$ ${item.unitPrice.toFixed(2)}/un)`,
                             date: new Date().toISOString()
                         });
-                        
-                        setStock(prev => prev.map(s => s.id === item.productId ? { ...s, quantity: newQuantity } : s));
                     }
                 }
-            }
-
-            // --- RESERVATION INTEGRATION ---
-            if (convertingReservationId) {
-                // 1. Antes de deduzir o estoque da venda, precisamos restaurar o estoque da reserva
-                // pois o trigger do banco já havia deduzido quando a reserva foi criada.
-                // Assim, a venda deduzirá o valor exato do que está no carrinho agora.
-                const { data: resItems } = await supabase
-                    .from('catalog_reservation_items')
-                    .select('product_id, quantity')
-                    .eq('reservation_id', convertingReservationId);
                 
-                if (resItems && resItems.length > 0) {
-                    for (const ri of resItems) {
-                        const sItem = stock.find(s => s.id === ri.product_id);
-                        if (sItem) {
-                            const restoredQty = sItem.quantity + ri.quantity;
-                            await supabase.from('stock_items').update({ quantity: restoredQty }).eq('id', ri.product_id);
-                            // Atualizamos o estado local para que o loop de dedução da venda abaixo use o valor correto
-                            setStock(prev => prev.map(s => s.id === ri.product_id ? { ...s, quantity: restoredQty } : s));
-                        }
-                    }
-                }
-
-                // 2. Marcar reserva como Concluída
-                await supabase
-                    .from('catalog_reservations')
-                    .update({ status: 'Concluída', updated_at: new Date().toISOString() })
-                    .eq('id', convertingReservationId);
-                
-                console.log('✅ Reserva convertida e estoque sincronizado:', convertingReservationId);
+                setStock(prev => prev.map(s => {
+                    const finalQty = currentStockMap.get(s.id);
+                    return finalQty !== undefined ? { ...s, quantity: finalQty } : s;
+                }));
             }
 
             setLastSaleForInvoice(finalSale);
