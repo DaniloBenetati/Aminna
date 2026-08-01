@@ -74,17 +74,15 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
 
         {/* Login Card */}
-        <div className="bg-white dark:bg-zinc-900 p-8 rounded-[3rem] border border-slate-200 dark:border-zinc-800 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.1)] dark:shadow-none relative overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-sm border border-slate-200 dark:border-zinc-800 shadow-[0_32px_64px_-15px_rgba(0,0,0,0.1)] dark:shadow-none relative overflow-hidden">
           {/* Accent decoration */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 blur-3xl -mr-16 -mt-16 rounded-full" />
 
-          <div className="mb-8 relative z-10">
+          <div className="mb-8 relative z-10 text-center">
             <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
               {isSignUp ? 'Criar Nova Conta' : 'Acesse a Plataforma'}
             </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1">
-              {isSignUp ? 'Preencha os dados para se registrar' : 'Informe suas credenciais para continuar'}
-            </p>
+
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
@@ -158,14 +156,12 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             >
               {isSignUp ? 'Já tenho uma conta. Fazer Login' : 'Ainda não tem acesso? Criar conta'}
             </button>
-            <p className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest flex items-center justify-center gap-1">
-              <Sparkles size={10} className="text-indigo-400" /> Versão Profissional v2.5
-            </p>
+
           </div>
         </div>
 
-        <p className="text-center mt-12 text-[10px] font-bold text-slate-400 dark:text-slate-600 uppercase tracking-[0.3em] opacity-60">
-          &copy; {new Date().getFullYear()} Home Nail Gel System
+        <p className="text-center text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest mt-8">
+          &copy; {new Date().getFullYear()} Desenvolvido por Impulso Digital Ltda.
         </p>
       </div>
     </div>

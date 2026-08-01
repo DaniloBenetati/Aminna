@@ -373,6 +373,11 @@ export const Layout: React.FC<LayoutProps> = ({
               </div>
             )}
           </div>
+          {!isSidebarCollapsed && (
+            <div className="mt-3 text-center">
+              <span className="text-[10px] text-slate-500 font-medium">© 2026 Desenvolvido por Impulso Digital Ltda.</span>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -494,6 +499,10 @@ export const Layout: React.FC<LayoutProps> = ({
             <LogOut size={20} />
             Sair da Conta
           </button>
+          
+          <div className="mt-6 text-center pb-4">
+            <span className="text-[10px] text-slate-500 font-medium">© 2026 Desenvolvido por Impulso Digital Ltda.</span>
+          </div>
         </nav>
       </aside>
 
