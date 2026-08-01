@@ -83,14 +83,10 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     useEffect(() => {
         if (stock.length === 0) {
             const fetchStock = async () => {
-                const [stockRes, logsRes] = await Promise.all([
-                    supabase.from('stock_items').select('*').eq('active', true).order('catalog_order', { ascending: true }),
-                    supabase.from('usage_logs').select('*')
-                ]);
+                const { data, error } = await supabase.from('stock_items').select('*').eq('active', true).order('catalog_order', { ascending: true });
                 
-                if (stockRes.data) {
-                    const logs = logsRes.data || [];
-                    setStock(stockRes.data.map((s: any) => ({
+                if (data) {
+                    setStock(data.map((s: any) => ({
                       id: s.id,
                       code: s.code,
                       name: s.name,
@@ -106,16 +102,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                       imageUrls: s.image_urls || [],
                       priceHistory: s.price_history || [],
                       catalogOrder: s.catalog_order ?? 9999,
-                      usageHistory: logs
-                        .filter((l: any) => l.stock_item_id === s.id)
-                        .map((l: any) => ({
-                          id: l.id,
-                          date: l.date,
-                          quantity: l.quantity,
-                          type: l.type,
-                          providerId: l.provider_id,
-                          note: l.note
-                        }))
+                      usageHistory: [] // Fetched dynamically on openHistory
                     })));
                 }
             };
@@ -128,8 +115,16 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
     const [inventoryReports, setInventoryReports] = useState<any[]>([]);
 
     const fetchInventoryReports = async () => {
-        const { data } = await supabase.from('inventory_reports').select('*').order('created_at', { ascending: false });
+        const { data } = await supabase.from('inventory_reports').select('id, created_at, items_counted').order('created_at', { ascending: false }).limit(20);
         if (data) setInventoryReports(data);
+    };
+
+    const handleViewInventoryReport = async (report: any) => {
+        // Only load the massive JSON data when actually requested
+        const { data } = await supabase.from('inventory_reports').select('data').eq('id', report.id).maybeSingle();
+        if (data) {
+            generateInventoryReport({ ...report, data: data.data });
+        }
     };
     const [showReportExportMenu, setShowReportExportMenu] = useState(false);
 
@@ -990,7 +985,24 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         }
     };
 
-    const openHistory = (id: string) => { setSelectedItemId(id); setModalType('HISTORY'); setHistoryTab('USAGE'); };
+    const openHistory = async (id: string) => { 
+        setSelectedItemId(id); 
+        setModalType('HISTORY'); 
+        setHistoryTab('USAGE'); 
+        
+        const { data } = await supabase.from('usage_logs').select('*').eq('stock_item_id', id).order('date', { ascending: false });
+        if (data) {
+            const historyFormatted = data.map((l: any) => ({
+                id: l.id,
+                date: l.date,
+                quantity: l.quantity,
+                type: l.type,
+                providerId: l.provider_id,
+                note: l.note
+            }));
+            setStock(prev => prev.map(item => item.id === id ? { ...item, usageHistory: historyFormatted } : item));
+        }
+    };
     const openEditPrice = (id: string, currentPrice: number) => { setSelectedItemId(id); setNewPrice(currentPrice.toString()); setPriceNote(''); setModalType('EDIT_PRICE'); };
 
     const openEditProduct = (item: StockItem) => {
@@ -1850,7 +1862,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                     <div 
                                         key={report.id} 
                                         className="bg-white dark:bg-zinc-900 border-2 border-slate-200 dark:border-zinc-800 rounded-sm p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-indigo-500 dark:hover:border-indigo-500 transition-all cursor-pointer group"
-                                        onClick={() => generateInventoryReport(report)}
+                                        onClick={() => handleViewInventoryReport(report)}
                                     >
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-sm flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
@@ -1868,7 +1880,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                             </div>
                                             <button 
                                                 className="md:ml-6 px-4 py-2 bg-indigo-600 text-white rounded-sm font-black uppercase text-[10px] tracking-widest shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
-                                                onClick={(e) => { e.stopPropagation(); generateInventoryReport(report); }}
+                                                onClick={(e) => { e.stopPropagation(); handleViewInventoryReport(report); }}
                                             >
                                                 <Printer size={14} /> Imprimir
                                             </button>
