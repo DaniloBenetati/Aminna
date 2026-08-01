@@ -11,6 +11,7 @@ import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewStat
 import { ConsentForm } from './ConsentForm';
 import { LinkCustomersModal } from './LinkCustomersModal';
 import { FinancialExtractModal } from './FinancialExtractModal';
+import { normalizeSearch } from '../services/utils';
 
 const isCompleted = (status?: string) => status?.includes('Conclu');
 
@@ -128,12 +129,12 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   }, [customers, appointments]);
 
   const filteredCustomers = useMemo(() => {
-    const searchLower = searchTerm.toLowerCase();
+    const searchNorm = normalizeSearch(searchTerm);
     return customers.filter(c => {
-      const secondaryMatch = c.secondaryPhones?.some(p => p.includes(searchTerm));
+      const secondaryMatch = c.secondaryPhones?.some(p => normalizeSearch(p).includes(searchNorm));
       const matchesSearch = 
-        c.name.toLowerCase().includes(searchLower) ||
-        c.phone.includes(searchTerm) ||
+        normalizeSearch(c.name).includes(searchNorm) ||
+        normalizeSearch(c.phone).includes(searchNorm) ||
         secondaryMatch;
       
       if (!matchesSearch) return false;

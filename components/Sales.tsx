@@ -373,9 +373,9 @@ export const Sales: React.FC<SalesProps> = ({ sales, setSales, stock, setStock, 
             if (!hasProduct) return false;
 
             const dateMatch = isDateInPeriod(s.date);
-            const customerMatch = getCustomerName(s.customerId).toLowerCase().includes(searchTerm.toLowerCase());
+            const customerMatch = normalizeSearch(getCustomerName(s.customerId)).includes(normalizeSearch(searchTerm));
             const productMatch = s.items?.some((item: any) => 
-                (item.name || getProductName(item.productId)).toLowerCase().includes(searchTerm.toLowerCase())
+                normalizeSearch((item.name || getProductName(item.productId))).includes(normalizeSearch(searchTerm))
             );
             const searchMatch = customerMatch || productMatch;
             const paymentMatch = paymentFilter === 'all' || s.paymentMethod === paymentFilter;
