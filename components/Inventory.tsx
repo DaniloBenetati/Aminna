@@ -1342,11 +1342,11 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         <form onSubmit={handleCreateOrUpdateProduct} onPaste={handleFormPaste} className="p-5 md:p-6 space-y-4 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Código de Barras / Ref</label>
-                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black uppercase focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: ESM-001" value={productFormData.code} onChange={e => setProductFormData({ ...productFormData, code: e.target.value })} />
+                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold uppercase focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: ESM-001" value={productFormData.code} onChange={e => setProductFormData({ ...productFormData, code: e.target.value })} />
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Nome do Produto</label>
-                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} />
+                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} />
                             </div>
                             <div>
                                 <div className="flex justify-between items-center mb-1.5 mt-4">
@@ -1589,11 +1589,11 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Unid. Medida</label>
-                                    <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: frasco, ml, un" value={productFormData.unit} onChange={e => setProductFormData({ ...productFormData, unit: e.target.value })} />
+                                    <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: frasco, ml, un" value={productFormData.unit} onChange={e => setProductFormData({ ...productFormData, unit: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Estoque Mínimo</label>
-                                    <input type="number" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white" value={productFormData.minQuantity} onChange={e => setProductFormData({ ...productFormData, minQuantity: parseInt(e.target.value) || 0 })} />
+                                    <input type="number" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold outline-none text-slate-950 dark:text-white" value={productFormData.minQuantity} onChange={e => setProductFormData({ ...productFormData, minQuantity: parseInt(e.target.value) || 0 })} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-sm">
