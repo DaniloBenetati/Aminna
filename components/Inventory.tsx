@@ -576,6 +576,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
             // 1. Update stock_items quantity and possibly cost price
             const updateData: any = { quantity: newQty };
+            if (modalType === 'ENTRY') {
+                updateData.catalog_order = 0;
+            }
             if (modalType === 'ENTRY' && entryCost) {
                 updateData.cost_price = parseFloat(entryCost);
             }
@@ -596,6 +599,9 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
             setStock(prev => prev.map(item => {
                 if (item.id === selectedItemId) {
                     let updatedItem = { ...item, quantity: newQty };
+                    if (modalType === 'ENTRY') {
+                        updatedItem.catalogOrder = 0;
+                    }
                     if (modalType === 'ENTRY' && entryCost) {
                         updatedItem.costPrice = parseFloat(entryCost);
                     }
@@ -718,7 +724,8 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
 
                 const { data, error } = await supabase.from('stock_items').insert([{
                     ...productData,
-                    quantity: 0
+                    quantity: 0,
+                    catalog_order: 0
                 }]).select();
 
                 if (error) throw error;
@@ -727,6 +734,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         ...productFormData,
                         id: data[0].id,
                         quantity: 0,
+                        catalogOrder: 0,
                         usageHistory: [],
                         priceHistory: [],
                     };
@@ -943,6 +951,33 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 setIsUploading(false);
                 setUploadProgress(0);
             }, 500);
+        }
+    };
+
+    const handleFormPaste = (e: React.ClipboardEvent) => {
+        // Handle images
+        if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+            const file = e.clipboardData.files[0];
+            if (file.type.startsWith('image/')) {
+                e.preventDefault();
+                handleImageUpload({ target: { files: [file] } } as unknown as React.ChangeEvent<HTMLInputElement>);
+                return;
+            }
+        }
+        
+        // Handle text to remove weird formatting if they are focused on an input
+        const activeEl = document.activeElement as HTMLInputElement | HTMLTextAreaElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+            const text = e.clipboardData.getData('text/plain');
+            if (text) {
+                e.preventDefault();
+                // We use setRangeText to modify the input's value naturally, then dispatch an input event
+                // so React's onChange fires.
+                const normalizedText = text.normalize('NFKC').replace(/[\r\n]+/g, ' ').trim();
+                activeEl.setRangeText(normalizedText, activeEl.selectionStart || 0, activeEl.selectionEnd || 0, 'end');
+                const event = new Event('input', { bubbles: true });
+                activeEl.dispatchEvent(event);
+            }
         }
     };
 
@@ -1304,7 +1339,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <h3 className="font-black text-base md:text-lg uppercase tracking-widest">{modalType === 'EDIT_PRODUCT' ? 'Editar Informações' : 'Cadastrar Produto'}</h3>
                             <button onClick={closeModal} className="text-white hover:text-zinc-300 p-1"><X size={24} /></button>
                         </div>
-                        <form onSubmit={handleCreateOrUpdateProduct} className="p-5 md:p-6 space-y-4 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900">
+                        <form onSubmit={handleCreateOrUpdateProduct} onPaste={handleFormPaste} className="p-5 md:p-6 space-y-4 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Código de Barras / Ref</label>
                                 <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-black uppercase focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: ESM-001" value={productFormData.code} onChange={e => setProductFormData({ ...productFormData, code: e.target.value })} />
@@ -1607,7 +1642,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             </div>
                         </div>
 
-                        <form onSubmit={handleTransaction} className="flex flex-col flex-1 overflow-hidden bg-white dark:bg-zinc-900">
+                        <form onSubmit={handleTransaction} onPaste={handleFormPaste} className="flex flex-col flex-1 overflow-hidden bg-white dark:bg-zinc-900">
                             <div className="flex-1 overflow-y-auto p-4 space-y-3">
                                 {filteredStockOptions.length > 0 ? filteredStockOptions.map(item => {
                                     const currentInput = batchCounts[item.id] || '';
@@ -1855,7 +1890,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <h3 className="font-black text-sm md:text-base uppercase tracking-tight">{modalType === 'ENTRY' ? 'Entrada/Reposição' : 'Baixa (Saída)'}</h3>
                             <button onClick={closeModal} className="text-white hover:text-zinc-200 p-1 transition-colors"><X className="w-5 h-5 md:w-6 md:h-6" /></button>
                         </div>
-                        <form onSubmit={handleTransaction} className="p-4 md:p-6 space-y-4 md:space-y-5 overflow-y-auto flex-1 scrollbar-hide bg-white dark:bg-zinc-900">
+                        <form onSubmit={handleTransaction} onPaste={handleFormPaste} className="p-4 md:p-6 space-y-4 md:space-y-5 overflow-y-auto flex-1 scrollbar-hide bg-white dark:bg-zinc-900">
                             {!selectedItemId ? (
                                 <>
                                     <div className="flex justify-between items-center mb-1.5">
@@ -2026,7 +2061,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <h3 className="font-black text-base uppercase tracking-tight">Ajustar Preço de Venda</h3>
                             <button onClick={closeModal} className="text-white hover:text-zinc-200 p-1"><X size={24} /></button>
                         </div>
-                        <form onSubmit={handleUpdatePrice} className="p-5 md:p-6 space-y-4 bg-white dark:bg-zinc-900">
+                        <form onSubmit={handleUpdatePrice} onPaste={handleFormPaste} className="p-5 md:p-6 space-y-4 bg-white dark:bg-zinc-900">
                             <div className="p-3 bg-slate-50 dark:bg-zinc-800 rounded-sm border-2 border-black dark:border-zinc-700">
                                 <p className="text-[10px] font-black text-slate-600 dark:text-slate-400 uppercase mb-1">Produto</p>
                                 <p className="text-sm font-black text-slate-950 dark:text-white">{getSelectedItem()?.name}</p>
