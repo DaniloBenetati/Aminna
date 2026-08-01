@@ -954,6 +954,15 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
         }
     };
 
+    const sanitizeText = (text: string) => {
+        if (!text) return '';
+        const map: Record<string, string> = {
+            'ᴀ':'A','ʙ':'B','ᴄ':'C','ᴅ':'D','ᴇ':'E','ғ':'F','ɢ':'G','ʜ':'H','ɪ':'I','Ɪ':'I','ᴊ':'J','ᴋ':'K','ʟ':'L','ᴍ':'M',
+            'ɴ':'N','ᴏ':'O','ᴘ':'P','ǫ':'Q','ʀ':'R','ꜱ':'S','ᴛ':'T','ᴜ':'U','ᴠ':'V','ᴡ':'W','ʏ':'Y','ᴢ':'Z'
+        };
+        return text.normalize('NFKC').split('').map(c => map[c] || c).join('').toUpperCase();
+    };
+
     const handleFormPaste = (e: React.ClipboardEvent) => {
         // Handle images
         if (e.clipboardData.files && e.clipboardData.files.length > 0) {
@@ -973,7 +982,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                 e.preventDefault();
                 // We use setRangeText to modify the input's value naturally, then dispatch an input event
                 // so React's onChange fires.
-                const normalizedText = text.normalize('NFKC').replace(/[\r\n]+/g, ' ').trim();
+                const normalizedText = sanitizeText(text).replace(/[\r\n]+/g, ' ').trim();
                 activeEl.setRangeText(normalizedText, activeEl.selectionStart || 0, activeEl.selectionEnd || 0, 'end');
                 const event = new Event('input', { bubbles: true });
                 activeEl.dispatchEvent(event);
@@ -1342,11 +1351,11 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                         <form onSubmit={handleCreateOrUpdateProduct} onPaste={handleFormPaste} className="p-5 md:p-6 space-y-4 overflow-y-auto scrollbar-hide bg-white dark:bg-zinc-900">
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Código de Barras / Ref</label>
-                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold uppercase focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: ESM-001" value={productFormData.code} onChange={e => setProductFormData({ ...productFormData, code: e.target.value })} />
+                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold uppercase focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: ESM-001" value={productFormData.code} onChange={e => setProductFormData({ ...productFormData, code: sanitizeText(e.target.value) })} />
                             </div>
                             <div>
                                 <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Nome do Produto</label>
-                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: e.target.value })} />
+                                <input type="text" required className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold uppercase focus:ring-2 focus:ring-zinc-900 dark:focus:ring-white outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: Esmalte Risqué Vermelho" value={productFormData.name} onChange={e => setProductFormData({ ...productFormData, name: sanitizeText(e.target.value) })} />
                             </div>
                             <div>
                                 <div className="flex justify-between items-center mb-1.5 mt-4">
@@ -1544,7 +1553,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                 className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
                                                 placeholder="Nome do novo grupo"
                                                 value={productFormData.group}
-                                                onChange={e => setProductFormData({ ...productFormData, group: e.target.value })}
+                                                onChange={e => setProductFormData({ ...productFormData, group: sanitizeText(e.target.value) })}
                                             />
                                             <button type="button" onClick={() => setIsAddingNewGroup(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><X size={16} /></button>
                                         </div>
@@ -1575,10 +1584,10 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                                                 type="text"
                                                 autoFocus
                                                 required
-                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-sm p-3 text-xs md:text-sm font-black outline-none text-slate-950 dark:text-white"
+                                                className="w-full bg-white dark:bg-zinc-800 border-2 border-indigo-600 rounded-sm p-3 text-xs md:text-sm font-semibold uppercase outline-none text-slate-950 dark:text-white"
                                                 placeholder="Nome do novo subgrupo"
                                                 value={productFormData.subGroup}
-                                                onChange={e => setProductFormData({ ...productFormData, subGroup: e.target.value })}
+                                                onChange={e => setProductFormData({ ...productFormData, subGroup: sanitizeText(e.target.value) })}
                                             />
                                             <button type="button" onClick={() => setIsAddingNewSubGroup(false)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-rose-500"><X size={16} /></button>
                                         </div>
@@ -1589,7 +1598,7 @@ export const Inventory: React.FC<InventoryProps> = ({ stock, setStock, providers
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Unid. Medida</label>
-                                    <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: frasco, ml, un" value={productFormData.unit} onChange={e => setProductFormData({ ...productFormData, unit: e.target.value })} />
+                                    <input type="text" className="w-full bg-white dark:bg-zinc-800 border-2 border-black dark:border-zinc-700 rounded-sm p-3 text-xs md:text-sm font-semibold uppercase outline-none text-slate-950 dark:text-white placeholder:text-slate-400" placeholder="Ex: frasco, ml, un" value={productFormData.unit} onChange={e => setProductFormData({ ...productFormData, unit: sanitizeText(e.target.value) })} />
                                 </div>
                                 <div>
                                     <label className="block text-[10px] font-black text-slate-950 dark:text-white uppercase tracking-widest mb-1.5">Estoque Mínimo</label>
