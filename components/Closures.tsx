@@ -1114,7 +1114,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
       )}
 
       {fiscalDetailingData && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-sm shadow-2xl p-8 flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-4">
@@ -1423,6 +1423,7 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                     <th className="px-2 py-2 md:px-3 md:py-3">CNPJ</th>
                     <th className="px-2 py-2 md:px-3 md:py-3 text-right whitespace-nowrap">Valor p/ Nota</th>
                     <th className="px-2 py-2 md:px-3 md:py-3 text-right whitespace-nowrap">Faturamento Bruto</th>
+                    <th className="px-2 py-2 md:px-3 md:py-3 text-center"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
@@ -1435,6 +1436,11 @@ export const Closures: React.FC<ClosuresProps> = ({ services, appointments, prov
                         <td className="px-2 py-2 md:px-3 md:py-3 font-bold text-slate-500">{fiscal?.cnpj || '—'}</td>
                         <td className="px-2 py-2 md:px-3 md:py-3 text-right font-black text-indigo-600 whitespace-nowrap">R$ {data.serviceCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                         <td className="px-2 py-2 md:px-3 md:py-3 text-right font-black text-slate-900 dark:text-white whitespace-nowrap">R$ {data.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-2 py-2 md:px-3 md:py-3 text-center">
+                          <button onClick={() => setFiscalDetailingData(data)} title="Gerar Detalhamento Fiscal (NFSe)" className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-sm text-indigo-600 dark:text-indigo-400 transition-colors">
+                            <FileCode size={16} />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
