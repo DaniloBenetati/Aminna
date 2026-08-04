@@ -340,13 +340,13 @@ const App: React.FC = () => {
         supabase.from('leads').select('*'),
         supabase.from('partners').select('*'), // partners
         supabase.from('partner_exchanges').select('*'), // partner_exchanges
-        Promise.resolve({ data: [] }), // suppliers
+        supabase.from('suppliers').select('*'), // suppliers
         Promise.resolve({ data: [] }), // nfse_records
         fetchCustomers(),
         fetchAppointments(),
         supabase.from('sales').select('*').then(res => res.data || []), // fetchSales
         supabase.from('expenses').select('*').then(res => res.data || []), // fetchExpenses
-        Promise.resolve({ data: [] }), // employees
+        supabase.from('employees').select('*'), // employees
         Promise.resolve({ data: [] }), // payroll
         Promise.resolve({ data: [] })  // employee_loans
       ]);

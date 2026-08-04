@@ -877,15 +877,40 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
             });
 
             // 2. Fetch historical sum since the anchor date (everything from anchorDate to before startDate)
-            const { data: historyData, error: historyError } = await supabase
-                .from('bank_transactions')
-                .select('amount, type')
-                .gte('date', anchorDate)
-                .lt('date', startDate)
-                .limit(10000);
+            let historicalSum = 0;
+            let historyError = null;
+            let hasHistory = true;
+            let fetchMore = true;
+            let currentOffset = 0;
+            const pageSize = 1000;
 
-            if (!historyError && historyData) {
-                const historicalSum = historyData.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+            while (fetchMore) {
+                const { data: historyChunk, error: chunkError } = await supabase
+                    .from('bank_transactions')
+                    .select('amount, type')
+                    .gte('date', anchorDate)
+                    .lt('date', startDate)
+                    .range(currentOffset, currentOffset + pageSize - 1);
+                
+                if (chunkError) {
+                    historyError = chunkError;
+                    console.error("Error fetching history chunk", chunkError);
+                    break;
+                }
+                
+                if (historyChunk && historyChunk.length > 0) {
+                    historicalSum += historyChunk.reduce((acc, t) => acc + (t.type === 'RECEITA' ? Math.abs(t.amount) : -Math.abs(t.amount)), 0);
+                    if (historyChunk.length < pageSize) {
+                        fetchMore = false;
+                    } else {
+                        currentOffset += pageSize;
+                    }
+                } else {
+                    fetchMore = false;
+                }
+            }
+
+            if (!historyError && hasHistory) {
                 const finalOpening = Number(anchorBalance) + historicalSum;
                 console.log('📊 [AUDIT] Historical Sum since anchor:', { historicalSum, finalOpening });
                 setOpeningBalance(finalOpening);
@@ -4069,6 +4094,8 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                                         if (expErr) throw expErr;
 
                                                                                                         const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
+                                                                                                        await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
+                                                                                                        
                                                                                                         setExpenses((prev: Expense[]) => [...prev, {
                                                                                                             id: newExp.id, description: newExp.description, amount: newExp.amount, date: newExp.date,
                                                                                                             category: newExp.category, status: newExp.status, isReconciled: true,

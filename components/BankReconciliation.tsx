@@ -1314,6 +1314,9 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                             if (existingExp) {
                                 toUpdateExpenseStatus.push(existingExp.id);
                                 updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
+                                row.matchId = existingExp.id;
+                                row.matchType = 'DESPESA';
+                                row.status = 'CONCILIADOS';
                             } else if (row.suggestedProvider) {
                                 // REGRA: Somente cria no contas a pagar se houver favorecido identificado
                                 let sId = null;
@@ -1346,7 +1349,9 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                 const catInfo = categories.find(c => c.name === row.suggestedCategory);
                                 
                                 newExpenses.push({
-                                    description: row.description,
+                                    _tempFingerprint: row.fingerprint,
+                                    _tempFingerprint: row.fingerprint,
+                                description: row.description,
                                     amount: row.amount,
                                     date: row.date,
                                     supplierId: sId,
@@ -1371,6 +1376,9 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                         if (existingExp) {
                             toUpdateExpenseStatus.push(existingExp.id);
                             updatesToExecute.push({ type: 'EXPENSE', id: existingExp.id, date: row.date });
+                            row.matchId = existingExp.id;
+                            row.matchType = 'RECEITA';
+                            row.status = 'CONCILIADOS';
                         } else if (row.suggestedProvider) {
                             const selectedCat = categories.find(c => c.name === row.suggestedCategory);
                             const revDreClass = selectedCat?.dreClass === 'OTHER_INCOME' ? 'OTHER_INCOME' : 'REVENUE';
@@ -1441,6 +1449,72 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                             });
                         }
                     }
+                }
+            }
+    
+            if (newExpenses.length > 0) {
+                const mappedInserts = newExpenses.map(e => ({
+                    description: e.description,
+                    amount: e.amount,
+                    date: e.date,
+                    category: e.category,
+                    dre_class: e.dreClass,
+                    status: e.status,
+                    payment_method: e.paymentMethod,
+                    is_reconciled: e.isReconciled ?? true,
+                    supplier_id: e.supplierId,
+                    provider_id: e.providerId,
+                    employee_id: (e as any).employeeId
+                }));
+                const { data, error } = await supabase.from('expenses').insert(mappedInserts).select();
+                if (error) {
+                    console.error('Error inserting new expenses:', error);
+                    throw error;
+                }
+                if (data) {
+                    data.forEach((insertedExp, idx) => {
+                        const originalRow = finalRowsToProcess.find(r => r.fingerprint === newExpenses[idx]._tempFingerprint);
+                        if (originalRow) {
+                            originalRow.matchId = insertedExp.id;
+                            originalRow.matchType = originalRow.type === 'RECEITA' ? 'RECEITA' : 'DESPESA';
+                            originalRow.status = 'CONCILIADOS';
+                        }
+                    });
+                    setExpenses(prev => [...prev, ...data.map(d => ({
+                        id: d.id, 
+                        description: d.description, 
+                        amount: d.amount, 
+                        date: d.date,
+                        category: d.category, 
+                        dreClass: d.dre_class, 
+                        status: d.status, 
+                        paymentMethod: d.payment_method, 
+                        isReconciled: true,
+                        supplierId: d.supplier_id,
+                        providerId: d.provider_id,
+                        employeeId: d.employee_id
+                    } as Expense))]);
+                }
+            }
+    
+            if (newSales.length > 0) {
+                const { data, error } = await supabase.from('sales').insert(newSales).select();
+                if (error) {
+                    console.error("Error inserting sales:", error);
+                    throw error;
+                }
+    
+                if (data) {
+                    setSales(prev => [...prev, ...data.map(s => ({
+                        id: s.id,
+                        customerId: s.customer_id,
+                        date: s.date,
+                        totalAmount: s.total_amount,
+                        paymentMethod: s.payment_method,
+                        items: s.items || [],
+                        status: s.status,
+                        isReconciled: s.is_reconciled
+                    } as Sale))]);
                 }
             }
     
@@ -1571,64 +1645,6 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                 updatesToExecute: updatesToExecute.length,
                 newBankTransactions: newBankTransactions.length
             });
-    
-            if (newExpenses.length > 0) {
-                const mappedInserts = newExpenses.map(e => ({
-                    description: e.description,
-                    amount: e.amount,
-                    date: e.date,
-                    category: e.category,
-                    dre_class: e.dreClass,
-                    status: e.status,
-                    payment_method: e.paymentMethod,
-                    is_reconciled: e.isReconciled ?? true,
-                    supplier_id: e.supplierId,
-                    provider_id: e.providerId,
-                    employee_id: (e as any).employeeId
-                }));
-                const { data, error } = await supabase.from('expenses').insert(mappedInserts).select();
-                if (error) {
-                    console.error('Error inserting new expenses:', error);
-                    throw error;
-                }
-                if (data) {
-                    setExpenses(prev => [...prev, ...data.map(d => ({
-                        id: d.id, 
-                        description: d.description, 
-                        amount: d.amount, 
-                        date: d.date,
-                        category: d.category, 
-                        dreClass: d.dre_class, 
-                        status: d.status, 
-                        paymentMethod: d.payment_method, 
-                        isReconciled: true,
-                        supplierId: d.supplier_id,
-                        providerId: d.provider_id,
-                        employeeId: d.employee_id
-                    } as Expense))]);
-                }
-            }
-    
-            if (newSales.length > 0) {
-                const { data, error } = await supabase.from('sales').insert(newSales).select();
-                if (error) {
-                    console.error("Error inserting sales:", error);
-                    throw error;
-                }
-    
-                if (data) {
-                    setSales(prev => [...prev, ...data.map(s => ({
-                        id: s.id,
-                        customerId: s.customer_id,
-                        date: s.date,
-                        totalAmount: s.total_amount,
-                        paymentMethod: s.payment_method,
-                        items: s.items || [],
-                        status: s.status,
-                        isReconciled: s.is_reconciled
-                    } as Sale))]);
-                }
-            }
     
             if (updatesToExecute.length > 0) {
                 const groupedPromises: Promise<any>[] = [];
