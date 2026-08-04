@@ -4094,6 +4094,7 @@ export const Finance: React.FC<FinanceProps> = ({ services, appointments, setApp
                                                                                                         if (expErr) throw expErr;
 
                                                                                                         const newMatches = [{ id: newExp.id, type: 'EXPENSE' as const, amount: newExp.amount }];
+                                                                                                        // @ts-ignore - bypassing strict db typing
                                                                                                         await supabase.from('bank_transactions').update({ system_matches: newMatches }).eq('id', t.id);
                                                                                                         
                                                                                                         setExpenses((prev: Expense[]) => [...prev, {

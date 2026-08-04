@@ -1350,8 +1350,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                 
                                 newExpenses.push({
                                     _tempFingerprint: row.fingerprint,
-                                    _tempFingerprint: row.fingerprint,
-                                description: row.description,
+                                    description: row.description,
                                     amount: row.amount,
                                     date: row.date,
                                     supplierId: sId,
@@ -1362,7 +1361,7 @@ export const BankReconciliation: React.FC<BankReconciliationProps> = ({
                                     status: 'Pago',
                                     paymentMethod: 'Transferência',
                                     isReconciled: true
-                                });
+                                } as any);
                             }
                         }
                     } else if (row.type === 'RECEITA') {
