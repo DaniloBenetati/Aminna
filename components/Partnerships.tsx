@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../services/supabase';
 
 import { Plus, Search, Handshake, Tag, TrendingUp, Users, Smartphone, X, Check, ArrowUpRight, BarChart2, Mail, MapPin, FileText, CreditCard, Edit2, ToggleLeft, ToggleRight, Trash2, Calendar, CircleCheck, ChevronDown, Gift, Package, DollarSign, Share2, History, Clock, Sparkles, Star } from 'lucide-react';
@@ -34,6 +34,17 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
   onNavigate
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'INFLUENCERS' | 'PRODUCTS' | 'ANALYSIS'>('INFLUENCERS');
+  
+  useEffect(() => {
+    const handleTabChange = (e: any) => {
+      if (e.detail && ['INFLUENCERS', 'PRODUCTS', 'ANALYSIS'].includes(e.detail)) {
+        setActiveSubTab(e.detail as 'INFLUENCERS' | 'PRODUCTS' | 'ANALYSIS');
+      }
+    };
+    window.addEventListener('changePartnershipsTab', handleTabChange);
+    return () => window.removeEventListener('changePartnershipsTab', handleTabChange);
+  }, []);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ACTIVE');
   const [agendaFilter, setAgendaFilter] = useState<'ALL' | 'YES' | 'NO'>('ALL');
@@ -489,28 +500,6 @@ export const Partnerships: React.FC<PartnershipsProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight uppercase">Parcerias Aminna</h2>
-        </div>
-        
-        {/* Main Tabs */}
-        <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm w-full sm:w-auto">
-          <button 
-            onClick={() => setActiveSubTab('INFLUENCERS')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-xs font-black uppercase tracking-widest transition-all ${activeSubTab === 'INFLUENCERS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-          >
-            <Users size={16} /> Influenciadores
-          </button>
-          <button 
-            onClick={() => setActiveSubTab('PRODUCTS')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'PRODUCTS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-          >
-            <Gift size={16} /> Parceiros Produtos
-          </button>
-          <button 
-            onClick={() => setActiveSubTab('ANALYSIS')}
-            className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeSubTab === 'ANALYSIS' ? 'bg-white dark:bg-zinc-700 text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-          >
-            <BarChart2 size={16} /> Análises
-          </button>
         </div>
       </div>
 

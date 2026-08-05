@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Coffee, Plus, Search, Minus, X, Edit2, History, Package, Clock, DollarSign, TrendingUp, Filter, AlertTriangle, CircleCheck, ChevronRight, Tag, Save, Info, ChevronDown, ChevronUp, ClipboardList, CalendarRange, ChevronLeft, User } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend, AreaChart, Area } from 'recharts';
 import { PantryItem, PantryLog, Appointment, Customer, Provider } from '../types';
@@ -19,6 +19,17 @@ export const Copa: React.FC<CopaProps> = ({
     pantryItems, setPantryItems, pantryLogs, setPantryLogs, appointments, customers, providers
 }) => {
     const [activeTab, setActiveTab] = useState<'STOCK' | 'SERVICE' | 'FINANCE' | 'PRICES'>('SERVICE');
+
+    useEffect(() => {
+        const handleTabChange = (e: any) => {
+            if (e.detail && ['STOCK', 'SERVICE', 'FINANCE', 'PRICES'].includes(e.detail)) {
+                setActiveTab(e.detail as 'STOCK' | 'SERVICE' | 'FINANCE' | 'PRICES');
+            }
+        };
+        window.addEventListener('changeCopaTab', handleTabChange);
+        return () => window.removeEventListener('changeCopaTab', handleTabChange);
+    }, []);
+
     const [searchTerm, setSearchTerm] = useState('');
 
     // States for Modals
@@ -798,23 +809,6 @@ export const Copa: React.FC<CopaProps> = ({
                 <div>
                     <h2 className="text-xl md:text-2xl font-black text-slate-950 dark:text-white leading-tight uppercase tracking-tight">Copa & Consumo</h2>
                     <p className="text-[10px] md:text-sm text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">Gestão de amenidades e custos</p>
-                </div>
-                {/* TABS */}
-                <div className="flex bg-slate-100 dark:bg-zinc-800 p-1 rounded-sm border border-slate-200 dark:border-zinc-700 w-full md:w-auto overflow-x-auto scrollbar-hide">
-                    {[
-                        { id: 'SERVICE', label: 'Atendimentos', icon: Clock },
-                        { id: 'STOCK', label: 'Estoque', icon: Package },
-                        { id: 'PRICES', label: 'Preços', icon: Tag },
-                        { id: 'FINANCE', label: 'Relatórios', icon: TrendingUp },
-                    ].map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id as any)}
-                            className={`flex-1 md:flex-none px-4 py-2 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === tab.id ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
-                        >
-                            <tab.icon size={14} /> {tab.label}
-                        </button>
-                    ))}
                 </div>
             </div>
 

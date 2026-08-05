@@ -565,6 +565,17 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
   const [activeMarketingTab, setActiveMarketingTab] = useState<'paid' | 'metrics'>(() => 
     (localStorage.getItem('active_marketing_tab') as 'paid' | 'metrics') || 'paid'
   );
+
+  useEffect(() => {
+    const handleTabChange = (e: any) => {
+      if (e.detail && ['paid', 'metrics'].includes(e.detail)) {
+        setActiveMarketingTab(e.detail as 'paid' | 'metrics');
+      }
+    };
+    window.addEventListener('changeMarketingTab', handleTabChange);
+    return () => window.removeEventListener('changeMarketingTab', handleTabChange);
+  }, []);
+
   const [refreshKey, setRefreshKey] = useState(0);
   const [expandedCampaigns, setExpandedCampaigns] = useState<Record<string, boolean>>({});
   const [expandedAdSets, setExpandedAdSets] = useState<Record<string, boolean>>({});
@@ -2693,22 +2704,7 @@ export const Marketing: React.FC<{ appointments: any[], customers: any[], servic
       <div className="bg-white dark:bg-zinc-900 border-b border-slate-100 dark:border-zinc-800 px-4 md:px-6 py-1 md:py-1.5 flex-shrink-0 z-30 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           
-          {/* Abas (esquerda) */}
-          <div className="flex items-center gap-1 md:gap-3 overflow-x-auto no-scrollbar flex-nowrap">
-            <button
-              onClick={() => setActiveMarketingTab('paid')}
-              className={`px-1.5 md:px-3 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold uppercase tracking-tight sm:tracking-wider transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'paid' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              Tráfego Pago
-            </button>
 
-            <button
-              onClick={() => setActiveMarketingTab('metrics')}
-              className={`px-1.5 md:px-3 py-0.5 text-[8px] sm:text-[9px] md:text-[10px] font-semibold uppercase tracking-tight sm:tracking-wider transition-all border-b-2 whitespace-nowrap ${activeMarketingTab === 'metrics' ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 font-bold' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-            >
-              Métricas
-            </button>
-          </div>
 
           {/* Período (esquerda) e Botão Filtrar (direita) unificados em uma linha */}
           <div className="flex items-center gap-1.5 md:gap-2.5 flex-shrink-0">

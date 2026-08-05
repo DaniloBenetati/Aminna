@@ -96,6 +96,67 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'DRE', label: 'DRE' },
   ];
 
+  const [activePartnershipsTab, setActivePartnershipsTab] = useState('INFLUENCERS');
+  const [isPartnershipsSubmenuOpen, setIsPartnershipsSubmenuOpen] = useState(false);
+
+  const handlePartnershipsTabSelect = (tabId: string) => {
+    setActivePartnershipsTab(tabId);
+    if (currentView !== ViewState.PARTNERSHIPS) {
+      onNavigate(ViewState.PARTNERSHIPS);
+    }
+    window.dispatchEvent(new CustomEvent('changePartnershipsTab', { detail: tabId }));
+  };
+
+  const partnershipsSubTabs = [
+    { id: 'INFLUENCERS', label: 'Influenciadores' },
+    { id: 'PRODUCTS', label: 'Parceiros Produtos' },
+    { id: 'ANALYSIS', label: 'Análises' },
+  ];
+
+  const [activeCopaTab, setActiveCopaTab] = useState('SERVICE');
+  const [isCopaSubmenuOpen, setIsCopaSubmenuOpen] = useState(false);
+
+  const handleCopaTabSelect = (tabId: string) => {
+    setActiveCopaTab(tabId);
+    if (currentView !== ViewState.COPA) {
+      onNavigate(ViewState.COPA);
+    }
+    window.dispatchEvent(new CustomEvent('changeCopaTab', { detail: tabId }));
+  };
+
+  const copaSubTabs = [
+    { id: 'SERVICE', label: 'Atendimentos' },
+    { id: 'STOCK', label: 'Estoque' },
+    { id: 'PRICES', label: 'Preços' },
+    { id: 'FINANCE', label: 'Relatórios' },
+  ];
+
+  const [activeMarketingTab, setActiveMarketingTab] = useState('paid');
+  const [isMarketingSubmenuOpen, setIsMarketingSubmenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleMarketingTabChange = (e: any) => {
+      if (e.detail && ['paid', 'metrics'].includes(e.detail)) {
+        setActiveMarketingTab(e.detail);
+      }
+    };
+    window.addEventListener('changeMarketingTab', handleMarketingTabChange);
+    return () => window.removeEventListener('changeMarketingTab', handleMarketingTabChange);
+  }, []);
+
+  const handleMarketingTabSelect = (tabId: string) => {
+    setActiveMarketingTab(tabId);
+    if (currentView !== ViewState.TRAFEGO_PAGO && currentView !== ViewState.MARKETING) {
+      onNavigate(ViewState.TRAFEGO_PAGO);
+    }
+    window.dispatchEvent(new CustomEvent('changeMarketingTab', { detail: tabId }));
+  };
+
+  const marketingSubTabs = [
+    { id: 'paid', label: 'Tráfego Pago' },
+    { id: 'metrics', label: 'Métricas' },
+  ];
+
   // App Custom Zoom Controls
   const [zoom, setZoom] = useState(() => {
     const saved = localStorage.getItem('appZoom');
@@ -217,6 +278,9 @@ export const Layout: React.FC<LayoutProps> = ({
             const isActive = currentView === item.id;
             const isDashboard = item.id === ViewState.DASHBOARD;
             const isFinance = item.id === ViewState.FINANCEIRO;
+            const isPartnerships = item.id === ViewState.PARTNERSHIPS;
+            const isCopa = item.id === ViewState.COPA;
+            const isMarketing = item.id === ViewState.TRAFEGO_PAGO || item.id === ViewState.MARKETING;
             
             return (
               <div key={item.id} className="relative group">
@@ -227,11 +291,19 @@ export const Layout: React.FC<LayoutProps> = ({
                       if (isActive && !isSidebarCollapsed) {
                         const opening = !isDashboardSubmenuOpen;
                         setIsDashboardSubmenuOpen(opening);
-                        if (opening) setIsFinanceSubmenuOpen(false);
+                        if (opening) {
+                          setIsFinanceSubmenuOpen(false);
+                          setIsPartnershipsSubmenuOpen(false);
+                          setIsCopaSubmenuOpen(false);
+                          setIsMarketingSubmenuOpen(false);
+                        }
                       } else {
                         onNavigate(item.id);
                         setIsDashboardSubmenuOpen(true);
                         setIsFinanceSubmenuOpen(false);
+                        setIsPartnershipsSubmenuOpen(false);
+                        setIsCopaSubmenuOpen(false);
+                        setIsMarketingSubmenuOpen(false);
                         handleDashboardTabSelect('geral');
                       }
                     } else if (isFinance) {
@@ -239,12 +311,80 @@ export const Layout: React.FC<LayoutProps> = ({
                       if (isActive && !isSidebarCollapsed) {
                         const opening = !isFinanceSubmenuOpen;
                         setIsFinanceSubmenuOpen(opening);
-                        if (opening) setIsDashboardSubmenuOpen(false);
+                        if (opening) {
+                          setIsDashboardSubmenuOpen(false);
+                          setIsPartnershipsSubmenuOpen(false);
+                          setIsCopaSubmenuOpen(false);
+                          setIsMarketingSubmenuOpen(false);
+                        }
                       } else {
                         onNavigate(item.id);
                         setIsFinanceSubmenuOpen(true);
                         setIsDashboardSubmenuOpen(false);
+                        setIsPartnershipsSubmenuOpen(false);
+                        setIsCopaSubmenuOpen(false);
+                        setIsMarketingSubmenuOpen(false);
                         handleFinanceTabSelect('CHARTS');
+                      }
+                    } else if (isPartnerships) {
+                      if (isSidebarCollapsed) setIsSidebarCollapsed(false);
+                      if (isActive && !isSidebarCollapsed) {
+                        const opening = !isPartnershipsSubmenuOpen;
+                        setIsPartnershipsSubmenuOpen(opening);
+                        if (opening) {
+                          setIsDashboardSubmenuOpen(false);
+                          setIsFinanceSubmenuOpen(false);
+                          setIsCopaSubmenuOpen(false);
+                          setIsMarketingSubmenuOpen(false);
+                        }
+                      } else {
+                        onNavigate(item.id);
+                        setIsPartnershipsSubmenuOpen(true);
+                        setIsDashboardSubmenuOpen(false);
+                        setIsFinanceSubmenuOpen(false);
+                        setIsCopaSubmenuOpen(false);
+                        setIsMarketingSubmenuOpen(false);
+                        handlePartnershipsTabSelect('INFLUENCERS');
+                      }
+                    } else if (isCopa) {
+                      if (isSidebarCollapsed) setIsSidebarCollapsed(false);
+                      if (isActive && !isSidebarCollapsed) {
+                        const opening = !isCopaSubmenuOpen;
+                        setIsCopaSubmenuOpen(opening);
+                        if (opening) {
+                          setIsDashboardSubmenuOpen(false);
+                          setIsFinanceSubmenuOpen(false);
+                          setIsPartnershipsSubmenuOpen(false);
+                          setIsMarketingSubmenuOpen(false);
+                        }
+                      } else {
+                        onNavigate(item.id);
+                        setIsCopaSubmenuOpen(true);
+                        setIsDashboardSubmenuOpen(false);
+                        setIsFinanceSubmenuOpen(false);
+                        setIsPartnershipsSubmenuOpen(false);
+                        setIsMarketingSubmenuOpen(false);
+                        handleCopaTabSelect('SERVICE');
+                      }
+                    } else if (isMarketing) {
+                      if (isSidebarCollapsed) setIsSidebarCollapsed(false);
+                      if (isActive && !isSidebarCollapsed) {
+                        const opening = !isMarketingSubmenuOpen;
+                        setIsMarketingSubmenuOpen(opening);
+                        if (opening) {
+                          setIsDashboardSubmenuOpen(false);
+                          setIsFinanceSubmenuOpen(false);
+                          setIsPartnershipsSubmenuOpen(false);
+                          setIsCopaSubmenuOpen(false);
+                        }
+                      } else {
+                        onNavigate(item.id);
+                        setIsMarketingSubmenuOpen(true);
+                        setIsDashboardSubmenuOpen(false);
+                        setIsFinanceSubmenuOpen(false);
+                        setIsPartnershipsSubmenuOpen(false);
+                        setIsCopaSubmenuOpen(false);
+                        handleMarketingTabSelect('paid');
                       }
                     } else {
                       onNavigate(item.id);
@@ -259,7 +399,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className="flex-shrink-0" />
                   {!isSidebarCollapsed && <span className="truncate">{item.label}</span>}
 
-                  {isSidebarCollapsed && !isDashboard && !isFinance && (
+                  {isSidebarCollapsed && !isDashboard && !isFinance && !isPartnerships && !isCopa && !isMarketing && (
                     <div className="absolute left-full ml-2 px-2 py-1 bg-slate-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
                       {item.label}
                     </div>
@@ -296,6 +436,51 @@ export const Layout: React.FC<LayoutProps> = ({
                        ))}
                     </div>
                   )}
+                  {/* Float sub-menu for partnerships if collapsed */}
+                  {isSidebarCollapsed && isPartnerships && (
+                    <div className="absolute left-full ml-2 top-0 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-50 min-w-[150px] overflow-hidden">
+                       <div className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">{item.label}</div>
+                       {partnershipsSubTabs.map(sub => (
+                           <div 
+                             key={sub.id} 
+                             onClick={(e) => { e.stopPropagation(); handlePartnershipsTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                             className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors text-left ${activePartnershipsTab === sub.id ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-zinc-800'}`}
+                           >
+                             {sub.label}
+                           </div>
+                       ))}
+                    </div>
+                  )}
+                  {/* Float sub-menu for copa if collapsed */}
+                  {isSidebarCollapsed && isCopa && (
+                    <div className="absolute left-full ml-2 top-0 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-50 min-w-[150px] overflow-hidden">
+                       <div className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">{item.label}</div>
+                       {copaSubTabs.map(sub => (
+                           <div 
+                             key={sub.id} 
+                             onClick={(e) => { e.stopPropagation(); handleCopaTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                             className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors text-left ${activeCopaTab === sub.id ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-zinc-800'}`}
+                           >
+                             {sub.label}
+                           </div>
+                       ))}
+                    </div>
+                  )}
+                  {/* Float sub-menu for marketing if collapsed */}
+                  {isSidebarCollapsed && isMarketing && (
+                    <div className="absolute left-full ml-2 top-0 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-sm shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity z-50 min-w-[150px] overflow-hidden">
+                       <div className="px-4 py-2 bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">{item.label}</div>
+                       {marketingSubTabs.map(sub => (
+                           <div 
+                             key={sub.id} 
+                             onClick={(e) => { e.stopPropagation(); handleMarketingTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                             className={`px-4 py-2.5 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-colors text-left ${activeMarketingTab === sub.id ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-zinc-800'}`}
+                           >
+                             {sub.label}
+                           </div>
+                       ))}
+                    </div>
+                  )}
                 </button>
 
                 {/* Inline sub-menu for dashboard if expanded */}
@@ -321,6 +506,48 @@ export const Layout: React.FC<LayoutProps> = ({
                         key={sub.id}
                         onClick={(e) => { e.stopPropagation(); handleFinanceTabSelect(sub.id); setIsMobileMenuOpen(false); }}
                         className={`w-full text-left px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeFinanceTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Inline sub-menu for partnerships if expanded */}
+                {!isSidebarCollapsed && isPartnerships && isPartnershipsSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {partnershipsSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handlePartnershipsTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activePartnershipsTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Inline sub-menu for copa if expanded */}
+                {!isSidebarCollapsed && isCopa && isCopaSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {copaSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handleCopaTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeCopaTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Inline sub-menu for marketing if expanded */}
+                {!isSidebarCollapsed && isMarketing && isMarketingSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {marketingSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handleMarketingTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-1.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${activeMarketingTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
                       >
                         {sub.label}
                       </button>
@@ -396,6 +623,9 @@ export const Layout: React.FC<LayoutProps> = ({
             const isActive = currentView === item.id;
             const isDashboard = item.id === ViewState.DASHBOARD;
             const isFinance = item.id === ViewState.FINANCEIRO;
+            const isPartnerships = item.id === ViewState.PARTNERSHIPS;
+            const isCopa = item.id === ViewState.COPA;
+            const isMarketing = item.id === ViewState.TRAFEGO_PAGO || item.id === ViewState.MARKETING;
             
             return (
               <div key={item.id} className="relative">
@@ -405,23 +635,96 @@ export const Layout: React.FC<LayoutProps> = ({
                       if (isActive) {
                         const opening = !isDashboardSubmenuOpen;
                         setIsDashboardSubmenuOpen(opening);
-                        if (opening) setIsFinanceSubmenuOpen(false);
+                        if (opening) {
+                          setIsFinanceSubmenuOpen(false);
+                          setIsPartnershipsSubmenuOpen(false);
+                          setIsCopaSubmenuOpen(false);
+                          setIsMarketingSubmenuOpen(false);
+                        }
                       } else {
                         onNavigate(item.id);
                         setIsDashboardSubmenuOpen(true);
                         setIsFinanceSubmenuOpen(false);
+                        setIsPartnershipsSubmenuOpen(false);
+                        setIsCopaSubmenuOpen(false);
+                        setIsMarketingSubmenuOpen(false);
                         handleDashboardTabSelect('geral');
                       }
                     } else if (isFinance) {
                       if (isActive) {
                         const opening = !isFinanceSubmenuOpen;
                         setIsFinanceSubmenuOpen(opening);
-                        if (opening) setIsDashboardSubmenuOpen(false);
+                        if (opening) {
+                          setIsDashboardSubmenuOpen(false);
+                          setIsPartnershipsSubmenuOpen(false);
+                          setIsCopaSubmenuOpen(false);
+                          setIsMarketingSubmenuOpen(false);
+                        }
                       } else {
                         onNavigate(item.id);
                         setIsFinanceSubmenuOpen(true);
                         setIsDashboardSubmenuOpen(false);
+                        setIsPartnershipsSubmenuOpen(false);
+                        setIsCopaSubmenuOpen(false);
+                        setIsMarketingSubmenuOpen(false);
                         handleFinanceTabSelect('CHARTS');
+                      }
+                    } else if (isPartnerships) {
+                      if (isActive) {
+                        const opening = !isPartnershipsSubmenuOpen;
+                        setIsPartnershipsSubmenuOpen(opening);
+                        if (opening) {
+                          setIsDashboardSubmenuOpen(false);
+                          setIsFinanceSubmenuOpen(false);
+                          setIsCopaSubmenuOpen(false);
+                          setIsMarketingSubmenuOpen(false);
+                        }
+                      } else {
+                        onNavigate(item.id);
+                        setIsPartnershipsSubmenuOpen(true);
+                        setIsDashboardSubmenuOpen(false);
+                        setIsFinanceSubmenuOpen(false);
+                        setIsCopaSubmenuOpen(false);
+                        setIsMarketingSubmenuOpen(false);
+                        handlePartnershipsTabSelect('INFLUENCERS');
+                      }
+                    } else if (isCopa) {
+                      if (isActive) {
+                        const opening = !isCopaSubmenuOpen;
+                        setIsCopaSubmenuOpen(opening);
+                        if (opening) {
+                          setIsDashboardSubmenuOpen(false);
+                          setIsFinanceSubmenuOpen(false);
+                          setIsPartnershipsSubmenuOpen(false);
+                          setIsMarketingSubmenuOpen(false);
+                        }
+                      } else {
+                        onNavigate(item.id);
+                        setIsCopaSubmenuOpen(true);
+                        setIsDashboardSubmenuOpen(false);
+                        setIsFinanceSubmenuOpen(false);
+                        setIsPartnershipsSubmenuOpen(false);
+                        setIsMarketingSubmenuOpen(false);
+                        handleCopaTabSelect('SERVICE');
+                      }
+                    } else if (isMarketing) {
+                      if (isActive) {
+                        const opening = !isMarketingSubmenuOpen;
+                        setIsMarketingSubmenuOpen(opening);
+                        if (opening) {
+                          setIsDashboardSubmenuOpen(false);
+                          setIsFinanceSubmenuOpen(false);
+                          setIsPartnershipsSubmenuOpen(false);
+                          setIsCopaSubmenuOpen(false);
+                        }
+                      } else {
+                        onNavigate(item.id);
+                        setIsMarketingSubmenuOpen(true);
+                        setIsDashboardSubmenuOpen(false);
+                        setIsFinanceSubmenuOpen(false);
+                        setIsPartnershipsSubmenuOpen(false);
+                        setIsCopaSubmenuOpen(false);
+                        handleMarketingTabSelect('paid');
                       }
                     } else {
                       handleNavigate(item.id);
@@ -459,6 +762,48 @@ export const Layout: React.FC<LayoutProps> = ({
                         key={sub.id}
                         onClick={(e) => { e.stopPropagation(); handleFinanceTabSelect(sub.id); setIsMobileMenuOpen(false); }}
                         className={`w-full text-left px-3 py-2.5 rounded-sm text-[12px] font-black uppercase tracking-widest transition-all ${activeFinanceTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Inline sub-menu for partnerships on mobile */}
+                {isPartnerships && isPartnershipsSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {partnershipsSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handlePartnershipsTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2.5 rounded-sm text-[12px] font-black uppercase tracking-widest transition-all ${activePartnershipsTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Inline sub-menu for copa on mobile */}
+                {isCopa && isCopaSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {copaSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handleCopaTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2.5 rounded-sm text-[12px] font-black uppercase tracking-widest transition-all ${activeCopaTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
+                      >
+                        {sub.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Inline sub-menu for marketing on mobile */}
+                {isMarketing && isMarketingSubmenuOpen && (
+                  <div className="mt-1 ml-4 pl-4 border-l-2 border-slate-200 dark:border-zinc-800 space-y-1 mb-2">
+                    {marketingSubTabs.map(sub => (
+                      <button
+                        key={sub.id}
+                        onClick={(e) => { e.stopPropagation(); handleMarketingTabSelect(sub.id); setIsMobileMenuOpen(false); }}
+                        className={`w-full text-left px-3 py-2.5 rounded-sm text-[12px] font-black uppercase tracking-widest transition-all ${activeMarketingTab === sub.id ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/10' : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-zinc-800/50'}`}
                       >
                         {sub.label}
                       </button>
