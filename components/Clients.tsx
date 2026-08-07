@@ -5,8 +5,9 @@ import {
   Contact, ChevronLeft, Heart, AlertTriangle, Sparkles, Calendar, Clock,
   Smartphone, CreditCard, TrendingUp, Crown, Target, Zap, ChevronRight,
   Filter, UserPlus, History, Star, Megaphone, Ban, Users, Wallet, Loader2, Save,
-  ClipboardCheck, Eye, Trash2
+  ClipboardCheck, Eye, Trash2, FileSpreadsheet
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Customer, Appointment, CustomerHistoryItem, Service, Provider, ViewState, UserProfile, ConsentForm as IConsentForm, Partner, Sale } from '../types';
 import { ConsentForm } from './ConsentForm';
 import { LinkCustomersModal } from './LinkCustomersModal';
@@ -49,6 +50,83 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
   const [selectedConsentForm, setSelectedConsentForm] = useState<IConsentForm | null>(null);
   const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
   const [isCreditDetailsOpen, setIsCreditDetailsOpen] = useState(false);
+
+  const handleExportCustomerExcel = () => {
+    if (!selectedCustomer) {
+      alert('Nenhuma cliente selecionada.');
+      return;
+    }
+
+    const customerAppts = appointments.filter(a => String(a.customerId).trim().toLowerCase() === String(selectedCustomer.id).trim().toLowerCase());
+
+    if (customerAppts.length === 0) {
+      alert('Nenhum atendimento encontrado para esta cliente.');
+      return;
+    }
+
+    const rows = customerAppts.map(a => {
+      const mainProvider = providers.find(p => String(p.id).trim().toLowerCase() === String(a.providerId).trim().toLowerCase());
+      const mainService = services.find(s => String(s.id).trim().toLowerCase() === String(a.serviceId).trim().toLowerCase());
+
+      let serviceName = a.combinedServiceNames;
+      if (!serviceName) {
+        serviceName = mainService?.name || 'Serviço';
+        if (a.additionalServices && a.additionalServices.length > 0) {
+          const extraNames = a.additionalServices.map(ex => services.find(s => String(s.id).trim().toLowerCase() === String(ex.serviceId).trim().toLowerCase())?.name).filter(Boolean).join(' + ');
+          if (extraNames) serviceName += ` + ${extraNames}`;
+        }
+      }
+
+      const extraServicesText = (a.additionalServices || []).map(extra => {
+        const sName = services.find(s => String(s.id).trim().toLowerCase() === String(extra.serviceId).trim().toLowerCase())?.name || extra.serviceId;
+        const pName = providers.find(p => String(p.id).trim().toLowerCase() === String(extra.providerId).trim().toLowerCase())?.name || extra.providerId;
+        return `${sName} (${pName})`;
+      }).join(' | ');
+
+      const paymentMethods = a.payments && a.payments.length > 0
+        ? a.payments.map(p => `${p.method}: R$ ${(p.amount || 0).toFixed(2)}`).join(' | ')
+        : a.paymentMethod || '-';
+
+      return {
+        'Data': a.date ? a.date.split('-').reverse().join('/') : '',
+        'Horário Agendado': a.time || '',
+        'Horário Fim': a.endTime || '',
+        'Cliente': selectedCustomer.name,
+        'Telefone Cliente': selectedCustomer.phone || '',
+        'Serviço(s)': serviceName,
+        'Profissional Principal': mainProvider ? mainProvider.name : '-',
+        'Serviços Adicionais / Equipe': extraServicesText || '-',
+        'Status': a.status || '-',
+        'Check-in': a.checkInTime || '-',
+        'Início Real': a.startTimeActual || '-',
+        'Término Real': a.endTimeActual || '-',
+        'Check-out': a.checkOutTime || '-',
+        'Valor Agendado (R$)': a.bookedPrice ?? a.amount ?? 0,
+        'Valor Pago (R$)': a.pricePaid ?? 0,
+        'Forma de Pagamento': paymentMethods,
+        'Cortesia': a.isCourtesy ? 'Sim' : 'Não',
+        'Desconto (R$)': a.discountAmount || 0,
+        'Gorjeta (R$)': a.tipAmount || 0,
+        'Observações': a.observation || ''
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Atendimentos');
+
+    const maxCols = [
+      { wch: 12 }, { wch: 15 }, { wch: 12 }, { wch: 25 }, { wch: 18 },
+      { wch: 30 }, { wch: 25 }, { wch: 35 }, { wch: 15 }, { wch: 10 },
+      { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 18 }, { wch: 15 },
+      { wch: 25 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 30 }
+    ];
+    worksheet['!cols'] = maxCols;
+
+    const safeName = selectedCustomer.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `atendimentos_${safeName}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+  };
 
   // Form States
   const [formData, setFormData] = useState<Partial<Customer>>({});
@@ -1212,6 +1290,11 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                           <Users size={14} /> Vincular Cadastros
                         </button>
                       )}
+                      {!isNew && selectedCustomer && (
+                        <button type="button" onClick={handleExportCustomerExcel} className="px-3 py-2 md:px-4 md:py-2 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-sm text-[9px] md:text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1.5 hover:bg-emerald-100 dark:hover:bg-emerald-950/50" title="Exportar histórico de atendimentos para Excel">
+                          <FileSpreadsheet size={14} /> Exportar Excel
+                        </button>
+                      )}
                       <button type="button" onClick={() => setIsEditing(true)} className="px-5 py-2.5 md:px-8 md:py-3 bg-slate-950 dark:bg-white text-white dark:text-black rounded-sm text-[10px] md:text-xs font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all">EDITAR</button>
                     </div>
                   )}
@@ -1855,6 +1938,19 @@ export const Clients: React.FC<ClientsProps> = ({ customers, setCustomers, appoi
                             </span>
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {selectedCustomer && customerTimeline.length > 0 && (
+                      <div className="flex justify-end mb-2">
+                        <button 
+                          type="button" 
+                          onClick={handleExportCustomerExcel} 
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-sm text-[9px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center gap-1.5 shadow-sm"
+                          title="Exportar histórico de atendimentos para Excel"
+                        >
+                          <FileSpreadsheet size={13} /> Exportar Atendimentos Excel
+                        </button>
                       </div>
                     )}
                     {customerTimeline.length > 0 ? (
